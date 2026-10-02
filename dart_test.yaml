@@ -1,0 +1,7 @@
+# Test tags. `golden` marks the exact-pixel PNG renderers (screenshots, app
+# icon) — inspection artifacts generated on the maintainer machine's
+# freetype/fontconfig, not regression gates. They render differently on any
+# other machine, so CI runs `flutter test --exclude-tags golden` and goldens
+# stay a local pre-commit discipline.
+tags:
+  golden:

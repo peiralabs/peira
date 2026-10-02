@@ -1,0 +1,75 @@
+# Declared system dependencies of the AppImage — the audited NEEDED closure
+# of the main binary plus every bundled library (tool/build_appimage.sh fails
+# the build if the closure grows beyond this file plus the bundled set).
+#
+# Runtime services the libraries below imply (not expressible as sonames):
+#   - glibc at least as new as the build host's (AppImages inherit the
+#     build host's floor — build on the oldest supported base)
+#   - an X11 or XWayland session (CEF renders via X11)
+#   - a D-Bus session bus and a Secret Service provider (GNOME Keyring,
+#     KWallet 5.97+, or KeePassXC) — libsecret is bundled, the daemon is not
+#   - unprivileged user namespaces enabled for CEF's sandbox (an AppImage
+#     cannot ship a setuid chrome-sandbox); most modern distros enable this
+#
+# glibc / toolchain runtime — never bundle
+ld-linux-x86-64.so.2
+libc.so.6
+libdl.so.2
+libm.so.6
+libpthread.so.0
+libgcc_s.so.1
+libstdc++.so.6
+libz.so.1
+libexpat.so.1
+# libgcrypt enters via bundled libsecret; base-system everywhere (systemd)
+libgcrypt.so.20
+#
+# GTK 3 stack — provided by the gtk3 package on every distro; bundling GTK
+# into AppImages is unsupported upstream and breaks theming/portals
+libgtk-3.so.0
+libgdk-3.so.0
+libgdk_pixbuf-2.0.so.0
+libglib-2.0.so.0
+libgio-2.0.so.0
+libgobject-2.0.so.0
+libgmodule-2.0.so.0
+libpango-1.0.so.0
+libpangocairo-1.0.so.0
+libcairo.so.2
+libcairo-gobject.so.2
+libharfbuzz.so.0
+libatk-1.0.so.0
+libatk-bridge-2.0.so.0
+libatspi.so.0
+libepoxy.so.0
+libfontconfig.so.1
+libxkbcommon.so.0
+#
+# X11 core — ship with any X11/XWayland install (leaf X libs are bundled)
+libX11.so.6
+libxcb.so.1
+libXext.so.6
+#
+# GPU / display driver stack — must match the host's drivers, never bundle
+libGL.so.1
+libgbm.so.1
+libudev.so.1
+#
+# CEF (Chromium) runtime — same system set Electron apps declare
+libnss3.so
+libnssutil3.so
+libsmime3.so
+libnspr4.so
+libdbus-1.so.3
+libasound.so.2
+libcups.so.2
+#
+# libjvm.so — NOT host-provided, and never loaded on Linux. It enters only via
+# the jni / jni_flutter FFI plugin that path_provider_android drags in
+# transitively (jni_flutter wrongly registers for Linux desktop). On Linux,
+# path_provider resolves to path_provider_linux, so the jni .so is never
+# dlopen'd and libjvm is never resolved at runtime — it is NEEDED by that
+# plugin .so only, not by the main binary. Declared (never bundled) because
+# bundling a JVM is absurd and the reference is dead on this platform. Revisit
+# if path_provider_android / jni_flutter stop registering for Linux.
+libjvm.so

@@ -1,0 +1,9 @@
+Peira control panel
+Copyright 2026 Peira Labs
+
+This product bundles third-party software and fonts. The complete
+enumeration of third-party components, their licenses, and the position on
+CEF's bundled FFmpeg is in THIRD_PARTY_NOTICES.md. Font license texts ship
+alongside the fonts in assets/fonts/ (OFL.txt, LICENSE-Phosphor.txt), and
+Flutter's build embeds every pub dependency's license text into the
+application bundle (flutter_assets/NOTICES.Z).

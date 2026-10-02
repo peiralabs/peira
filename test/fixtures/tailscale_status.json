@@ -1,0 +1,36 @@
+{
+  "BackendState": "Running",
+  "MagicDNSSuffix": "tail1234.ts.net",
+  "TailscaleIPs": ["100.64.0.10", "fd7a::1"],
+  "Self": {
+    "HostName": "laptop",
+    "DNSName": "laptop.tail1234.ts.net.",
+    "TailscaleIPs": ["100.64.0.10", "fd7a::1"],
+    "OS": "linux",
+    "Online": true,
+    "ExitNode": false,
+    "ExitNodeOption": false
+  },
+  "Peer": {
+    "key1": {
+      "HostName": "node4",
+      "DNSName": "node4.tail1234.ts.net.",
+      "TailscaleIPs": ["100.64.0.20"],
+      "OS": "linux",
+      "Online": true,
+      "ExitNode": false,
+      "ExitNodeOption": true,
+      "LastSeen": "2026-07-04T01:00:00Z"
+    },
+    "key2": {
+      "HostName": "old-phone",
+      "DNSName": "old-phone.tail1234.ts.net.",
+      "TailscaleIPs": ["100.64.0.30"],
+      "OS": "android",
+      "Online": false,
+      "ExitNode": false,
+      "ExitNodeOption": false,
+      "LastSeen": "2026-06-01T12:00:00Z"
+    }
+  }
+}

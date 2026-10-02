@@ -1,0 +1,97 @@
+name: Release
+
+# `git tag v1.0.0 && git push --tags` → a published GitHub Release carrying
+# the AppImage, SHA256SUMS, and detached GPG signatures — no manual steps.
+#
+# Required repository secrets:
+#   GPG_PRIVATE_KEY   ASCII-armored signing key (gpg --armor --export-secret-keys)
+#   GPG_PASSPHRASE    its passphrase
+#
+# Keep the build steps in lockstep with build.yml (same base, deps, pins).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libxi-dev libsecret-1-dev \
+            libnss3 libasound2t64 libcups2t64
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Keep in lockstep with .tool-versions, ci.yml, and build.yml.
+          flutter-version: 3.44.6
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Guard — tag matches pubspec version
+        run: |
+          tag='${{ github.ref_name }}'
+          pv=$(grep -oP '^version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml)
+          [ "$tag" = "v$pv" ] || { echo "tag $tag != pubspec version $pv" >&2; exit 1; }
+
+      - name: Compute CEF cache key
+        id: cef
+        run: |
+          f=$(find ~/.pub-cache -path '*webview_cef*/third/download.cmake' | head -1)
+          [ -n "$f" ] || { echo "webview_cef download.cmake not found" >&2; exit 1; }
+          echo "version=$(grep -oP 'set\(CEF_VERSION "\K[^"]+' "$f")" >> "$GITHUB_OUTPUT"
+          echo "dir=$(dirname "$f")/cef" >> "$GITHUB_OUTPUT"
+
+      - name: Cache CEF
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.cef.outputs.dir }}
+          key: cef-linux64-${{ steps.cef.outputs.version }}
+
+      - run: flutter analyze
+
+      - run: flutter test --exclude-tags golden
+
+      - run: dart tool/check_public_markers.dart
+
+      - run: flutter build linux --release
+
+      - run: bash tool/build_appimage.sh dist/Peira-x86_64.AppImage
+
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum Peira-x86_64.AppImage > SHA256SUMS
+
+      - name: Sign
+        working-directory: dist
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          for f in Peira-x86_64.AppImage SHA256SUMS; do
+            gpg --batch --yes --pinentry-mode loopback \
+              --passphrase "$GPG_PASSPHRASE" --detach-sign --armor "$f"
+          done
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create '${{ github.ref_name }}' \
+            --title '${{ github.ref_name }}' \
+            --notes 'See CHANGELOG.md. Verify: `sha256sum -c SHA256SUMS` and `gpg --verify SHA256SUMS.asc SHA256SUMS`.' \
+            dist/Peira-x86_64.AppImage \
+            dist/Peira-x86_64.AppImage.asc \
+            dist/SHA256SUMS \
+            dist/SHA256SUMS.asc
