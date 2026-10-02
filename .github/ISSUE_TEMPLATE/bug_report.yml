@@ -1,0 +1,67 @@
+name: Bug report
+description: Something is broken.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Read KNOWN_ISSUES.md first — especially the keyring section if the
+        app won't start or forgot its settings.
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and version
+      placeholder: e.g. Fedora 44, Ubuntu 24.04, Arch (2026-08)
+    validations:
+      required: true
+  - type: input
+    id: de
+    attributes:
+      label: Desktop environment
+      placeholder: e.g. GNOME 48, KDE Plasma 6, Sway
+    validations:
+      required: true
+  - type: dropdown
+    id: display
+    attributes:
+      label: Display session
+      options:
+        - X11
+        - Wayland with XWayland
+        - Wayland without XWayland
+        - Headless / VM / container
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: Settings › Updates shows it, e.g. v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: checksum
+    attributes:
+      label: AppImage sha256
+      description: "`sha256sum Peira-x86_64.AppImage` — confirms which build you run."
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: 1. … 2. … 3. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Terminal output
+      description: Run the AppImage from a terminal and paste the output. Redact anything private.
+      render: text

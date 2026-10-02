@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose an addition or change.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Check the scope boundary in MAINTENANCE.md first — some things
+        (Windows/macOS, non-Proxmox hypervisors) are permanently out of
+        scope.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem this solves
+      description: What can't you do today? Concrete workflow, not a solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true

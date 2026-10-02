@@ -1,0 +1,63 @@
+name: Build AppImage
+
+# Manual trigger only: PR CI (ci.yml) stays fast, and release automation on
+# tags is its own workflow. Re-verify action majors when this first runs on
+# a real repository.
+on:
+  workflow_dispatch:
+
+jobs:
+  appimage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+
+      # Without libxi-dev webview_cef's CMake fails; without libsecret-1-dev
+      # flutter_secure_storage fails to link. The nss/asound/cups runtime libs
+      # are needed at LINK time too — ld resolves libcef.so's transitive
+      # closure (proven on a clean ubuntu-24.04 container; runner images
+      # happen to preinstall some of these, a clean base does not).
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libxi-dev libsecret-1-dev \
+            libnss3 libasound2t64 libcups2t64
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Keep in lockstep with ci.yml and the maintainer machine.
+          flutter-version: 3.44.6
+          cache: true
+
+      - run: flutter pub get
+
+      # webview_cef downloads a ~330 MB CEF tarball at CMake configure time.
+      # Cache the extracted tree keyed on the CEF version string from the
+      # package itself (its version.txt check then skips the download) — the
+      # pub package version alone would go stale if a patch release moved CEF.
+      - name: Compute CEF cache key
+        id: cef
+        run: |
+          f=$(find ~/.pub-cache -path '*webview_cef*/third/download.cmake' | head -1)
+          [ -n "$f" ] || { echo "webview_cef download.cmake not found" >&2; exit 1; }
+          echo "version=$(grep -oP 'set\(CEF_VERSION "\K[^"]+' "$f")" >> "$GITHUB_OUTPUT"
+          echo "dir=$(dirname "$f")/cef" >> "$GITHUB_OUTPUT"
+
+      - name: Cache CEF
+        uses: actions/cache@v5
+        with:
+          path: ${{ steps.cef.outputs.dir }}
+          key: cef-linux64-${{ steps.cef.outputs.version }}
+
+      - run: flutter build linux --release
+
+      - run: bash tool/build_appimage.sh dist/Peira-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Peira-x86_64.AppImage
+          path: dist/Peira-x86_64.AppImage
+          if-no-files-found: error
