@@ -14,12 +14,14 @@ class AppTheme {
   AppTheme._();
 
 
-  static ThemeData light() => _build(Brightness.light);
-  static ThemeData dark() => _build(Brightness.dark);
+  static ThemeData light([ThemePack pack = ThemePack.brass]) =>
+      _build(Brightness.light, pack);
+  static ThemeData dark([ThemePack pack = ThemePack.brass]) =>
+      _build(Brightness.dark, pack);
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData _build(Brightness brightness, ThemePack pack) {
     final isDark = brightness == Brightness.dark;
-    final brass = Brass.resolve(brightness);
+    final brass = pack.resolve(brightness);
     final scheme = ColorScheme.fromSeed(
       seedColor: brass.seed,
       brightness: brightness,

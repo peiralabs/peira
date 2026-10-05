@@ -138,11 +138,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   String _themeMode = 'system';
+  String _themeId = 'brass';
 
   void _seedFrom(AppSettings settings) {
     if (_seeded) return;
     _seeded = true;
     _themeMode = settings.themeMode;
+    _themeId = settings.themeId;
     _proxmoxUrl.text = settings.proxmoxUrl;
     _proxmoxTokenId.text = settings.proxmoxTokenId;
     _proxmoxTokenSecret.text = settings.proxmoxTokenSecret;
@@ -204,6 +206,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final current = ref.read(settingsControllerProvider).value;
     final settings = AppSettings(
       themeMode: _themeMode,
+      themeId: _themeId,
       railCollapsed: current?.railCollapsed ?? false,
       proxmoxUrl: _cleanUrl(_proxmoxUrl.text),
       proxmoxTokenId: _proxmoxTokenId.text.trim(),
@@ -342,6 +345,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         }
                       },
                     ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 10),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final pack in ThemePack.all)
+                      ChoiceChip(
+                        label: Text(pack.label),
+                        selected: _themeId == pack.id,
+                        onSelected: (_) {
+                          if (_themeId == pack.id) return;
+                          setState(() => _themeId = pack.id);
+                          // Apply immediately once configured; before first
+                          // save the choice rides along with the Save button.
+                          final cur =
+                              ref.read(settingsControllerProvider).value;
+                          if (cur != null) {
+                            ref
+                                .read(settingsControllerProvider.notifier)
+                                .save(cur.copyWith(themeId: pack.id));
+                          }
+                        },
+                      ),
                   ],
                 ),
               ),

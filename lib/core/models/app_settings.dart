@@ -87,6 +87,9 @@ abstract class AppSettings with _$AppSettings {
     @Default(true) bool trustSelfSigned,
     // 'system' | 'dark' | 'light' — the in-app palette switch.
     @Default('system') String themeMode,
+    // Theme family id (see ThemePack.all) — e.g. 'brass', 'graphite'. An
+    // unknown or missing value falls back to Brass Edition.
+    @Default('brass') String themeId,
     // Nav rail collapsed to the 78px icon dock (brass knob toggle).
     @Default(false) bool railCollapsed,
     // Terminal SSH quick-connect shortcuts, one per line as `label=user@host`
