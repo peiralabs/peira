@@ -555,6 +555,210 @@ class Brass {
     warnGradEnd: Color(0xFF9A6E10),
   );
 
+  // ---------------------------------------------------------------------------
+  // "Terminal" family — hacker phosphor: neon green on near-black, amber-CRT
+  // "Services" accent, cyan "System". Pending visual sign-off; contrast
+  // verified ≥4.5:1 text / ≥3:1 muted+icon on actual surfaces (both variants).
+  // ---------------------------------------------------------------------------
+
+  /// Terminal dark — green phosphor on black.
+  static const terminalDark = Brass._(
+    isDark: true,
+    seed: Color(0xFF3BFF6B),
+    bronze: Color(0xFF3BFF6B),
+    giltBright: Color(0xFF9CFFC0),
+    giltDeep: Color(0xFF1FA64D),
+    copper: Color(0xFFFFB000),
+    hairline: Color(0x473BFF6B),
+    brassStops: [
+      Color(0xFF0E4D23),
+      Color(0xFF2FBF5E),
+      Color(0xFFB6FFCF),
+      Color(0xFF27A64F),
+      Color(0xFF0C3D1C),
+    ],
+    wordmarkStops: [Color(0xFFB6FFCF), Color(0xFF3BFF6B), Color(0xFF1FA64D)],
+    moss: Color(0xFF3BFF6B),
+    ochre: Color(0xFFFFB000),
+    madder: Color(0xFFFF5B5B),
+    sand: Color(0xFF9FE0A8),
+    clay: Color(0xFFE09A8A),
+    sage: Color(0xFF6FD98A),
+    slate: Color(0xFF5AC8FA),
+    stone: Color(0xFF8FA896),
+    verdigris: Color(0xFF2EE6C0),
+    pine: Color(0xFF1F7A4D),
+    indigo: Color(0xFF7FB0FF),
+    navy: Color(0xFF0A2A4D),
+    sparkGreen: Color(0xFF5BFF8F),
+    sparkGreenDeep: Color(0xFF1FA64D),
+    gaugeCpu: Color(0xFF5BFF8F),
+    gaugeMemory: Color(0xFF5AC8FA),
+    gaugeStorage: Color(0xFFFFB000),
+    gaugeContainers: Color(0xFFFF5B5B),
+    textHeading: Color(0xFFD6FFE0),
+    textBody: Color(0xFFA6ECB8),
+    textMuted: Color(0xFF6FBF88),
+    smallCaps: Color(0xFF55CC7E),
+    bg: Color(0xFF050806),
+    surface: Color(0xFF070B07),
+    panelTop: Color(0xFF0C140C),
+    panelBottom: Color(0xFF070B07),
+    bannerTop: Color(0xFF0E180E),
+    railTop: Color(0xFF0A110A),
+    railBottom: Color(0xFF050806),
+    recess: Color(0xFF030503),
+    panelBorder: Color(0x4D1FA64D),
+    control: SectionAccent(
+      plateStart: Color(0x701FA64D),
+      plateEnd: Color(0x293BFF6B),
+      border: Color(0x803BFF6B),
+      barTop: Color(0xFFB6FFCF),
+      barMid: Color(0xFF3BFF6B),
+      barBottom: Color(0xFF156B32),
+      glow: Color(0x993BFF6B),
+      iconActive: Color(0xFFD6FFE0),
+      iconIdle: Color(0xFF6FBF88),
+      headerText: Color(0xFF7BFF9F),
+      hover: Color(0x143BFF6B),
+    ),
+    services: SectionAccent(
+      plateStart: Color(0x85704A00),
+      plateEnd: Color(0x2EFFB000),
+      border: Color(0x80FFB000),
+      barTop: Color(0xFFFFD98A),
+      barMid: Color(0xFFFFB000),
+      barBottom: Color(0xFF7A5400),
+      glow: Color(0x8CFFB000),
+      iconActive: Color(0xFFFFE6B3),
+      iconIdle: Color(0xFFC9A86E),
+      headerText: Color(0xFFFFC94D),
+      hover: Color(0x1AFFB000),
+    ),
+    system: SectionAccent(
+      plateStart: Color(0x85164A6E),
+      plateEnd: Color(0x2E5AC8FA),
+      border: Color(0x805AC8FA),
+      barTop: Color(0xFFBFE8FF),
+      barMid: Color(0xFF5AC8FA),
+      barBottom: Color(0xFF13486E),
+      glow: Color(0x8C5AC8FA),
+      iconActive: Color(0xFFCFEEFF),
+      iconIdle: Color(0xFF7FA8C4),
+      headerText: Color(0xFF6FD0FA),
+      hover: Color(0x1A5AC8FA),
+    ),
+    cardShadow: [BoxShadow(color: Color(0x4D000000), offset: Offset(0, 3))],
+    hoverShadow: [
+      BoxShadow(
+        color: Color(0x99000000),
+        offset: Offset(0, 12),
+        blurRadius: 24,
+        spreadRadius: -8,
+      ),
+    ],
+    warnGradEnd: Color(0xFFFFCA45),
+  );
+
+  /// Terminal light — dark-green ink on pale phosphor paper.
+  static const terminalLight = Brass._(
+    isDark: false,
+    seed: Color(0xFF1F7A3D),
+    bronze: Color(0xFF1F7A3D),
+    giltBright: Color(0xFF1C6E37),
+    giltDeep: Color(0xFF2A8A4C),
+    copper: Color(0xFF8A5A00),
+    hairline: Color(0x591F7A3D),
+    brassStops: [
+      Color(0xFF0E4D23),
+      Color(0xFF2FBF5E),
+      Color(0xFFB6FFCF),
+      Color(0xFF27A64F),
+      Color(0xFF0C3D1C),
+    ],
+    wordmarkStops: [Color(0xFF2A8A4C), Color(0xFF1F7A3D), Color(0xFF145229)],
+    moss: Color(0xFF1F7A3D),
+    ochre: Color(0xFF8A5A00),
+    madder: Color(0xFFB23A32),
+    sand: Color(0xFF4A6B50),
+    clay: Color(0xFF8F4A3C),
+    sage: Color(0xFF3C6E4E),
+    slate: Color(0xFF1E7FA6),
+    stone: Color(0xFF566B5A),
+    verdigris: Color(0xFF177A66),
+    pine: Color(0xFF1F6B45),
+    indigo: Color(0xFF2F5E92),
+    navy: Color(0xFF0A2A4D),
+    sparkGreen: Color(0xFF1F7A3D),
+    sparkGreenDeep: Color(0xFF125227),
+    gaugeCpu: Color(0xFF5BFF8F),
+    gaugeMemory: Color(0xFF5AC8FA),
+    gaugeStorage: Color(0xFFFFB000),
+    gaugeContainers: Color(0xFFFF5B5B),
+    textHeading: Color(0xFF0A2A14),
+    textBody: Color(0xFF16331F),
+    textMuted: Color(0xFF3E5E48),
+    smallCaps: Color(0xFF2A6B3D),
+    bg: Color(0xFFE4EFE6),
+    surface: Color(0xFFF0F6F1),
+    panelTop: Color(0xFFF4F9F5),
+    panelBottom: Color(0xFFEBF3EC),
+    bannerTop: Color(0xFFF5FAF6),
+    railTop: Color(0xFFEDF5EE),
+    railBottom: Color(0xFFE2EDE4),
+    recess: Color(0xFFD8E6DA),
+    panelBorder: Color(0x66175229),
+    control: SectionAccent(
+      plateStart: Color(0x701FA64D),
+      plateEnd: Color(0x293BFF6B),
+      border: Color(0x8C1F7A3D),
+      barTop: Color(0xFF2A8A4C),
+      barMid: Color(0xFF1F7A3D),
+      barBottom: Color(0xFF145229),
+      glow: Color(0x33175229),
+      iconActive: Color(0xFF0A2A14),
+      iconIdle: Color(0xFF3E5E48),
+      headerText: Color(0xFF1C6E37),
+      hover: Color(0x141F7A3D),
+    ),
+    services: SectionAccent(
+      plateStart: Color(0x85704A00),
+      plateEnd: Color(0x2EFFB000),
+      border: Color(0x8C8A5A00),
+      barTop: Color(0xFFB07400),
+      barMid: Color(0xFF8A5A00),
+      barBottom: Color(0xFF5E3D00),
+      glow: Color(0x338A5A00),
+      iconActive: Color(0xFF3E2900),
+      iconIdle: Color(0xFF7A5A28),
+      headerText: Color(0xFF7A5000),
+      hover: Color(0x148A5A00),
+    ),
+    system: SectionAccent(
+      plateStart: Color(0x2E13486E),
+      plateEnd: Color(0x141E7FA6),
+      border: Color(0x8C1E7FA6),
+      barTop: Color(0xFF3A9EC4),
+      barMid: Color(0xFF1E7FA6),
+      barBottom: Color(0xFF13486E),
+      glow: Color(0x331E7FA6),
+      iconActive: Color(0xFF123A50),
+      iconIdle: Color(0xFF466E84),
+      headerText: Color(0xFF1E7FA6),
+      hover: Color(0x141E7FA6),
+    ),
+    cardShadow: [BoxShadow(color: Color(0x2E0A2A14), offset: Offset(0, 3))],
+    hoverShadow: [
+      BoxShadow(
+        color: Color(0x4D0A2A14),
+        offset: Offset(0, 12),
+        blurRadius: 24,
+        spreadRadius: -8,
+      ),
+    ],
+    warnGradEnd: Color(0xFF6E4A00),
+  );
+
   final bool isDark;
 
   // Gilt / brass flats.
@@ -820,7 +1024,7 @@ class ThemePack {
     light: Brass.light,
   );
 
-  /// Graphite (brushed steel). DRAFT palette — see [Brass.graphiteDark].
+  /// Graphite (brushed steel). See [Brass.graphiteDark].
   static const graphite = ThemePack(
     id: 'graphite',
     label: 'Graphite',
@@ -828,9 +1032,17 @@ class ThemePack {
     light: Brass.graphiteLight,
   );
 
+  /// Terminal (hacker phosphor). See [Brass.terminalDark].
+  static const terminal = ThemePack(
+    id: 'terminal',
+    label: 'Terminal',
+    dark: Brass.terminalDark,
+    light: Brass.terminalLight,
+  );
+
   /// Registry order is the settings-picker order. [brass] is first and is the
   /// canonical fallback for an unknown or missing stored id.
-  static const all = <ThemePack>[brass, graphite];
+  static const all = <ThemePack>[brass, graphite, terminal];
 
   /// The family for a stored [id], falling back to [brass].
   static ThemePack byId(String? id) =>
