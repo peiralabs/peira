@@ -344,14 +344,17 @@ class Brass {
   );
 
   // ---------------------------------------------------------------------------
-  // "Graphite" family — DRAFT, pending Joshua's visual + contrast sign-off.
+  // "Graphite" family — pending visual/aesthetic sign-off (not yet default).
   //
   // The same instrument re-cast in brushed steel instead of brass: cool
   // graphite fields, silver/steel ornament, a warm-copper "Services" accent
   // kept for section legibility, and a cyan-shifted storage gauge. Jewels and
-  // gauge arcs are shared with Brass (they draw on the instrument face). These
-  // values were derived systematically, not eyeball-tuned per surface — treat
-  // them as a reviewable starting point, not shippable final colour.
+  // gauge arcs are shared with Brass (they draw on the instrument face).
+  //
+  // Contrast verified ≥4.5:1 for text roles and ≥3:1 for muted text and
+  // iconography on their actual surfaces (section headers composited over the
+  // rail), matching the bar the Brass light palette documents. What remains is
+  // a taste call on the hue/tone, not an accessibility one.
   // ---------------------------------------------------------------------------
 
   /// Graphite dark — brushed steel on near-black graphite.
