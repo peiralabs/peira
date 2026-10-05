@@ -18,6 +18,7 @@ import 'package:peira/core/providers/proxmox_providers.dart';
 import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/providers/tailscale_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
+import 'package:peira/core/webview/display_server.dart';
 import 'package:peira/core/webview/webview_factory.dart';
 import 'package:peira/core/widgets/ai_status_strip.dart';
 import 'package:peira/core/widgets/command_palette.dart';
@@ -146,6 +147,7 @@ Widget _app({
         recentTasksProvider.overrideWith((ref) async => const []),
         webViewFactoryProvider
             .overrideWithValue(webViewFactory ?? _FakeWebViewFactory()),
+        webviewSupportProvider.overrideWithValue(null),
         tailscaleStatusProvider.overrideWith((ref) async => _fakeTailscale),
         ollamaModelsProvider.overrideWith((ref) async => _fakeOllamaModels),
         ollamaRunningProvider.overrideWith((ref) async => _fakeOllamaRunning),
