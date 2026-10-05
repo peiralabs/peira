@@ -343,6 +343,215 @@ class Brass {
     warnGradEnd: Color(0xFF9A6E10),
   );
 
+  // ---------------------------------------------------------------------------
+  // "Graphite" family — DRAFT, pending Joshua's visual + contrast sign-off.
+  //
+  // The same instrument re-cast in brushed steel instead of brass: cool
+  // graphite fields, silver/steel ornament, a warm-copper "Services" accent
+  // kept for section legibility, and a cyan-shifted storage gauge. Jewels and
+  // gauge arcs are shared with Brass (they draw on the instrument face). These
+  // values were derived systematically, not eyeball-tuned per surface — treat
+  // them as a reviewable starting point, not shippable final colour.
+  // ---------------------------------------------------------------------------
+
+  /// Graphite dark — brushed steel on near-black graphite.
+  static const graphiteDark = Brass._(
+    isDark: true,
+    seed: Color(0xFF9FB1C2),
+    bronze: Color(0xFF9FB1C2),
+    giltBright: Color(0xFFC9D6E2),
+    giltDeep: Color(0xFF6E7E8E),
+    copper: Color(0xFFC88A5A),
+    hairline: Color(0x478AA2C4),
+    brassStops: [
+      Color(0xFF43505C),
+      Color(0xFF8FA4B6),
+      Color(0xFFE4EEF6),
+      Color(0xFF7E93A6),
+      Color(0xFF3A454F),
+    ],
+    wordmarkStops: [Color(0xFFE4EEF6), Color(0xFF9FB1C2), Color(0xFF5E6E7E)],
+    moss: Color(0xFF6FBF8A),
+    ochre: Color(0xFFE0A83F),
+    madder: Color(0xFFD9594E),
+    sand: Color(0xFFC7D2DC),
+    clay: Color(0xFFC98F84),
+    sage: Color(0xFF8FB7A0),
+    slate: Color(0xFF5A86C0),
+    stone: Color(0xFF99A3AD),
+    verdigris: Color(0xFF4FAE96),
+    pine: Color(0xFF3B6B5E),
+    indigo: Color(0xFF8FABD6),
+    navy: Color(0xFF1D3A6E),
+    sparkGreen: Color(0xFF7FC08F),
+    sparkGreenDeep: Color(0xFF3F7A55),
+    gaugeCpu: Color(0xFF8BC06A),
+    gaugeMemory: Color(0xFF5A86C0),
+    gaugeStorage: Color(0xFF5AB6C0),
+    gaugeContainers: Color(0xFFC8564A),
+    textHeading: Color(0xFFE8EEF4),
+    textBody: Color(0xFFC6D0DA),
+    textMuted: Color(0xFF8795A3),
+    smallCaps: Color(0xFF9FB1C2),
+    bg: Color(0xFF121417),
+    surface: Color(0xFF14171A),
+    panelTop: Color(0xFF20252B),
+    panelBottom: Color(0xFF14171A),
+    bannerTop: Color(0xFF232A31),
+    railTop: Color(0xFF1A1F24),
+    railBottom: Color(0xFF121417),
+    recess: Color(0xFF0C0E10),
+    panelBorder: Color(0x478AA2C4),
+    control: SectionAccent(
+      plateStart: Color(0x705A7E92),
+      plateEnd: Color(0x298AA2C4),
+      border: Color(0x80B6CCDE),
+      barTop: Color(0xFFE4EEF6),
+      barMid: Color(0xFF8FA4B6),
+      barBottom: Color(0xFF43505C),
+      glow: Color(0x99B6CCDE),
+      iconActive: Color(0xFFE8F0F6),
+      iconIdle: Color(0xFF93A4B2),
+      headerText: Color(0xFFAFC2D2),
+      hover: Color(0x148AA2C4),
+    ),
+    services: SectionAccent(
+      plateStart: Color(0x85963436),
+      plateEnd: Color(0x2EC9785A),
+      border: Color(0x80E49678),
+      barTop: Color(0xFFFFCDBF),
+      barMid: Color(0xFFC88A5A),
+      barBottom: Color(0xFF6E3A1C),
+      glow: Color(0x8CE0785A),
+      iconActive: Color(0xFFF6E0CC),
+      iconIdle: Color(0xFFC3A48E),
+      headerText: Color(0xFFD6A078),
+      hover: Color(0x1AC4885E),
+    ),
+    system: SectionAccent(
+      plateStart: Color(0x8534568C),
+      plateEnd: Color(0x2E78A0D2),
+      border: Color(0x808CAFE0),
+      barTop: Color(0xFFCFE0FF),
+      barMid: Color(0xFF4F86D0),
+      barBottom: Color(0xFF1D3A6E),
+      glow: Color(0x8C78A0E0),
+      iconActive: Color(0xFFCFE0F4),
+      iconIdle: Color(0xFF93A6C4),
+      headerText: Color(0xFF8FABD6),
+      hover: Color(0x1A5F86BF),
+    ),
+    cardShadow: [BoxShadow(color: Color(0x4D000000), offset: Offset(0, 3))],
+    hoverShadow: [
+      BoxShadow(
+        color: Color(0x99000000),
+        offset: Offset(0, 12),
+        blurRadius: 24,
+        spreadRadius: -8,
+      ),
+    ],
+    warnGradEnd: Color(0xFFD0A045),
+  );
+
+  /// Graphite light — steel ink on cool paper.
+  static const graphiteLight = Brass._(
+    isDark: false,
+    seed: Color(0xFF4A5A6A),
+    bronze: Color(0xFF4A5A6A),
+    giltBright: Color(0xFF45535F),
+    giltDeep: Color(0xFF5E6E7E),
+    copper: Color(0xFF9C5A36),
+    hairline: Color(0x594A5A6A),
+    brassStops: [
+      Color(0xFF43505C),
+      Color(0xFF8FA4B6),
+      Color(0xFFE4EEF6),
+      Color(0xFF7E93A6),
+      Color(0xFF3A454F),
+    ],
+    wordmarkStops: [Color(0xFF6E7E8E), Color(0xFF4A5A6A), Color(0xFF333F49)],
+    moss: Color(0xFF2E7A4A),
+    ochre: Color(0xFF855C06),
+    madder: Color(0xFF9E362C),
+    sand: Color(0xFF556573),
+    clay: Color(0xFF8F4A3C),
+    sage: Color(0xFF46705E),
+    slate: Color(0xFF3A639C),
+    stone: Color(0xFF5F6B76),
+    verdigris: Color(0xFF2A7160),
+    pine: Color(0xFF3B6B5E),
+    indigo: Color(0xFF3A5E92),
+    navy: Color(0xFF1D3A6E),
+    sparkGreen: Color(0xFF3F7A55),
+    sparkGreenDeep: Color(0xFF255E3A),
+    gaugeCpu: Color(0xFF8BC06A),
+    gaugeMemory: Color(0xFF5A86C0),
+    gaugeStorage: Color(0xFF5AB6C0),
+    gaugeContainers: Color(0xFFC8564A),
+    textHeading: Color(0xFF1E2A33),
+    textBody: Color(0xFF2E3A44),
+    textMuted: Color(0xFF51606C),
+    smallCaps: Color(0xFF4A5A6A),
+    bg: Color(0xFFE6EAEF),
+    surface: Color(0xFFF1F4F7),
+    panelTop: Color(0xFFF5F7FA),
+    panelBottom: Color(0xFFEDF1F4),
+    bannerTop: Color(0xFFF6F8FB),
+    railTop: Color(0xFFEEF2F5),
+    railBottom: Color(0xFFE4E9EE),
+    recess: Color(0xFFDADFE5),
+    panelBorder: Color(0x662E3A45),
+    control: SectionAccent(
+      plateStart: Color(0x705A7E92),
+      plateEnd: Color(0x298AA2C4),
+      border: Color(0x8C4A5A6A),
+      barTop: Color(0xFF6E7E8E),
+      barMid: Color(0xFF53636F),
+      barBottom: Color(0xFF3A454F),
+      glow: Color(0x333A454F),
+      iconActive: Color(0xFF1E2A33),
+      iconIdle: Color(0xFF53636F),
+      headerText: Color(0xFF3F4E5A),
+      hover: Color(0x144A5A6A),
+    ),
+    services: SectionAccent(
+      plateStart: Color(0x85963436),
+      plateEnd: Color(0x2EC9785A),
+      border: Color(0x8C9C5A36),
+      barTop: Color(0xFFC88A5A),
+      barMid: Color(0xFF9C5A36),
+      barBottom: Color(0xFF6E3A1C),
+      glow: Color(0x339C5A36),
+      iconActive: Color(0xFF4A2A14),
+      iconIdle: Color(0xFF7A5848),
+      headerText: Color(0xFF8F5230),
+      hover: Color(0x149C5A36),
+    ),
+    system: SectionAccent(
+      plateStart: Color(0x2E1D3A6E),
+      plateEnd: Color(0x143A5E96),
+      border: Color(0x8C3A5E96),
+      barTop: Color(0xFF4F86D0),
+      barMid: Color(0xFF3A5E96),
+      barBottom: Color(0xFF1D3A6E),
+      glow: Color(0x333A5E96),
+      iconActive: Color(0xFF1E3350),
+      iconIdle: Color(0xFF4A6284),
+      headerText: Color(0xFF3A5E92),
+      hover: Color(0x143A5E96),
+    ),
+    cardShadow: [BoxShadow(color: Color(0x2E1F2830), offset: Offset(0, 3))],
+    hoverShadow: [
+      BoxShadow(
+        color: Color(0x4D1F2830),
+        offset: Offset(0, 12),
+        blurRadius: 24,
+        spreadRadius: -8,
+      ),
+    ],
+    warnGradEnd: Color(0xFF9A6E10),
+  );
+
   final bool isDark;
 
   // Gilt / brass flats.
@@ -406,10 +615,13 @@ class Brass {
 
   // ---- Resolution ----
 
-  /// The canonical instance for the ambient theme. Registers a Theme
-  /// dependency, so widgets rebuild on System/Light/Dark flips.
+  /// The canonical instance for the ambient theme. Registers both a Theme
+  /// dependency (so widgets rebuild on System/Light/Dark flips) and an
+  /// [ActiveTheme] dependency (so they rebuild when the operator switches
+  /// theme family). Falls back to the Brass family when no [ActiveTheme] is
+  /// in scope (bare-MaterialApp test pumps), preserving the old behaviour.
   static Brass of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+      ActiveTheme.of(context).resolve(Theme.of(context).brightness);
 
   /// For no-context sites (painters, theme factories) that already know
   /// their brightness.
@@ -571,4 +783,72 @@ class Brass {
 extension BrassContext on BuildContext {
   /// `context.brass` — the ambient brightness-resolved token set.
   Brass get brass => Brass.of(this);
+}
+
+/// A selectable theme family: a named pair of [Brass] token sets, one per
+/// brightness. The app always owns a light and a dark [Brass] (the operator's
+/// System/Light/Dark switch picks between them); a family bundles both so the
+/// switch keeps working after a family change.
+class ThemePack {
+  const ThemePack({
+    required this.id,
+    required this.label,
+    required this.dark,
+    required this.light,
+  });
+
+  /// Stable key persisted in settings — never localise or rename once shipped.
+  final String id;
+
+  /// Human label for the settings picker.
+  final String label;
+
+  final Brass dark;
+  final Brass light;
+
+  Brass resolve(Brightness brightness) =>
+      brightness == Brightness.dark ? dark : light;
+
+  /// The original Brass Edition — the default and fallback family.
+  static const brass = ThemePack(
+    id: 'brass',
+    label: 'Brass Edition',
+    dark: Brass.dark,
+    light: Brass.light,
+  );
+
+  /// Graphite (brushed steel). DRAFT palette — see [Brass.graphiteDark].
+  static const graphite = ThemePack(
+    id: 'graphite',
+    label: 'Graphite',
+    dark: Brass.graphiteDark,
+    light: Brass.graphiteLight,
+  );
+
+  /// Registry order is the settings-picker order. [brass] is first and is the
+  /// canonical fallback for an unknown or missing stored id.
+  static const all = <ThemePack>[brass, graphite];
+
+  /// The family for a stored [id], falling back to [brass].
+  static ThemePack byId(String? id) =>
+      all.firstWhere((p) => p.id == id, orElse: () => brass);
+}
+
+/// Carries the active [ThemePack] down the tree so [Brass.of] resolves the
+/// operator's chosen family (not just a hardcoded Brass pair). Inject it once,
+/// above the Navigator, via `MaterialApp.builder`.
+class ActiveTheme extends InheritedWidget {
+  const ActiveTheme({required this.pack, required super.child, super.key});
+
+  final ThemePack pack;
+
+  /// The active family, or [ThemePack.brass] when none is in scope — so bare
+  /// `MaterialApp` test pumps (no [ActiveTheme]) behave exactly as before.
+  static ThemePack of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ActiveTheme>()?.pack ??
+      ThemePack.brass;
+
+  @override
+  bool updateShouldNotify(ActiveTheme oldWidget) =>
+      oldWidget.pack.id != pack.id;
 }
