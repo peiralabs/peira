@@ -362,30 +362,27 @@ class _Bubble extends StatelessWidget {
 
     return Align(
       alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-      child: FractionallySizedBox(
-        child: ConstrainedBox(
-          // 76% of the 920 column ≈ 700; LayoutBuilder-free approximation
-          // that also behaves on narrower windows.
-          constraints: const BoxConstraints(maxWidth: 700),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: gradient,
-              border: Border.all(color: border),
-              boxShadow: [
-                BoxShadow(
-                    color: pal.bubbleShadow,
-                    offset: const Offset(0, 3),
-                    blurRadius: 8),
-              ],
-            ),
-            child: SelectableText(
-              turn.text,
-              style: TextStyle(fontSize: 16, height: 1.45, color: textColor),
-            ),
+      child: ConstrainedBox(
+        // 76% of the 920 column ≈ 700; LayoutBuilder-free approximation
+        // that also behaves on narrower windows.
+        constraints: const BoxConstraints(maxWidth: 700),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            gradient: gradient,
+            border: Border.all(color: border),
+            boxShadow: [
+              BoxShadow(
+                  color: pal.bubbleShadow,
+                  offset: const Offset(0, 3),
+                  blurRadius: 8),
+            ],
+          ),
+          child: SelectableText(
+            turn.text,
+            style: TextStyle(fontSize: 16, height: 1.45, color: textColor),
           ),
         ),
       ),

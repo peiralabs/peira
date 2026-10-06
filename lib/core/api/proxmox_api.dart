@@ -225,33 +225,17 @@ class ProxmoxApi {
     String node,
     String storage,
     String volid,
-  ) async {
+  ) {
     final encodedVolid = Uri.encodeComponent(volid);
-    final response = await _dio.delete<Map<String, dynamic>>(
+    return _deleteForUpid(
       '/nodes/$node/storage/$storage/content/$encodedVolid',
     );
-    return response.data?['data'] as String? ?? '';
   }
 
   /// Available LXC templates on [node] (across all template-capable storages),
   /// as `{volid, ...}` maps. `volid` is what `ostemplate` needs.
-  Future<List<Map<String, dynamic>>> getTemplates(String node) async {
-    final stores = await getStorages(node, content: 'vztmpl');
-    final templates = <Map<String, dynamic>>[];
-    for (final s in stores) {
-      final storage = s['storage'];
-      try {
-        templates.addAll(
-          await _getList(
-            '/nodes/$node/storage/$storage/content?content=vztmpl',
-          ),
-        );
-      } catch (_) {
-        // A storage may be momentarily unavailable; skip it.
-      }
-    }
-    return templates;
-  }
+  Future<List<Map<String, dynamic>>> getTemplates(String node) =>
+      _contentAcrossStorages(node, 'vztmpl');
 
   /// Creates an LXC container on [node]. [params] are the raw Proxmox create
   /// fields (vmid, ostemplate, hostname, storage, rootfs, cores, memory, ...).
@@ -269,15 +253,14 @@ class ProxmoxApi {
     int vmid, {
     bool purge = true,
     bool destroyUnreferenced = true,
-  }) async {
-    final response = await _dio.delete<Map<String, dynamic>>(
+  }) {
+    return _deleteForUpid(
       '/nodes/$node/lxc/$vmid',
       queryParameters: {
         if (purge) 'purge': 1,
         if (destroyUnreferenced) 'destroy-unreferenced-disks': 1,
       },
     );
-    return response.data?['data'] as String? ?? '';
   }
 
   /// Clones [vmid] to [newid]. A [full] clone is an independent copy (works on
@@ -329,12 +312,8 @@ class ProxmoxApi {
       _postForUpid('/nodes/$node/lxc/$vmid/snapshot/$snapname/rollback');
 
   /// Deletes snapshot [snapname] from [vmid]. Returns the task UPID.
-  Future<String> deleteSnapshot(String node, int vmid, String snapname) async {
-    final response = await _dio.delete<Map<String, dynamic>>(
-      '/nodes/$node/lxc/$vmid/snapshot/$snapname',
-    );
-    return response.data?['data'] as String? ?? '';
-  }
+  Future<String> deleteSnapshot(String node, int vmid, String snapname) =>
+      _deleteForUpid('/nodes/$node/lxc/$vmid/snapshot/$snapname');
 
   // --- Phase 3: QEMU virtual machines -----------------------------------
 
@@ -384,21 +363,8 @@ class ProxmoxApi {
 
   /// Available install ISOs on [node] (across all iso-capable storages), as
   /// `{volid, ...}` maps. `volid` is what a cdrom drive (`ide2`) needs.
-  Future<List<Map<String, dynamic>>> getIsos(String node) async {
-    final stores = await getStorages(node, content: 'iso');
-    final isos = <Map<String, dynamic>>[];
-    for (final s in stores) {
-      final storage = s['storage'];
-      try {
-        isos.addAll(
-          await _getList('/nodes/$node/storage/$storage/content?content=iso'),
-        );
-      } catch (_) {
-        // A storage may be momentarily unavailable; skip it.
-      }
-    }
-    return isos;
-  }
+  Future<List<Map<String, dynamic>>> getIsos(String node) =>
+      _contentAcrossStorages(node, 'iso');
 
   /// Creates a QEMU VM on [node]. [params] are the raw Proxmox create fields
   /// (vmid, name, cores, memory, ostype, scsi0, ide2, net0, ...). Returns the
@@ -414,15 +380,14 @@ class ProxmoxApi {
     int vmid, {
     bool purge = true,
     bool destroyUnreferenced = true,
-  }) async {
-    final response = await _dio.delete<Map<String, dynamic>>(
+  }) {
+    return _deleteForUpid(
       '/nodes/$node/qemu/$vmid',
       queryParameters: {
         if (purge) 'purge': 1,
         if (destroyUnreferenced) 'destroy-unreferenced-disks': 1,
       },
     );
-    return response.data?['data'] as String? ?? '';
   }
 
   /// Clones [vmid] to [newid]. A [full] clone is an independent copy; a linked
@@ -474,12 +439,8 @@ class ProxmoxApi {
       _postForUpid('/nodes/$node/qemu/$vmid/snapshot/$snapname/rollback');
 
   /// Deletes snapshot [snapname] from [vmid]. Returns the task UPID.
-  Future<String> deleteVmSnapshot(String node, int vmid, String snapname) async {
-    final response = await _dio.delete<Map<String, dynamic>>(
-      '/nodes/$node/qemu/$vmid/snapshot/$snapname',
-    );
-    return response.data?['data'] as String? ?? '';
-  }
+  Future<String> deleteVmSnapshot(String node, int vmid, String snapname) =>
+      _deleteForUpid('/nodes/$node/qemu/$vmid/snapshot/$snapname');
 
   // --- Phase 4: console -------------------------------------------------
 
@@ -507,10 +468,46 @@ class ProxmoxApi {
     return tasks.take(limit).toList();
   }
 
+  /// All content entries of a given [content] type across every storage on
+  /// [node] that can hold it (templates, ISOs). A storage that's momentarily
+  /// unavailable is skipped rather than failing the whole list.
+  Future<List<Map<String, dynamic>>> _contentAcrossStorages(
+    String node,
+    String content,
+  ) async {
+    final stores = await getStorages(node, content: content);
+    final out = <Map<String, dynamic>>[];
+    for (final s in stores) {
+      final storage = s['storage'];
+      try {
+        out.addAll(
+          await _getList(
+            '/nodes/$node/storage/$storage/content?content=$content',
+          ),
+        );
+      } catch (_) {
+        // A storage may be momentarily unavailable; skip it.
+      }
+    }
+    return out;
+  }
+
   Future<List<Map<String, dynamic>>> _getList(String path) async {
     final response = await _dio.get<Map<String, dynamic>>(path);
     final data = response.data?['data'] as List<dynamic>? ?? const [];
     return data.cast<Map<String, dynamic>>();
+  }
+
+  /// DELETE returning the spawned task's UPID (mirrors [_postForUpid]).
+  Future<String> _deleteForUpid(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final response = await _dio.delete<Map<String, dynamic>>(
+      path,
+      queryParameters: queryParameters,
+    );
+    return response.data?['data'] as String? ?? '';
   }
 
   Future<Map<String, dynamic>> _getMap(String path) async {
