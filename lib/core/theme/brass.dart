@@ -75,7 +75,7 @@ class SectionAccent {
 /// Resolve once per build — `final brass = context.brass;` — and read tokens
 /// off the instance. The instances are canonical consts, so painters can use
 /// `identical(old.brass, brass)` as an exact repaint check.
-class Brass {
+class Brass extends ThemeExtension<Brass> {
   const Brass._({
     required this.isDark,
     required this.seed,
@@ -1815,18 +1815,33 @@ class Brass {
   final List<BoxShadow> hoverShadow;
   final Color warnGradEnd;
 
+  // ---- ThemeExtension ----
+
+  /// Tokens are canonical immutable const sets, selected whole per theme —
+  /// never partially modified — so [copyWith] returns the instance unchanged.
+  @override
+  Brass copyWith() => this;
+
+  /// Palettes snap rather than lerp: a half-blended instrument looks broken,
+  /// not transitional (and [themeAnimationDuration] is zero). Cross the
+  /// midpoint to the target.
+  @override
+  Brass lerp(ThemeExtension<Brass>? other, double t) =>
+      t < 0.5 ? this : (other as Brass? ?? this);
+
   // ---- Resolution ----
 
-  /// The canonical instance for the ambient theme. Registers both a Theme
-  /// dependency (so widgets rebuild on System/Light/Dark flips) and an
-  /// [ActiveTheme] dependency (so they rebuild when the operator switches
-  /// theme family). Falls back to the Brass family when no [ActiveTheme] is
-  /// in scope (bare-MaterialApp test pumps), preserving the old behaviour.
+  /// The ambient token set. Carried on [ThemeData] as a [ThemeExtension], so
+  /// it propagates to every widget, route, dialog and overlay under the app's
+  /// [Theme] — a System/Light/Dark flip or a theme-family switch rebuilds
+  /// dependents automatically. Falls back to [dark] only when no [Brass]
+  /// extension is in scope (a bare `Theme`/`MaterialApp` with no theme set).
   static Brass of(BuildContext context) =>
-      ActiveTheme.of(context).resolve(Theme.of(context).brightness);
+      Theme.of(context).extension<Brass>() ?? dark;
 
   /// For no-context sites (painters, theme factories) that already know
-  /// their brightness.
+  /// their brightness. NOTE: resolves the Brass family only, not the active
+  /// theme — prefer [of] wherever a BuildContext is available.
   static Brass resolve(Brightness b) => b == Brightness.dark ? dark : light;
 
   // ---- Semantic aliases ----
@@ -2091,23 +2106,4 @@ class ThemePack {
   /// The family for a stored [id], falling back to [brass].
   static ThemePack byId(String? id) =>
       all.firstWhere((p) => p.id == id, orElse: () => brass);
-}
-
-/// Carries the active [ThemePack] down the tree so [Brass.of] resolves the
-/// operator's chosen family (not just a hardcoded Brass pair). Inject it once,
-/// above the Navigator, via `MaterialApp.builder`.
-class ActiveTheme extends InheritedWidget {
-  const ActiveTheme({required this.pack, required super.child, super.key});
-
-  final ThemePack pack;
-
-  /// The active family, or [ThemePack.brass] when none is in scope — so bare
-  /// `MaterialApp` test pumps (no [ActiveTheme]) behave exactly as before.
-  static ThemePack of(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<ActiveTheme>()?.pack ??
-      ThemePack.brass;
-
-  @override
-  bool updateShouldNotify(ActiveTheme oldWidget) =>
-      oldWidget.pack.id != pack.id;
 }

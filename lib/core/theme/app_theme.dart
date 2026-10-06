@@ -58,6 +58,10 @@ class AppTheme {
       fontFamily: 'EB Garamond',
       textTheme: textTheme,
       scaffoldBackgroundColor: brass.bg,
+      // Carry the resolved token set so `context.brass` (→ Brass.of →
+      // Theme.of(context).extension<Brass>()) resolves the active family
+      // everywhere a Theme is in scope — routes, dialogs and overlays included.
+      extensions: [brass],
       cardTheme: CardThemeData(
         elevation: 0,
         clipBehavior: Clip.antiAlias,

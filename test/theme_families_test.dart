@@ -56,33 +56,51 @@ void main() {
     });
   });
 
-  group('ActiveTheme propagation', () {
-    testWidgets('context.brass resolves the injected family', (tester) async {
+  group('ThemeExtension propagation', () {
+    testWidgets('context.brass resolves the theme\'s Brass extension', (
+      tester,
+    ) async {
       late Brass seen;
       await tester.pumpWidget(
-        ActiveTheme(
-          pack: ThemePack.graphite,
-          child: MaterialApp(
-            theme: AppTheme.dark(ThemePack.graphite),
-            home: Builder(
-              builder: (context) {
-                seen = context.brass;
-                return const SizedBox();
-              },
-            ),
+        MaterialApp(
+          theme: AppTheme.dark(ThemePack.graphite),
+          home: Builder(
+            builder: (context) {
+              seen = context.brass;
+              return const SizedBox();
+            },
           ),
         ),
       );
       expect(seen, same(Brass.graphiteDark));
     });
 
-    testWidgets('falls back to Brass with no ActiveTheme in scope', (
+    testWidgets('light theme resolves the light member of the family', (
       tester,
     ) async {
       late Brass seen;
       await tester.pumpWidget(
         MaterialApp(
-          theme: AppTheme.dark(),
+          theme: AppTheme.light(ThemePack.terminal),
+          home: Builder(
+            builder: (context) {
+              seen = context.brass;
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
+      expect(seen, same(Brass.terminalLight));
+    });
+
+    testWidgets('falls back to Brass dark when no Brass extension is set', (
+      tester,
+    ) async {
+      late Brass seen;
+      await tester.pumpWidget(
+        MaterialApp(
+          // A ThemeData with no Brass extension at all.
+          theme: ThemeData(brightness: Brightness.dark),
           home: Builder(
             builder: (context) {
               seen = context.brass;
