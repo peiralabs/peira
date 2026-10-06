@@ -28,10 +28,6 @@ class HomeLabApp extends ConsumerWidget {
       // snap between them — a half-lerped instrument looks broken, not
       // transitional.
       themeAnimationDuration: Duration.zero,
-      // Inject the active family above the Navigator so pushed routes and
-      // dialogs resolve `context.brass` through it too.
-      builder: (context, child) =>
-          ActiveTheme(pack: pack, child: child ?? const SizedBox.shrink()),
       home: const AppShell(),
     );
   }

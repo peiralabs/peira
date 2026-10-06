@@ -63,10 +63,7 @@ class _Cell extends StatelessWidget {
       height: _cellH,
       child: Theme(
         data: theme,
-        child: ActiveTheme(
-          pack: pack,
-          child: Builder(builder: _body),
-        ),
+        child: Builder(builder: _body),
       ),
     );
   }
