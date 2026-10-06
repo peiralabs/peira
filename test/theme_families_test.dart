@@ -27,6 +27,27 @@ void main() {
         expect(pack.light.isDark, isFalse);
       }
     });
+
+    // Family-invariant tokens (the metal ramp, the shared-dark gauge faces,
+    // and typography) must stay identical between a family's dark and light
+    // members. They're stored on both for a flat `context.brass` access path;
+    // this guards against editing one member and silently leaving the other
+    // behind.
+    test('family-invariant tokens match across each dark/light pair', () {
+      for (final pack in ThemePack.all) {
+        final d = pack.dark;
+        final l = pack.light;
+        expect(d.brassStops, l.brassStops, reason: '${pack.id} brassStops');
+        expect(d.gaugeCpu, l.gaugeCpu, reason: '${pack.id} gaugeCpu');
+        expect(d.gaugeMemory, l.gaugeMemory, reason: '${pack.id} gaugeMemory');
+        expect(d.gaugeStorage, l.gaugeStorage,
+            reason: '${pack.id} gaugeStorage');
+        expect(d.gaugeContainers, l.gaugeContainers,
+            reason: '${pack.id} gaugeContainers');
+        expect(d.displayFont, l.displayFont, reason: '${pack.id} displayFont');
+        expect(d.bodyFont, l.bodyFont, reason: '${pack.id} bodyFont');
+      }
+    });
   });
 
   group('AppTheme is family-aware', () {
