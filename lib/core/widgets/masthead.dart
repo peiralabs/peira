@@ -15,7 +15,19 @@ class Masthead extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.brass.isDark ? _Palette.dark : _Palette.light;
+    final brass = context.brass;
+    // Centred gilt rule built from the theme's own metal ramp (transparent
+    // ends → dark edge → mid → peak → mid → dark edge → transparent).
+    final m = brass.brassStops;
+    final barStops = [
+      m[0].withValues(alpha: 0),
+      m[0],
+      m[1],
+      m[2],
+      m[1],
+      m[0],
+      m[0].withValues(alpha: 0),
+    ];
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onPanStart: (_) => WindowChannel.beginMove(),
@@ -26,9 +38,9 @@ class Masthead extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [palette.panelTop, palette.panelBottom],
+            colors: [brass.bannerTop, brass.panelBottom],
           ),
-          border: Border(bottom: BorderSide(color: palette.hairline)),
+          border: Border(bottom: BorderSide(color: brass.hairline)),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -42,7 +54,7 @@ class Masthead extends StatelessWidget {
                 height: 2,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: palette.barStops,
+                    colors: barStops,
                     stops: const [0, 0.08, 0.3, 0.5, 0.7, 0.92, 1],
                   ),
                 ),
@@ -85,7 +97,7 @@ class Masthead extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 9.5,
                             letterSpacing: 9.5 * 0.3,
-                            color: palette.subtitle,
+                            color: brass.textMuted,
                           ),
                         ),
                       ],
@@ -122,55 +134,3 @@ class Masthead extends StatelessWidget {
   }
 }
 
-/// Masthead-local inks, resolved per brightness: dark values verbatim from
-/// the dark-only era; light is warm paper with the gilt bar dimmed to inlaid
-/// bronze (still metal, not ink — the near-white center vanishes on parchment).
-class _Palette {
-  const _Palette({
-    required this.panelTop,
-    required this.panelBottom,
-    required this.hairline,
-    required this.barStops,
-    required this.subtitle,
-  });
-
-  final Color panelTop;
-  final Color panelBottom;
-  final Color hairline;
-  final List<Color> barStops;
-  final Color subtitle;
-
-  static const dark = _Palette(
-    panelTop: Color(0xF2293A29),
-    panelBottom: Color(0xD117251A),
-    hairline: Color(0x66C9AA58),
-    barStops: [
-      Color(0x007D5F26),
-      Color(0xFF7D5F26),
-      Color(0xFFF2DD94),
-      Color(0xFFFFF6CF),
-      Color(0xFFF2DD94),
-      Color(0xFF7D5F26),
-      Color(0x007D5F26),
-    ],
-    subtitle: Color(0xFF97A986),
-  );
-
-  static const light = _Palette(
-    panelTop: Color(0xF2F1E9D6),
-    panelBottom: Color(0xD1E3D8C0),
-    hairline: Color(0x736E5220),
-    barStops: [
-      Color(0x006B5220),
-      Color(0xFF6B5220),
-      Color(0xFFC9A855),
-      Color(0xFFE8CC80),
-      Color(0xFFC9A855),
-      Color(0xFF6B5220),
-      Color(0x006B5220),
-    ],
-    // Darkened from 0xFF55684A: the 9.5px small caps sat below comfortable
-    // legibility on the parchment plate.
-    subtitle: Color(0xFF47573E),
-  );
-}

@@ -46,16 +46,17 @@ class RivetStud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pal = _Palette.of(context);
+    final m = context.brass.brassStops;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        // Physical brass — shared between modes.
-        gradient: const RadialGradient(
-          center: Alignment(-0.32, -0.4),
-          colors: [Color(0xFFFFF6CF), Color(0xFFC9A24A), Color(0xFF6E5220)],
-          stops: [0, 0.55, 1],
+        // Polished metal from the theme's own ramp (peak → deep → edge).
+        gradient: RadialGradient(
+          center: const Alignment(-0.32, -0.4),
+          colors: [m[2], context.brass.giltDeep, m[4]],
+          stops: const [0, 0.55, 1],
         ),
         boxShadow: [
           BoxShadow(
@@ -85,6 +86,7 @@ class BrassStud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pal = _Palette.of(context);
+    final m = context.brass.brassStops;
     final stud = GestureDetector(
       onTap: onTap,
       child: Container(
@@ -92,11 +94,11 @@ class BrassStud extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          // Physical brass — shared between modes.
-          gradient: const RadialGradient(
-            center: Alignment(-0.28, -0.4),
-            colors: [Color(0xFFFFF6CF), Color(0xFFD9B45E), Color(0xFF8A6A2A)],
-            stops: [0, 0.55, 1],
+          // Polished metal from the theme's own ramp (peak → mid → edge).
+          gradient: RadialGradient(
+            center: const Alignment(-0.28, -0.4),
+            colors: [m[2], m[3], m[0]],
+            stops: const [0, 0.55, 1],
           ),
           boxShadow: [
             BoxShadow(
@@ -354,40 +356,30 @@ class _Palette {
   final Color dividerBlueFlare;
   final Color headerTextShadow;
 
-  static _Palette of(BuildContext context) =>
-      context.brass.isDark ? dark : light;
-
-  static const dark = _Palette(
-    studShadow: Color(0x80000000),
-    ruleGilt: Color(0xFFC9A24A),
-    ruleBright: Color(0xFFD9B45E),
-    ruleFadeIn: Color(0x00C9A24A),
-    ruleFadeOut: Color(0x0DC9AA58),
-    bracket: Color(0xB3E8CD78), // rgba(232,205,120,.7)
-    wordmarkShadow: Color(0x59000000),
-    dividerGilt: Color(0xFFC9A24A),
-    dividerGiltFlare: Color(0xFFFFF6CF),
-    dividerGarnet: Color(0xFFC05A4E),
-    dividerGarnetFlare: Color(0xFFF0B0A0),
-    dividerBlue: Color(0xFF4F86D0),
-    dividerBlueFlare: Color(0xFFA9C8F0),
-    headerTextShadow: Color(0x80000000),
-  );
-
-  static const light = _Palette(
-    studShadow: Color(0x33352511), // sepia-umber, never black on paper
-    ruleGilt: Color(0xFFA9852F),
-    ruleBright: Color(0xFFA9852F),
-    ruleFadeIn: Color(0x00A9852F),
-    ruleFadeOut: Color(0x0DA9852F), // fades preserved, bronze-ink hue
-    bracket: Color(0xB38A6A2A),
-    wordmarkShadow: Color(0x66FFFBEE), // letterpress flip
-    dividerGilt: Color(0xFF8A6A2A),
-    dividerGiltFlare: Color(0xFF6E5220), // flare inverts to darkest
-    dividerGarnet: Color(0xFF9C4136),
-    dividerGarnetFlare: Color(0xFF6E2018),
-    dividerBlue: Color(0xFF3A5E96),
-    dividerBlueFlare: Color(0xFF24457C),
-    headerTextShadow: Color(0x66FFFBEE),
-  );
+  /// Derived from the active family: gilt rules/brackets from the theme's
+  /// metal (giltDeep/giltBright), the section dividers from the Control/
+  /// Services/System accents (gilt / copper / slate). Shadows stay
+  /// brightness-keyed — a shadow carries no theme identity.
+  static _Palette of(BuildContext context) {
+    final b = context.brass;
+    return _Palette(
+      studShadow:
+          b.isDark ? const Color(0x80000000) : const Color(0x33352511),
+      ruleGilt: b.giltDeep,
+      ruleBright: b.giltDeep,
+      ruleFadeIn: b.giltDeep.withValues(alpha: 0),
+      ruleFadeOut: b.giltDeep.withValues(alpha: 0.05),
+      bracket: b.giltBright.withValues(alpha: 0.7),
+      wordmarkShadow:
+          b.isDark ? const Color(0x59000000) : const Color(0x66FFFBEE),
+      dividerGilt: b.giltDeep,
+      dividerGiltFlare: b.giltBright,
+      dividerGarnet: b.copper,
+      dividerGarnetFlare: b.clay,
+      dividerBlue: b.slate,
+      dividerBlueFlare: b.indigo,
+      headerTextShadow:
+          b.isDark ? const Color(0x80000000) : const Color(0x66FFFBEE),
+    );
+  }
 }
