@@ -5,13 +5,34 @@ Proxmox VE management (nodes, containers, snapshots, live charts), a
 Prometheus-backed metrics tab, media-stack status panels, an AI chat for any
 OpenAI-compatible endpoint, an embedded terminal whose SSH targets are built
 from live Proxmox inventory, and themed embedded views for the web services
-that already have great UIs (Grafana, Open WebUI, Wiki.js, Jellyseerr).
+that already have great UIs (Grafana, Open WebUI, Wiki.js, Jellyseerr). Eight
+theme families restyle the whole interface — each with its own palette and
+typography — so it can look like anything from an engraved brass instrument
+to a neon-green terminal.
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
 | First launch | Container detail |
 |---|---|
 | ![Setup wizard](docs/screenshots/setup-wizard.png) | ![Container detail](docs/screenshots/container-detail.png) |
+
+## Themes
+
+Eight built-in theme families, each re-skinning the entire shell — background,
+masthead, panels, nav rail, and ornaments — with its own colour palette and
+typography (serif, sans, or monospace). Every family has dark and light
+variants; pick one in Settings. The shots below are demo mode.
+
+| | |
+|---|---|
+| **Brass** — the default: green & gold, engraved serif | **Graphite** — neutral slate, clean sans |
+| ![Brass theme](docs/screenshots/themes/screen-brass.png) | ![Graphite theme](docs/screenshots/themes/screen-graphite.png) |
+| **Terminal** — black & neon-green phosphor, monospace | **Nord** — cool arctic blue |
+| ![Terminal theme](docs/screenshots/themes/screen-terminal.png) | ![Nord theme](docs/screenshots/themes/screen-nord.png) |
+| **Ember** — warm crimson | **Obsidian** — matte black |
+| ![Ember theme](docs/screenshots/themes/screen-ember.png) | ![Obsidian theme](docs/screenshots/themes/screen-obsidian.png) |
+| **Aqua** — macOS-inspired | **Catppuccin** — soft modern pastel |
+| ![Aqua theme](docs/screenshots/themes/screen-aqua.png) | ![Catppuccin theme](docs/screenshots/themes/screen-catppuccin.png) |
 
 ## Requirements
 
@@ -106,7 +127,7 @@ Every endpoint and credential is stored in the system keychain via
 | Ubuntu 24.04 | Automated acceptance: launch, wizard + token round-trip through GNOME Keyring, CEF webview rendering |
 | Fedora 44 | Same automated acceptance |
 | Arch (2026-04 base) | Same automated acceptance |
-| Wayland-native (no XWayland) | **Not supported** — CEF renders via X11 |
+| Wayland-native (no XWayland) | **Partial** — the app runs; embedded webviews detect the missing X11 surface and offer to open in your browser instead of failing. Full Wayland-native webviews are [roadmapped](docs/wayland-and-cross-platform.md). |
 | Windows / macOS | Never; out of scope |
 
 Two honest footnotes: the automated acceptance ran under headless X11 with
