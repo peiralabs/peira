@@ -76,46 +76,32 @@ class _RailPalette {
   final Color footerBorder;
   final Color footerText;
 
-  static const dark = _RailPalette(
-    panelTop: Color(0xF01C2C1F),
-    panelBottom: Color(0xF00E1811),
-    edgeHairline: Color(0x4DC9AA58),
-    brandTitle: Color(0xFFF2ECD6),
-    brandTitleShadow: Color(0x80000000),
-    subtitle: Color(0xFF99B085),
-    searchBorder: Color(0x47C9AA58),
-    searchIcon: Color(0xFFD9BD72),
-    searchHint: Color(0xFF8FA07D),
-    cmdKBorder: Color(0x57C9AA58),
-    cmdKText: Color(0xFFC1AD6F),
-    nameplateInnerShadow: Color(0x66000000),
-    labelSelected: Color(0xFFF7F0DA),
-    labelIdle: Color(0xFFCDD6BF),
-    footerBorder: Color(0x33C9AA58),
-    footerText: Color(0xFF93A681),
-  );
-
-  static const light = _RailPalette(
-    panelTop: Color(0xF0EFE7D4),
-    panelBottom: Color(0xF0E4DAC4),
-    edgeHairline: Color(0x596E5220),
-    brandTitle: Color(0xFF2E3324),
-    brandTitleShadow: Color(0x66FFFBEE),
-    subtitle: Color(0xFF55684A),
-    searchBorder: Color(0x4D6E5220),
-    searchIcon: Color(0xFF8A6A2A),
-    searchHint: Color(0xFF4F5C44),
-    cmdKBorder: Color(0x596E5220),
-    cmdKText: Color(0xFF5F4E20),
-    nameplateInnerShadow: Color(0x2E46381F),
-    labelSelected: Color(0xFF3A2E14),
-    labelIdle: Color(0xFF4A5540),
-    footerBorder: Color(0x406E5220),
-    footerText: Color(0xFF55684A),
-  );
-
-  static _RailPalette of(BuildContext context) =>
-      Brass.of(context).isDark ? dark : light;
+  /// Derived from the active family: the rail surface from railTop/railBottom,
+  /// text from the theme's ink roles, metal trim (search icon, cmd-K) from the
+  /// theme's bronze/small-caps. Shadows stay brightness-keyed.
+  static _RailPalette of(BuildContext context) {
+    final b = Brass.of(context);
+    return _RailPalette(
+      panelTop: b.railTop,
+      panelBottom: b.railBottom,
+      edgeHairline: b.hairline,
+      brandTitle: b.textHeading,
+      brandTitleShadow:
+          b.isDark ? const Color(0x80000000) : const Color(0x66FFFBEE),
+      subtitle: b.textMuted,
+      searchBorder: b.panelBorder,
+      searchIcon: b.bronze,
+      searchHint: b.textMuted,
+      cmdKBorder: b.hairline,
+      cmdKText: b.smallCaps,
+      nameplateInnerShadow:
+          b.isDark ? const Color(0x66000000) : const Color(0x2E46381F),
+      labelSelected: b.textHeading,
+      labelIdle: b.textBody,
+      footerBorder: b.panelBorder,
+      footerText: b.textMuted,
+    );
+  }
 }
 
 /// The Brass Edition navigation rail (design §Navigation rail): a bottle-green
@@ -171,7 +157,7 @@ class GlassNavRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final rail = brass.isDark ? _RailPalette.dark : _RailPalette.light;
+    final rail = _RailPalette.of(context);
     final expanded = _test || !collapsed;
     final dests = destinations;
 
@@ -365,7 +351,10 @@ class _BrassKnobState extends State<_BrassKnob> {
             width: 31,
             height: 31,
             child: CustomPaint(
-              painter: _KnobPainter(brighten: _hover),
+              painter: _KnobPainter(
+                brighten: _hover,
+                metal: context.brass.brassStops,
+              ),
               child: Icon(
                 widget.collapsed
                     ? PhBold.caretRight
@@ -382,17 +371,26 @@ class _BrassKnobState extends State<_BrassKnob> {
 }
 
 class _KnobPainter extends CustomPainter {
-  const _KnobPainter({required this.brighten});
+  const _KnobPainter({required this.brighten, required this.metal});
 
   final bool brighten;
+
+  /// The active theme's metal ramp (Brass.brassStops): [edge, bright, peak,
+  /// mid, deepEdge].
+  final List<Color> metal;
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
     final r = size.width / 2;
-    // Milled rim: alternating brass wedges every 7°.
-    final light = brighten ? const Color(0xFFFFE9A3) : const Color(0xFFEFD487);
-    final dark = brighten ? const Color(0xFFB58F45) : const Color(0xFFA37F38);
+    // Milled rim: alternating metal wedges every 7°, from the theme's ramp.
+    final light = brighten
+        ? Color.lerp(metal[1], const Color(0xFFFFFFFF), 0.2)!
+        : metal[1];
+    final dark = brighten
+        ? metal[3]
+        : Color.lerp(metal[3], metal[0], 0.5)!;
+    final engrave = Color.lerp(metal[4], const Color(0xFF000000), 0.35)!;
     final wedge = Paint();
     const step = 7 * math.pi / 180;
     for (var i = 0; i < 52; i++) {
@@ -405,27 +403,28 @@ class _KnobPainter extends CustomPainter {
       r - 0.5,
       Paint()
         ..style = PaintingStyle.stroke
-        ..color = const Color(0x80281C08),
+        ..color = engrave.withValues(alpha: 0.5),
     );
-    // Domed face.
+    // Domed face (peak → mid → edge).
     canvas.drawCircle(
       c,
       r - 4,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.28, -0.44),
-          colors: [Color(0xFFFFF6CF), Color(0xFFD9B45E), Color(0xFF7D5F26)],
-          stops: [0, 0.48, 0.92],
+        ..shader = RadialGradient(
+          center: const Alignment(-0.28, -0.44),
+          colors: [metal[2], metal[3], metal[0]],
+          stops: const [0, 0.48, 0.92],
         ).createShader(Rect.fromCircle(center: c, radius: r - 4)),
     );
     // Engraved rivet dots north + south.
-    final dot = Paint()..color = const Color(0xFF4A3512);
+    final dot = Paint()..color = engrave;
     canvas.drawCircle(Offset(c.dx, 5.5), 1, dot);
     canvas.drawCircle(Offset(c.dx, size.height - 5.5), 1, dot);
   }
 
   @override
-  bool shouldRepaint(_KnobPainter old) => old.brighten != brighten;
+  bool shouldRepaint(_KnobPainter old) =>
+      old.brighten != brighten || !identical(old.metal, metal);
 }
 
 class _SectionLabel extends StatelessWidget {
@@ -496,7 +495,7 @@ class _SearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final rail = brass.isDark ? _RailPalette.dark : _RailPalette.light;
+    final rail = _RailPalette.of(context);
     // Ctrl+K off Apple platforms: it's the binding users actually press
     // there, and ⌘ (U+2318) isn't covered by the bundled fonts — it only
     // renders via system fallback, which the golden harness lacks.
@@ -709,7 +708,7 @@ class _ConnectedFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final rail = brass.isDark ? _RailPalette.dark : _RailPalette.light;
+    final rail = _RailPalette.of(context);
     final host = Platform.localHostname;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
