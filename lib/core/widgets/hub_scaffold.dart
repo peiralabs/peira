@@ -95,8 +95,8 @@ class _HubScaffoldState extends ConsumerState<HubScaffold>
               dividerColor: Colors.transparent,
               labelColor: strip.selected,
               unselectedLabelColor: strip.idle,
-              labelStyle: const TextStyle(
-                fontFamily: 'Playfair Display',
+              labelStyle: TextStyle(
+                fontFamily: context.displayFont,
                 fontWeight: FontWeight.w600,
                 fontSize: 13.5,
               ),

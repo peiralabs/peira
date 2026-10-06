@@ -130,7 +130,7 @@ Widget mediaSummary(BuildContext context, List<(String, String)> stats) {
                   value,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w800,
                     fontSize: 27,
                     height: 1.05,

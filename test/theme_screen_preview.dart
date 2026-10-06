@@ -14,10 +14,14 @@ import 'package:peira/core/demo/demo.dart';
 import 'package:peira/core/theme/app_theme.dart';
 import 'package:peira/screens/app_shell.dart';
 
+import 'support/render_fonts.dart';
+
 void main() {
   final outDir = Platform.environment['THEME_PREVIEW_DIR'] ?? '/tmp';
   final id = Platform.environment['THEME_PACK'] ?? 'brass';
   final pack = ThemePack.byId(id);
+
+  setUpAll(loadRealFonts);
 
   testWidgets('render screen $id', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);

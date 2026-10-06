@@ -281,7 +281,7 @@ class _BrandRow extends StatelessWidget {
                     maxLines: 1,
                     softWrap: false,
                     style: TextStyle(
-                      fontFamily: 'Playfair Display',
+                      fontFamily: context.displayFont,
                       fontWeight: FontWeight.w700,
                       fontSize: 19,
                       height: 1,
