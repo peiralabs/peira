@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../theme/mol_motion.dart';
 
 /// How much of the instrument to draw.
@@ -74,10 +75,10 @@ class _AstrolabeState extends State<Astrolabe> with TickerProviderStateMixin {
     final painterFor = _spins
         ? Listenable.merge([_alidade!, _rete!])
         : null;
-    // Resolved per build so a System/Light/Dark flip re-records the cache.
-    final shadows = Theme.of(context).brightness == Brightness.dark
-        ? _Shadows.dark
-        : _Shadows.light;
+    // Resolved per build so a System/Light/Dark flip or a theme-family switch
+    // re-records the cache.
+    final brass = context.brass;
+    final shadows = brass.isDark ? _Shadows.dark : _Shadows.light;
     return SizedBox(
       width: widget.size,
       height: widget.size,
@@ -89,6 +90,7 @@ class _AstrolabeState extends State<Astrolabe> with TickerProviderStateMixin {
             detail: widget.detail,
             cache: _cache,
             shadows: shadows,
+            metal: brass.brassStops,
             alidadeTurns: _alidade,
             reteTurns: _rete,
             repaint: painterFor,
@@ -133,6 +135,7 @@ class _AstrolabeStaticCache {
   ui.Picture? above;
   AstrolabeDetail? detail;
   _Shadows? shadows;
+  List<Color>? metal;
 
   void dispose() {
     below?.dispose();
@@ -141,6 +144,7 @@ class _AstrolabeStaticCache {
     above = null;
     detail = null;
     shadows = null;
+    metal = null;
   }
 }
 
@@ -149,6 +153,7 @@ class _AstrolabePainter extends CustomPainter {
     required this.detail,
     required this.cache,
     required this.shadows,
+    required this.metal,
     this.alidadeTurns,
     this.reteTurns,
     super.repaint,
@@ -157,25 +162,33 @@ class _AstrolabePainter extends CustomPainter {
   final AstrolabeDetail detail;
   final _AstrolabeStaticCache cache;
   final _Shadows shadows;
+
+  /// The active theme's metal ramp (Brass.brassStops): [edge, bright, peak,
+  /// mid, deepEdge] by lightness. The instrument's gold is re-cast in it.
+  final List<Color> metal;
   final Animation<double>? alidadeTurns;
   final Animation<double>? reteTurns;
 
   bool get full => detail == AstrolabeDetail.full;
 
-  // Brass gradient stop sets (design SVG defs).
-  static const _rimColors = [
-    Color(0xFF7D5F26),
-    Color(0xFFEFD489),
-    Color(0xFFFFF8D6),
-    Color(0xFFD3AE58),
-    Color(0xFF67501F),
-  ];
+  // Named points on the theme's metal ramp.
+  Color get _edge => metal[0];
+  Color get _bright => metal[1];
+  Color get _peak => metal[2];
+  Color get _mid => metal[3];
+  Color get _deep => metal[4];
+
+  /// An engraved-shadow ink: the deepest metal pushed toward black by [d].
+  Color _ink(double d) => Color.lerp(metal[4], const Color(0xFF000000), d)!;
+
   static const _rimStops = [0.0, 0.32, 0.5, 0.68, 1.0];
+
+  List<Color> get _rimColors => [_edge, _bright, _peak, _mid, _deep];
 
   Paint _rimStroke(Rect bounds, double width) => Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = width
-    ..shader = const LinearGradient(
+    ..shader = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: _rimColors,
@@ -183,14 +196,14 @@ class _AstrolabePainter extends CustomPainter {
     ).createShader(bounds);
 
   Paint _rimFill(Rect bounds) => Paint()
-    ..shader = const LinearGradient(
+    ..shader = LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
       colors: _rimColors,
       stops: _rimStops,
     ).createShader(bounds);
 
-  static Paint _emerFill(Rect bounds) => Paint()
+  Paint _emerFill(Rect bounds) => Paint()
     ..shader = const RadialGradient(
       center: Alignment(-0.3, -0.48),
       radius: 0.72,
@@ -208,6 +221,7 @@ class _AstrolabePainter extends CustomPainter {
 
     if (cache.detail != detail ||
         !identical(cache.shadows, shadows) ||
+        !identical(cache.metal, metal) ||
         cache.below == null) {
       _record(c);
     }
@@ -259,6 +273,7 @@ class _AstrolabePainter extends CustomPainter {
 
     cache.detail = detail;
     cache.shadows = shadows;
+    cache.metal = metal;
   }
 
   void _rotateAbout(Canvas canvas, Offset c, double angle) {
@@ -271,7 +286,7 @@ class _AstrolabePainter extends CustomPainter {
     const ring = Offset(100, 4.5);
     final bounds = Rect.fromCircle(center: ring, radius: 5.6);
     canvas.drawCircle(ring, 5.6, _rimStroke(bounds, 2.6));
-    canvas.drawCircle(ring, 1.6, Paint()..color = const Color(0xFF5A4318));
+    canvas.drawCircle(ring, 1.6, Paint()..color = _ink(0.35));
     final trap = Path()
       ..moveTo(93, 9)
       ..lineTo(107, 9)
@@ -284,7 +299,7 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.6
-        ..color = const Color(0xFF5A4318),
+        ..color = _ink(0.35),
     );
   }
 
@@ -294,17 +309,17 @@ class _AstrolabePainter extends CustomPainter {
       c,
       96,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.26, -0.44),
+        ..shader = RadialGradient(
+          center: const Alignment(-0.26, -0.44),
           radius: 0.8,
           colors: [
-            Color(0xFFFFF6D2),
-            Color(0xFFEECD82),
-            Color(0xFFC19A44),
-            Color(0xFF836429),
-            Color(0xFF4A3717),
+            _peak,
+            _bright,
+            _mid,
+            Color.lerp(_mid, _deep, 0.5)!,
+            _ink(0.45),
           ],
-          stops: [0, 0.2, 0.52, 0.78, 1],
+          stops: const [0, 0.2, 0.52, 0.78, 1],
         ).createShader(bounds),
     );
     canvas.drawCircle(c, 96, _rimStroke(bounds, 4.4));
@@ -314,7 +329,7 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.3
-        ..color = const Color(0x99281C08),
+        ..color = _ink(0.55).withValues(alpha: 0.6),
     );
     canvas.drawCircle(
       c,
@@ -322,7 +337,7 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.9
-        ..color = const Color(0x47FFF8D6),
+        ..color = _peak.withValues(alpha: 0.28),
     );
   }
 
@@ -330,10 +345,10 @@ class _AstrolabePainter extends CustomPainter {
     final step = full ? 5 : 15;
     final majEvery = full ? 6 : 2;
     final paintMinor = Paint()
-      ..color = const Color(0xFF3A2A0D).withValues(alpha: 0.42)
+      ..color = _ink(0.4).withValues(alpha: 0.42)
       ..strokeWidth = 0.8;
     final paintMajor = Paint()
-      ..color = const Color(0xFF3A2A0D).withValues(alpha: 0.9)
+      ..color = _ink(0.4).withValues(alpha: 0.9)
       ..strokeWidth = full ? 1.7 : 2.2;
     for (var i = 0; i < 360 ~/ step; i++) {
       final major = i % majEvery == 0;
@@ -355,7 +370,7 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 17
-        ..color = const Color(0x8C120C03),
+        ..color = _ink(0.72).withValues(alpha: 0.55),
     );
     for (final (r, a) in [(86.5, 0.2), (69.5, 0.16)]) {
       canvas.drawCircle(
@@ -364,7 +379,7 @@ class _AstrolabePainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.8
-          ..color = const Color(0xFFFFF8D6).withValues(alpha: a),
+          ..color = _peak.withValues(alpha: a),
       );
     }
     // Circular legend text: no textPath in Flutter — place each character
@@ -377,11 +392,11 @@ class _AstrolabePainter extends CustomPainter {
       final tp = TextPainter(
         text: TextSpan(
           text: ch,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'EB Garamond',
             fontWeight: FontWeight.w600,
             fontSize: 8.6,
-            color: Color(0xFFF6E6B2),
+            color: _bright,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -406,11 +421,15 @@ class _AstrolabePainter extends CustomPainter {
       c,
       66,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.16, -0.36),
+        ..shader = RadialGradient(
+          center: const Alignment(-0.16, -0.36),
           radius: 0.72,
-          colors: [Color(0xFF7A6333), Color(0xFF4C3F20), Color(0xFF221B0E)],
-          stops: [0, 0.55, 1],
+          colors: [
+            Color.lerp(_edge, const Color(0xFF000000), 0.12)!,
+            _ink(0.45),
+            _ink(0.72),
+          ],
+          stops: const [0, 0.55, 1],
         ).createShader(bounds),
     );
     canvas.drawCircle(c, 66, _rimStroke(bounds, 1.6));
@@ -420,7 +439,7 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8
-        ..color = const Color(0x1FFFF8D6),
+        ..color = _peak.withValues(alpha: 0.12),
     );
   }
 
@@ -428,7 +447,7 @@ class _AstrolabePainter extends CustomPainter {
     Paint line(double alpha, double w) => Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = w
-      ..color = const Color(0xFFF0D682).withValues(alpha: alpha);
+      ..color = _bright.withValues(alpha: alpha);
     // Offset ecliptic ring.
     canvas.drawCircle(const Offset(100, 88), 41, line(0.34, 0.9));
     // Main ring.
@@ -492,15 +511,9 @@ class _AstrolabePainter extends CustomPainter {
       ..lineTo(100, 189)
       ..lineTo(97.6, 100)
       ..close();
-    final ruleShader = const LinearGradient(
-      colors: [
-        Color(0xFF6A4F20),
-        Color(0xFFF4DD96),
-        Color(0xFFFFF8D6),
-        Color(0xFFD3AE58),
-        Color(0xFF6A4F20),
-      ],
-      stops: [0, 0.42, 0.5, 0.58, 1],
+    final ruleShader = LinearGradient(
+      colors: [_edge, _bright, _peak, _mid, _edge],
+      stops: const [0, 0.42, 0.5, 0.58, 1],
     ).createShader(lens.getBounds());
     canvas.drawPath(lens, Paint()..shader = ruleShader);
     canvas.drawPath(
@@ -508,14 +521,14 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.4
-        ..color = const Color(0x80281C08),
+        ..color = _ink(0.55).withValues(alpha: 0.5),
     );
     canvas.drawLine(
       const Offset(100, 14),
       const Offset(100, 186),
       Paint()
         ..strokeWidth = 0.7
-        ..color = const Color(0x8CFFF8D6),
+        ..color = _peak.withValues(alpha: 0.55),
     );
     final pointer = Path()
       ..moveTo(100, 5)
@@ -529,10 +542,10 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.5
-        ..color = const Color(0xFF5A4318),
+        ..color = _ink(0.35),
     );
     canvas.drawCircle(
-        const Offset(100, 13), 1.4, Paint()..color = const Color(0xFF4A3512));
+        const Offset(100, 13), 1.4, Paint()..color = _ink(0.4));
     const weight = Offset(100, 184);
     final wBounds = Rect.fromCircle(center: weight, radius: 6);
     canvas.drawCircle(weight, 6, _rimStroke(wBounds, 1.8));
@@ -554,11 +567,11 @@ class _AstrolabePainter extends CustomPainter {
       c,
       34,
       Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-0.2, -0.44),
+        ..shader = RadialGradient(
+          center: const Alignment(-0.2, -0.44),
           radius: 0.78,
-          colors: [Color(0xFFFFF6D2), Color(0xFFDCB862), Color(0xFF665020)],
-          stops: [0, 0.44, 1],
+          colors: [_peak, _mid, _ink(0.1)],
+          stops: const [0, 0.44, 1],
         ).createShader(hubBounds),
     );
     canvas.drawCircle(c, 34, _rimStroke(hubBounds, 2.6));
@@ -568,12 +581,12 @@ class _AstrolabePainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 0.8
-        ..color = const Color(0x66FFF8D6),
+        ..color = _peak.withValues(alpha: 0.4),
     );
-    canvas.drawCircle(c, 29.5, Paint()..color = const Color(0x6B1A1207));
+    canvas.drawCircle(c, 29.5, Paint()..color = _ink(0.78).withValues(alpha: 0.42));
 
     // House-server logo: roof, chimney, three server rungs.
-    const dark = Color(0xFF241A09);
+    final dark = _ink(0.82);
     final roof = Path()
       ..moveTo(100, 80)
       ..lineTo(82, 92)
@@ -596,7 +609,7 @@ class _AstrolabePainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
             Rect.fromLTWH(87, y + 2.4, 12, 2.2), const Radius.circular(1.1)),
-        Paint()..color = const Color(0x99F0D682),
+        Paint()..color = _bright.withValues(alpha: 0.6),
       );
       final led = Offset(111.5, y + 3.5);
       canvas.drawCircle(
@@ -634,7 +647,7 @@ class _AstrolabePainter extends CustomPainter {
   void _specular(Canvas canvas, Offset c) {
     canvas.drawOval(
       Rect.fromCenter(center: const Offset(70, 56), width: 96, height: 62),
-      Paint()..color = const Color(0x2BFFFCEC),
+      Paint()..color = _peak.withValues(alpha: 0.17),
     );
     // Top rim highlight arc: M100,4 a96,96 0 0,1 90,60 — from the top point,
     // 96-radius arc sweeping clockwise to (190, 64).
@@ -647,7 +660,7 @@ class _AstrolabePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round
-        ..color = const Color(0x52FFFCEC),
+        ..color = _peak.withValues(alpha: 0.32),
     );
   }
 
@@ -655,6 +668,7 @@ class _AstrolabePainter extends CustomPainter {
   bool shouldRepaint(_AstrolabePainter old) =>
       old.detail != detail ||
       !identical(old.shadows, shadows) ||
+      !identical(old.metal, metal) ||
       old.alidadeTurns != alidadeTurns ||
       old.reteTurns != reteTurns;
 }
