@@ -23,16 +23,16 @@ masthead, panels, nav rail, and ornaments — with its own colour palette and
 typography (serif, sans, or monospace). Every family has dark and light
 variants; pick one in Settings. The shots below are demo mode.
 
-| | |
-|---|---|
-| **Brass** — the default: green & gold, engraved serif | **Graphite** — neutral slate, clean sans |
-| ![Brass theme](docs/screenshots/themes/screen-brass.png) | ![Graphite theme](docs/screenshots/themes/screen-graphite.png) |
-| **Terminal** — black & neon-green phosphor, monospace | **Nord** — cool arctic blue |
-| ![Terminal theme](docs/screenshots/themes/screen-terminal.png) | ![Nord theme](docs/screenshots/themes/screen-nord.png) |
-| **Ember** — warm crimson | **Obsidian** — matte black |
-| ![Ember theme](docs/screenshots/themes/screen-ember.png) | ![Obsidian theme](docs/screenshots/themes/screen-obsidian.png) |
-| **Aqua** — macOS-inspired | **Catppuccin** — soft modern pastel |
-| ![Aqua theme](docs/screenshots/themes/screen-aqua.png) | ![Catppuccin theme](docs/screenshots/themes/screen-catppuccin.png) |
+| Family | Dark | Light |
+|---|---|---|
+| **Brass** — green & gold, engraved serif (default) | ![Brass dark](docs/screenshots/themes/screen-brass.png) | ![Brass light](docs/screenshots/themes/screen-brass-light.png) |
+| **Graphite** — neutral slate, clean sans | ![Graphite dark](docs/screenshots/themes/screen-graphite.png) | ![Graphite light](docs/screenshots/themes/screen-graphite-light.png) |
+| **Terminal** — black & neon-green phosphor, monospace | ![Terminal dark](docs/screenshots/themes/screen-terminal.png) | ![Terminal light](docs/screenshots/themes/screen-terminal-light.png) |
+| **Nord** — cool arctic blue | ![Nord dark](docs/screenshots/themes/screen-nord.png) | ![Nord light](docs/screenshots/themes/screen-nord-light.png) |
+| **Ember** — warm crimson | ![Ember dark](docs/screenshots/themes/screen-ember.png) | ![Ember light](docs/screenshots/themes/screen-ember-light.png) |
+| **Obsidian** — matte black | ![Obsidian dark](docs/screenshots/themes/screen-obsidian.png) | ![Obsidian light](docs/screenshots/themes/screen-obsidian-light.png) |
+| **Aqua** — macOS-inspired | ![Aqua dark](docs/screenshots/themes/screen-aqua.png) | ![Aqua light](docs/screenshots/themes/screen-aqua-light.png) |
+| **Catppuccin** — soft modern pastel | ![Catppuccin dark](docs/screenshots/themes/screen-catppuccin.png) | ![Catppuccin light](docs/screenshots/themes/screen-catppuccin-light.png) |
 
 ## Requirements
 
