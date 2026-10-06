@@ -63,6 +63,9 @@ class DashboardScreen extends ConsumerWidget {
 
     final nodes = ref.watch(nodesProvider);
     final containers = ref.watch(allContainersProvider);
+    final guests = containers.value ?? const [];
+    final runningGuests = guests.where((c) => c.status == 'running').length;
+    final totalGuests = guests.length;
     final alerts = ref.watch(activeAlertsProvider);
     final history = ref.watch(clusterCpuHistoryProvider);
     final nodeHistory = ref.watch(nodeCpuHistoryProvider);
@@ -87,10 +90,8 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 22),
                   _GrandBanner(
                     nodes: nodes,
-                    runningGuests: (containers.value ?? const [])
-                        .where((c) => c.status == 'running')
-                        .length,
-                    totalGuests: (containers.value ?? const []).length,
+                    runningGuests: runningGuests,
+                    totalGuests: totalGuests,
                   ),
                   const SizedBox(height: 22),
                   const BrassSectionHeader(title: 'Nodes'),
@@ -116,10 +117,8 @@ class DashboardScreen extends ConsumerWidget {
                   nodes.maybeWhen(
                     data: (nodeList) => _InstrumentsPanel(
                       nodes: nodeList,
-                      running: (containers.value ?? const [])
-                          .where((c) => c.status == 'running')
-                          .length,
-                      total: (containers.value ?? const []).length,
+                      running: runningGuests,
+                      total: totalGuests,
                     ),
                     orElse: () => const SizedBox.shrink(),
                   ),
@@ -233,7 +232,7 @@ class _GrandBanner extends StatelessWidget {
                     '$kAppName Cluster',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'Playfair Display',
+                      fontFamily: context.displayFont,
                       fontWeight: FontWeight.w800,
                       fontSize: 30,
                       height: 1.06,
@@ -408,12 +407,12 @@ class _Medallion extends StatelessWidget {
           children: [
             Text(
               value,
-              style: const TextStyle(
-                fontFamily: 'Playfair Display',
+              style: TextStyle(
+                fontFamily: context.displayFont,
                 fontWeight: FontWeight.w800,
                 fontSize: 23,
                 height: 1,
-                color: Color(0xFFF4EEDA), // dark textHeading, pinned
+                color: const Color(0xFFF4EEDA), // dark textHeading, pinned
               ),
             ),
             const SizedBox(height: 3),
@@ -518,7 +517,7 @@ class _NodeCard extends StatelessWidget {
                   node.node,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
                     color: palette.nodeName,
@@ -553,7 +552,7 @@ class _NodeCard extends StatelessWidget {
                 Text(
                   '${(cpu * 100).round()}%',
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w800,
                     fontSize: 22,
                     height: 1,
@@ -604,7 +603,7 @@ class _NodeCard extends StatelessWidget {
                 '${_gb(node.mem)} / ${_gb(node.maxmem)} GB',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'Playfair Display',
+                  fontFamily: context.displayFont,
                   fontSize: 14,
                   color: palette.ramReadout,
                 ),
@@ -676,7 +675,7 @@ class _InstrumentsPanel extends StatelessWidget {
                     child: Text(
                       'Cluster Load',
                       style: TextStyle(
-                        fontFamily: 'Playfair Display',
+                        fontFamily: context.displayFont,
                         fontWeight: FontWeight.w600,
                         fontStyle: FontStyle.italic,
                         fontSize: 16,
@@ -789,7 +788,7 @@ class _ClusterTrendCard extends StatelessWidget {
                   'Cluster CPU',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     color: brass.sand,
@@ -800,7 +799,7 @@ class _ClusterTrendCard extends StatelessWidget {
                 Text(
                   '${history.last.round()}%',
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w700,
                     fontSize: 18,
                     color: brass.giltBright,
@@ -904,7 +903,7 @@ class _AlertsCard extends StatelessWidget {
                       'Active Alerts',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'Playfair Display',
+                        fontFamily: context.displayFont,
                         fontWeight: FontWeight.w600,
                         fontSize: 16,
                         color: brass.sand,
@@ -1070,7 +1069,7 @@ class _CountBadge extends StatelessWidget {
       child: Text(
         '$count',
         style: TextStyle(
-          fontFamily: 'Playfair Display',
+          fontFamily: context.displayFont,
           fontWeight: FontWeight.w700,
           fontSize: 14,
           color: ok ? palette.badgeNumOk : palette.badgeNumAlert,
@@ -1219,7 +1218,7 @@ class _RecentTasksCard extends StatelessWidget {
           Text(
             'Recent Tasks',
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: context.brass.sand,

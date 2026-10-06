@@ -7,6 +7,7 @@ import 'package:peira/core/providers/navigation_providers.dart';
 import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
 import 'package:peira/core/theme/app_theme.dart';
+import 'package:peira/core/webview/display_server.dart';
 import 'package:peira/core/webview/webview_factory.dart';
 import 'package:peira/core/widgets/ai_status_strip.dart';
 import 'package:peira/screens/webview/webview_screen.dart';
@@ -45,6 +46,9 @@ void main() {
             const AppSettings(ollamaUrl: 'http://ollama.example:8080'),
           )),
           webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
+          // Pin webview availability so the test doesn't depend on the host's
+          // ambient display-server session.
+          webviewSupportProvider.overrideWithValue(null),
         ],
         child: MaterialApp(
           theme: AppTheme.dark(),
@@ -68,4 +72,43 @@ void main() {
       kPublicBuild ? findsNothing : findsOneWidget,
     );
   });
+
+  testWidgets(
+    'unavailable webview shows a notice and does not build the browser',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            serviceReachableProvider.overrideWith((ref, url) async => true),
+            settingsRepositoryProvider.overrideWithValue(
+              _FakeSettingsRepository(
+                const AppSettings(wikiUrl: 'http://wiki.example'),
+              ),
+            ),
+            webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
+            // Simulate a pure-Wayland session with no XWayland.
+            webviewSupportProvider.overrideWithValue(
+              WebviewUnavailableReason.noXSurface,
+            ),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark(),
+            home: const Scaffold(
+              body: WebViewScreen(service: 'Wiki', tabIndex: 0),
+            ),
+          ),
+        ),
+      );
+      final context = tester.element(find.byType(WebViewScreen));
+      ProviderScope.containerOf(context, listen: false)
+          .read(selectedTabProvider.notifier)
+          .select(0);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('can\'t be embedded here'), findsOneWidget);
+      expect(find.text('Open in your browser'), findsOneWidget);
+      // The CEF browser must not be built when there's no surface for it.
+      expect(find.textContaining('webview: '), findsNothing);
+    },
+  );
 }

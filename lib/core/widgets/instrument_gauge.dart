@@ -73,7 +73,7 @@ class InstrumentGauge extends ConsumerWidget {
                 child: Text(
                   display,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: brass.displayFont,
                     fontWeight: FontWeight.w800,
                     fontSize: 27 * size / 130,
                     // Fixed parchment ink on the kept-dark face in both

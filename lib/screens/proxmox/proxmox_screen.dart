@@ -325,7 +325,7 @@ class _StatChip extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w800,
               fontSize: 20,
               height: 1,
@@ -495,7 +495,7 @@ class _NodeCard extends StatelessWidget {
                   node.node,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
                     color: palette.nodeName,
@@ -525,7 +525,7 @@ class _NodeCard extends StatelessWidget {
                 Text(
                   '${(cpu * 100).round()}%',
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w800,
                     fontSize: 20,
                     height: 1,
@@ -577,7 +577,7 @@ class _NodeCard extends StatelessWidget {
                 '${_gb(node.mem)} / ${_gb(node.maxmem)} GB',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'Playfair Display',
+                  fontFamily: context.displayFont,
                   fontSize: 14,
                   color: palette.readoutText,
                 ),
@@ -607,7 +607,7 @@ class _NodeCard extends StatelessWidget {
               Text(
                 '${(diskFrac * 100).round()}%',
                 style: TextStyle(
-                  fontFamily: 'Playfair Display',
+                  fontFamily: context.displayFont,
                   fontSize: 14,
                   color: palette.readoutText,
                 ),
@@ -828,7 +828,7 @@ class _GuestRowState extends State<_GuestRow> {
                   w.name,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                     color: palette.guestName,

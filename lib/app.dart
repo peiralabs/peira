@@ -12,6 +12,7 @@ class HomeLabApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsControllerProvider).value;
+    final pack = ThemePack.byId(settings?.themeId);
     final mode = switch (settings?.themeMode) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
@@ -20,11 +21,12 @@ class HomeLabApp extends ConsumerWidget {
     return MaterialApp(
       title: kAppName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
+      theme: AppTheme.light(pack),
+      darkTheme: AppTheme.dark(pack),
       themeMode: mode,
-      // Two authored palettes (bottle-green vs parchment): snap between them —
-      // a half-lerped brass instrument looks broken, not transitional.
+      // Two authored palettes per family (e.g. bottle-green vs parchment):
+      // snap between them — a half-lerped instrument looks broken, not
+      // transitional.
       themeAnimationDuration: Duration.zero,
       home: const AppShell(),
     );

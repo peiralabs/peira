@@ -313,7 +313,7 @@ class _ModelCard extends StatelessWidget {
                   model.name,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w700,
                     fontSize: 18,
                     color: pal.modelName,
@@ -411,7 +411,7 @@ class _Stat extends StatelessWidget {
           value,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: 'Playfair Display',
+            fontFamily: context.displayFont,
             fontWeight: FontWeight.w700,
             fontSize: 18,
             height: 1.1,
