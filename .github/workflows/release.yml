@@ -1,7 +1,12 @@
 name: Release
 
-# `git tag v1.0.0 && git push --tags` → a published GitHub Release carrying
-# the AppImage, SHA256SUMS, and detached GPG signatures — no manual steps.
+# Two ways to cut a release, both producing a signed GitHub Release carrying
+# the AppImage, SHA256SUMS, and detached GPG signatures:
+#   * push a tag:  `git tag v1.2.3 && git push --tags`
+#   * manual run:  the "Release" workflow's "Run workflow" button, which tags
+#     the current commit from pubspec's version and publishes. Use this when
+#     tag pushes from a personal token are restricted — the Actions bot does
+#     the tagging.
 #
 # Required repository secrets:
 #   GPG_PRIVATE_KEY   ASCII-armored signing key (gpg --armor --export-secret-keys)
@@ -11,6 +16,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -21,6 +27,36 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
+
+      # The version being released. On a tag push the tag is authoritative and
+      # must match pubspec; on a manual run pubspec is authoritative and names
+      # the tag.
+      - name: Resolve release version
+        run: |
+          pv=$(grep -oP '^version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml)
+          if [ '${{ github.event_name }}' = 'push' ]; then
+            v='${{ github.ref_name }}'
+            [ "$v" = "v$pv" ] || { echo "tag $v != pubspec v$pv" >&2; exit 1; }
+          else
+            v="v$pv"
+          fi
+          echo "RELEASE_VERSION=$v" >> "$GITHUB_ENV"
+
+      # Manual runs create the tag here, as the Actions bot, so a release can
+      # be cut even where tag pushes from personal tokens are restricted.
+      # Idempotent: a pre-existing tag (e.g. from an earlier failed run) is
+      # left in place so the run can re-publish against it.
+      - name: Tag this commit (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "tag $RELEASE_VERSION already exists on origin; continuing"
+          else
+            git tag -a "$RELEASE_VERSION" -m "Peira ${RELEASE_VERSION#v}"
+            git push origin "$RELEASE_VERSION"
+          fi
 
       - name: Install build dependencies
         run: |
@@ -37,12 +73,6 @@ jobs:
           cache: true
 
       - run: flutter pub get
-
-      - name: Guard — tag matches pubspec version
-        run: |
-          tag='${{ github.ref_name }}'
-          pv=$(grep -oP '^version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml)
-          [ "$tag" = "v$pv" ] || { echo "tag $tag != pubspec version $pv" >&2; exit 1; }
 
       - name: Compute CEF cache key
         id: cef
@@ -84,14 +114,23 @@ jobs:
               --passphrase "$GPG_PASSPHRASE" --detach-sign --armor "$f"
           done
 
+      # Idempotent publish: create the release, or upload (clobbering) if a
+      # release for this tag already exists, so a re-run repairs a partial one.
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create '${{ github.ref_name }}' \
-            --title '${{ github.ref_name }}' \
-            --notes 'See CHANGELOG.md. Verify: `sha256sum -c SHA256SUMS` and `gpg --verify SHA256SUMS.asc SHA256SUMS`.' \
-            dist/Peira-x86_64.AppImage \
-            dist/Peira-x86_64.AppImage.asc \
-            dist/SHA256SUMS \
+          assets=(
+            dist/Peira-x86_64.AppImage
+            dist/Peira-x86_64.AppImage.asc
+            dist/SHA256SUMS
             dist/SHA256SUMS.asc
+          )
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_VERSION" --clobber "${assets[@]}"
+          else
+            gh release create "$RELEASE_VERSION" \
+              --title "$RELEASE_VERSION" \
+              --notes 'See CHANGELOG.md. Verify: `sha256sum -c SHA256SUMS` and `gpg --verify SHA256SUMS.asc SHA256SUMS`.' \
+              "${assets[@]}"
+          fi
