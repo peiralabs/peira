@@ -1,8 +1,9 @@
 // Not a `_test.dart` file — not run by default. Renders the full AppShell
 // (chrome included) in demo mode under one theme, to eyeball real-screen
 // theming. Software rasterizer, no GPU/display.
-//   THEME_PACK=terminal flutter test test/theme_screen_preview.dart
-// Writes $THEME_PREVIEW_DIR/screen-<id>.png (default /tmp).
+//   THEME_PACK=terminal THEME_MODE=light flutter test test/theme_screen_preview.dart
+// THEME_MODE is 'dark' (default) or 'light'. Writes
+// $THEME_PREVIEW_DIR/screen-<id>.png (dark) or screen-<id>-light.png (default /tmp).
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -19,6 +20,7 @@ import 'support/render_fonts.dart';
 void main() {
   final outDir = Platform.environment['THEME_PREVIEW_DIR'] ?? '/tmp';
   final id = Platform.environment['THEME_PACK'] ?? 'brass';
+  final mode = Platform.environment['THEME_MODE'] ?? 'dark';
   final pack = ThemePack.byId(id);
 
   setUpAll(loadRealFonts);
@@ -38,7 +40,7 @@ void main() {
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light(pack),
             darkTheme: AppTheme.dark(pack),
-            themeMode: ThemeMode.dark,
+            themeMode: mode == 'light' ? ThemeMode.light : ThemeMode.dark,
             home: const AppShell(),
           ),
         ),
@@ -54,8 +56,9 @@ void main() {
     await tester.runAsync(() async {
       final image = await boundary.toImage(pixelRatio: 1.5);
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      final suffix = mode == 'light' ? '-light' : '';
       await File(
-        '$outDir/screen-$id.png',
+        '$outDir/screen-$id$suffix.png',
       ).writeAsBytes(bytes!.buffer.asUint8List());
     });
   });
