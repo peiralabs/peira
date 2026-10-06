@@ -259,7 +259,7 @@ class _DeviceRowState extends State<_DeviceRow> {
                           : device.hostName,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'Playfair Display',
+                        fontFamily: context.displayFont,
                         fontWeight:
                             isSelf ? FontWeight.w700 : FontWeight.w600,
                         fontSize: isSelf ? 18 : 16,

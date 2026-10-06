@@ -14,12 +14,14 @@ class AppTheme {
   AppTheme._();
 
 
-  static ThemeData light() => _build(Brightness.light);
-  static ThemeData dark() => _build(Brightness.dark);
+  static ThemeData light([ThemePack pack = ThemePack.brass]) =>
+      _build(Brightness.light, pack);
+  static ThemeData dark([ThemePack pack = ThemePack.brass]) =>
+      _build(Brightness.dark, pack);
 
-  static ThemeData _build(Brightness brightness) {
+  static ThemeData _build(Brightness brightness, ThemePack pack) {
     final isDark = brightness == Brightness.dark;
-    final brass = Brass.resolve(brightness);
+    final brass = pack.resolve(brightness);
     final scheme = ColorScheme.fromSeed(
       seedColor: brass.seed,
       brightness: brightness,
@@ -31,31 +33,37 @@ class AppTheme {
 
     // Engraved pairing: Playfair Display carries every display/title role —
     // screen titles, panel headers, gauge numerals — while EB Garamond sets
-    // body copy. JetBrains Mono is applied locally where the design calls
-    // for it (IPs, torrents, terminal).
+    // body copy; Graphite shares it. Terminal is all JetBrains Mono; the
+    // modern/native families (Nord, Ember, Obsidian, Aqua, Catppuccin) use the
+    // platform sans (null family). JetBrains Mono is still applied locally
+    // where the design calls for it (IPs, torrents, terminal).
     final baseText =
         (isDark ? Typography.material2021().white : Typography.material2021().black)
-            .apply(fontFamily: 'EB Garamond');
-    TextStyle? serif(TextStyle? t, {double? spacing}) =>
-        t?.copyWith(fontFamily: 'Playfair Display', letterSpacing: spacing);
+            .apply(fontFamily: brass.bodyFont);
+    TextStyle? display(TextStyle? t, {double? spacing}) =>
+        t?.copyWith(fontFamily: brass.displayFont, letterSpacing: spacing);
     final textTheme = baseText.copyWith(
-      displayLarge: serif(baseText.displayLarge),
-      displayMedium: serif(baseText.displayMedium),
-      displaySmall: serif(baseText.displaySmall),
-      headlineLarge: serif(baseText.headlineLarge),
-      headlineMedium: serif(baseText.headlineMedium),
-      headlineSmall: serif(baseText.headlineSmall),
-      titleLarge: serif(baseText.titleLarge, spacing: -0.2),
-      titleMedium: serif(baseText.titleMedium, spacing: -0.1),
-      titleSmall: serif(baseText.titleSmall),
+      displayLarge: display(baseText.displayLarge),
+      displayMedium: display(baseText.displayMedium),
+      displaySmall: display(baseText.displaySmall),
+      headlineLarge: display(baseText.headlineLarge),
+      headlineMedium: display(baseText.headlineMedium),
+      headlineSmall: display(baseText.headlineSmall),
+      titleLarge: display(baseText.titleLarge, spacing: -0.2),
+      titleMedium: display(baseText.titleMedium, spacing: -0.1),
+      titleSmall: display(baseText.titleSmall),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: 'EB Garamond',
+      fontFamily: brass.bodyFont,
       textTheme: textTheme,
       scaffoldBackgroundColor: brass.bg,
+      // Carry the resolved token set so `context.brass` (→ Brass.of →
+      // Theme.of(context).extension<Brass>()) resolves the active family
+      // everywhere a Theme is in scope — routes, dialogs and overlays included.
+      extensions: [brass],
       cardTheme: CardThemeData(
         elevation: 0,
         clipBehavior: Clip.antiAlias,

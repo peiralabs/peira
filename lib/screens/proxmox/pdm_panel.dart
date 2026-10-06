@@ -78,7 +78,7 @@ class PdmPanel extends ConsumerWidget {
                       'Datacenter Manager',
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'Playfair Display',
+                        fontFamily: context.displayFont,
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
                         color: brass.sand,

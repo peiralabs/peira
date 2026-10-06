@@ -53,28 +53,29 @@ class _BrassPanelState extends State<BrassPanel> {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final pal = brass.isDark ? _Palette.dark : _Palette.light;
     final radius = BorderRadius.circular(widget.banner ? 16 : 14);
     final lifted = widget.hoverLift && _hover;
+    // Panel dress, all from the active family: the banner variant deepens the
+    // field; the lip and top rule read off the theme's metal.
+    final hoverBorder = brass.giltBright.withValues(alpha: brass.isDark ? 0.5 : 0.6);
+    final topLip = brass.brassStops[2].withValues(alpha: brass.isDark ? 0.1 : 0.4);
+    final topRuleGilt = brass.brassStops[3];
+    final topRuleCenter = brass.brassStops[2];
+    // The top-rule gradient's edge and mid inks (an optional override, else
+    // the theme's metal).
+    final ruleEdge = widget.topRuleColor ?? topRuleGilt;
+    final ruleMid = widget.topRuleColor ?? topRuleCenter;
 
     final gradient = widget.fill ??
         (widget.banner
             ? LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [pal.bannerTop, pal.bannerBottom],
+                colors: [brass.bannerTop, brass.panelBottom],
               )
-            : brass.isDark
-                ? const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xEB223224), Color(0xF00F1912)],
-                  )
-                : brass.panelGradient);
-    final borderColor = lifted
-        ? pal.hoverBorder
-        : widget.borderColor ??
-            (widget.banner ? pal.bannerBorder : brass.panelBorder);
+            : brass.panelGradient);
+    final borderColor =
+        lifted ? hoverBorder : widget.borderColor ?? brass.panelBorder;
 
     Widget panel = AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -89,7 +90,7 @@ class _BrassPanelState extends State<BrassPanel> {
       // Inset top highlight lip.
       foregroundDecoration: BoxDecoration(
         borderRadius: radius,
-        border: Border(top: BorderSide(color: pal.topLip)),
+        border: Border(top: BorderSide(color: topLip)),
       ),
       child: ClipRRect(
         borderRadius: radius,
@@ -126,13 +127,11 @@ class _BrassPanelState extends State<BrassPanel> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        (widget.topRuleColor ?? pal.topRuleGilt)
-                            .withValues(alpha: 0),
-                        widget.topRuleColor ?? pal.topRuleGilt,
-                        widget.topRuleColor ?? pal.topRuleCenter,
-                        widget.topRuleColor ?? pal.topRuleGilt,
-                        (widget.topRuleColor ?? pal.topRuleGilt)
-                            .withValues(alpha: 0),
+                        ruleEdge.withValues(alpha: 0),
+                        ruleEdge,
+                        ruleMid,
+                        ruleEdge,
+                        ruleEdge.withValues(alpha: 0),
                       ],
                       stops: const [0, 0.3, 0.5, 0.7, 1],
                     ),
@@ -161,46 +160,3 @@ class _BrassPanelState extends State<BrassPanel> {
   }
 }
 
-/// File-local dark/light pairs for the panel dress. Dark values are verbatim
-/// from the dark-only era; light values come from the parchment mapping
-/// (sunlit banner paper, bronze-ink borders, a warm paper-sheen lip, and a
-/// top rule whose cream hot-spot inverts to the darkest bronze).
-class _Palette {
-  const _Palette({
-    required this.bannerTop,
-    required this.bannerBottom,
-    required this.hoverBorder,
-    required this.bannerBorder,
-    required this.topLip,
-    required this.topRuleGilt,
-    required this.topRuleCenter,
-  });
-
-  final Color bannerTop;
-  final Color bannerBottom;
-  final Color hoverBorder;
-  final Color bannerBorder;
-  final Color topLip;
-  final Color topRuleGilt;
-  final Color topRuleCenter;
-
-  static const dark = _Palette(
-    bannerTop: Color(0xF0253727),
-    bannerBottom: Color(0xF50F1A12),
-    hoverBorder: Color(0x80E8CD78),
-    bannerBorder: Color(0x5CC9AA58),
-    topLip: Color(0x1AFFF4C8),
-    topRuleGilt: Color(0xFFD9B45E),
-    topRuleCenter: Color(0xFFFFF6CF),
-  );
-
-  static const light = _Palette(
-    bannerTop: Color(0xF0F6F0E4),
-    bannerBottom: Color(0xF5EAE0CA),
-    hoverBorder: Color(0x998A6A2A),
-    bannerBorder: Color(0x668A6A2A),
-    topLip: Color(0x66FFFBEE),
-    topRuleGilt: Color(0xFFA9852F),
-    topRuleCenter: Color(0xFF6E5220),
-  );
-}

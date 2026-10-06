@@ -84,6 +84,7 @@ class SettingsRepository {
     qbittorrentPass: 'qbittorrent_pass',
     trustSelfSigned: 'trust_self_signed',
     themeMode: 'theme_mode',
+    themeId: 'theme_id',
     railCollapsed: 'rail_collapsed',
     sshTargets: 'ssh_targets',
     sshUsername: 'ssh_username',
@@ -144,6 +145,7 @@ class SettingsRepository {
       qbittorrentPass: values[_keys.qbittorrentPass] ?? '',
       trustSelfSigned: values[_keys.trustSelfSigned] != 'false',
       themeMode: values[_keys.themeMode] ?? 'system',
+      themeId: values[_keys.themeId] ?? 'brass',
       railCollapsed: values[_keys.railCollapsed] == 'true',
       sshTargets: values[_keys.sshTargets] ?? '',
       sshUsername: values[_keys.sshUsername] ?? 'root',
@@ -240,6 +242,7 @@ class SettingsRepository {
         value: settings.qbittorrentPass,
       ),
       _storage.write(key: _keys.themeMode, value: settings.themeMode),
+      _storage.write(key: _keys.themeId, value: settings.themeId),
       _storage.write(
         key: _keys.railCollapsed,
         value: settings.railCollapsed ? 'true' : 'false',

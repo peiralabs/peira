@@ -5,6 +5,8 @@ import '../../core/build_config.dart';
 import '../../core/providers/navigation_providers.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/util/open_url.dart';
+import '../../core/webview/display_server.dart';
 import '../../core/webview/web_logins.dart';
 import '../../core/webview/web_masks.dart';
 import '../../core/webview/webview_factory.dart';
@@ -75,6 +77,19 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen>
     }
     if (!_activated) return const SizedBox.shrink();
 
+    // On a pure-Wayland session with no XWayland, the CEF browser has no X11
+    // surface to render into — show a clear notice with an external-browser
+    // fallback instead of a blank tab or a crash. (In an X11/XWayland session
+    // or any headless/test environment this is null and nothing changes.)
+    final unavailable = ref.watch(webviewSupportProvider);
+    if (unavailable != null) {
+      return _WebviewUnavailable(
+        service: widget.service,
+        url: url,
+        reason: unavailable,
+      );
+    }
+
     // Wiki gets the full browser chrome per the design (§6); Jellyseerr
     // (Discover) is a deep SPA with no in-page back button, so it keeps the
     // same bar so drilling into a title isn't a dead end. SearXNG and
@@ -139,5 +154,70 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen>
       );
     }
     return webView;
+  }
+}
+
+/// Shown when the embedded CEF browser can't render (currently only a
+/// pure-Wayland session with no XWayland). Explains why and offers to open the
+/// service in the system browser instead, so the tab is never a dead end.
+class _WebviewUnavailable extends StatelessWidget {
+  const _WebviewUnavailable({
+    required this.service,
+    required this.url,
+    required this.reason,
+  });
+
+  final String service;
+  final String url;
+  final WebviewUnavailableReason reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final brass = context.brass;
+    final message = switch (reason) {
+      WebviewUnavailableReason.noXSurface =>
+        'The embedded browser needs an X11 surface, which this '
+            'Wayland session does not provide (no XWayland).\n\n'
+            'Run under a compositor with XWayland, or use the X11 build, '
+            'to embed $service here.',
+    };
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.public_off, size: 44, color: brass.textMuted),
+            const SizedBox(height: 16),
+            Text(
+              '$service can\'t be embedded here',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: brass.textMuted),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () async {
+                final error = await openUrl(url);
+                if (error != null && context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(error)));
+                }
+              },
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text('Open in your browser'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

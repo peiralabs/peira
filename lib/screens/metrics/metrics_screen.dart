@@ -407,7 +407,7 @@ class _MetricPanel extends StatelessWidget {
             title,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: brass.sand,
@@ -427,7 +427,7 @@ class _MetricPanel extends StatelessWidget {
                         value,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'Playfair Display',
+                          fontFamily: context.displayFont,
                           fontWeight: FontWeight.w800,
                           fontSize: 30,
                           height: 1,
@@ -688,7 +688,7 @@ class _TopGuestsPanel extends StatelessWidget {
           Text(
             'Top guests',
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: brass.sand,
@@ -751,7 +751,7 @@ class _GuestRow extends StatelessWidget {
               '${pct.toStringAsFixed(0)}%',
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontFamily: 'Playfair Display',
+                fontFamily: context.displayFont,
                 fontSize: 12.5,
                 color: pal.guestPct,
               ),
@@ -771,7 +771,7 @@ class _GuestRow extends StatelessWidget {
                 guest.name,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'Playfair Display',
+                  fontFamily: context.displayFont,
                   fontWeight: FontWeight.w600,
                   fontSize: 15,
                   color: pal.guestName,
@@ -1129,7 +1129,7 @@ class _PowerStat extends StatelessWidget {
             title,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: brass.sand,
@@ -1145,7 +1145,7 @@ class _PowerStat extends StatelessWidget {
                   value,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'Playfair Display',
+                    fontFamily: context.displayFont,
                     fontWeight: FontWeight.w800,
                     fontSize: 30,
                     height: 1,
@@ -1318,7 +1318,7 @@ class _ScenarioCard extends StatelessWidget {
           Text(
             'If ${s.node} dies',
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: brass.sand,
@@ -1376,7 +1376,7 @@ class _HeadroomPanel extends StatelessWidget {
           Text(
             'RAM headroom',
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: brass.sand,
@@ -1402,7 +1402,7 @@ class _HeadroomPanel extends StatelessWidget {
                           n.node,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontFamily: 'Playfair Display',
+                            fontFamily: context.displayFont,
                             fontSize: 13.5,
                             color: pal.guestName,
                           ),
@@ -1537,7 +1537,7 @@ class _WhatIfFormState extends ConsumerState<_WhatIfForm> {
           Text(
             'Can I fit a new guest?',
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w600,
               fontSize: 16,
               color: brass.sand,

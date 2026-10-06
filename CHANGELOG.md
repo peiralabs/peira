@@ -24,3 +24,12 @@ Initial public release.
 - Themed embedded webviews (Grafana, Open WebUI, Wiki.js, Jellyseerr); the
   Wiki.js reskin detects its DOM and no-ops on other wikis.
 - Credentials live in the system keychain (Secret Service), never in files.
+- Eight selectable theme families — Brass (default), Graphite, Terminal,
+  Nord, Ember, Obsidian, Aqua, and Catppuccin — each re-skinning the whole
+  shell (background, masthead, panels, nav rail, ornaments) through a single
+  `ThemeExtension` token set, with per-family typography (serif, monospace,
+  or sans). Dark and light variants for every family.
+- Wayland groundwork: display-server detection, and embedded webviews that
+  degrade gracefully with an "open in your browser" fallback where the CEF
+  browser has no X11 surface instead of showing a blank tab. The full
+  Wayland-native webview path is scoped in `docs/wayland-and-cross-platform.md`.

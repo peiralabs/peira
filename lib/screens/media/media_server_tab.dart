@@ -70,7 +70,7 @@ class _MediaServerView extends StatelessWidget {
                         s.serverName,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'Playfair Display',
+                          fontFamily: context.displayFont,
                           fontWeight: FontWeight.w600,
                           fontSize: 17,
                           color: brass.textHeading,
