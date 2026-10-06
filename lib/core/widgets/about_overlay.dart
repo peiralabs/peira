@@ -6,7 +6,7 @@ import '../theme/phosphor.dart';
 import 'astrolabe.dart';
 import 'brass_ornament.dart';
 
-const kAppVersion = '1.0.0';
+const kAppVersion = '1.1.0';
 
 /// The About overlay (design §Overlays): dimmed backdrop (click to dismiss),
 /// gilded card with corner brackets, full astrolabe, wordmark, and the
