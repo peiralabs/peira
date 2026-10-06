@@ -123,6 +123,8 @@ class Brass extends ThemeExtension<Brass> {
     required this.cardShadow,
     required this.hoverShadow,
     required this.warnGradEnd,
+    this.displayFont = 'Playfair Display',
+    this.bodyFont = 'EB Garamond',
   });
 
   /// The original dark instrument — every value verbatim from the dark era.
@@ -564,6 +566,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Terminal dark — green phosphor on black.
   static const terminalDark = Brass._(
     isDark: true,
+    displayFont: 'JetBrains Mono',
+    bodyFont: 'JetBrains Mono',
     seed: Color(0xFF3BFF6B),
     bronze: Color(0xFF3BFF6B),
     giltBright: Color(0xFF9CFFC0),
@@ -663,6 +667,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Terminal light — dark-green ink on pale phosphor paper.
   static const terminalLight = Brass._(
     isDark: false,
+    displayFont: 'JetBrains Mono',
+    bodyFont: 'JetBrains Mono',
     seed: Color(0xFF1F7A3D),
     bronze: Color(0xFF1F7A3D),
     giltBright: Color(0xFF1C6E37),
@@ -763,6 +769,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Nord dark — Polar Night fields, Frost accents.
   static const nordDark = Brass._(
     isDark: true,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFF88C0D0),
     bronze: Color(0xFF88C0D0),
     giltBright: Color(0xFFA9D4DE),
@@ -862,6 +870,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Nord light — Snow Storm fields, darkened Frost inks.
   static const nordLight = Brass._(
     isDark: false,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFF5E81AC),
     bronze: Color(0xFF5E81AC),
     giltBright: Color(0xFF4E6E96),
@@ -962,6 +972,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Ember dark — deep garnet fields, rose-gold ornament.
   static const emberDark = Brass._(
     isDark: true,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFFE27A80),
     bronze: Color(0xFFE27A80),
     giltBright: Color(0xFFF4AEB2),
@@ -1061,6 +1073,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Ember light — warm blush paper, garnet ink.
   static const emberLight = Brass._(
     isDark: false,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFFA8323A),
     bronze: Color(0xFFA8323A),
     giltBright: Color(0xFF962E36),
@@ -1161,6 +1175,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Obsidian dark — pure-black fields, low-chroma steel ornament.
   static const obsidianDark = Brass._(
     isDark: true,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFFAEB4BE),
     bronze: Color(0xFFAEB4BE),
     giltBright: Color(0xFFD8DCE2),
@@ -1260,6 +1276,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Obsidian light — crisp high-key paper, charcoal ink.
   static const obsidianLight = Brass._(
     isDark: false,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFF3A3E46),
     bronze: Color(0xFF3A3E46),
     giltBright: Color(0xFF32363E),
@@ -1360,6 +1378,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Aqua dark — macOS dark surfaces, system blue.
   static const aquaDark = Brass._(
     isDark: true,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFF0A84FF),
     bronze: Color(0xFF0A84FF),
     giltBright: Color(0xFF5AB0FF),
@@ -1459,6 +1479,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Aqua light — macOS light surfaces, system blue.
   static const aquaLight = Brass._(
     isDark: false,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFF007AFF),
     bronze: Color(0xFF007AFF),
     giltBright: Color(0xFF0A84FF),
@@ -1559,6 +1581,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Catppuccin Mocha (dark).
   static const catppuccinDark = Brass._(
     isDark: true,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFFCBA6F7),
     bronze: Color(0xFFCBA6F7),
     giltBright: Color(0xFFDABEFC),
@@ -1658,6 +1682,8 @@ class Brass extends ThemeExtension<Brass> {
   /// Catppuccin Latte (light).
   static const catppuccinLight = Brass._(
     isDark: false,
+    displayFont: null,
+    bodyFont: null,
     seed: Color(0xFF8839EF),
     bronze: Color(0xFF8839EF),
     giltBright: Color(0xFF7A2EDC),
@@ -1814,6 +1840,20 @@ class Brass extends ThemeExtension<Brass> {
   final List<BoxShadow> cardShadow;
   final List<BoxShadow> hoverShadow;
   final Color warnGradEnd;
+
+  // ---- Typography ----
+  //
+  // Family-level (the same for a family's dark and light members). A null
+  // family resolves to the platform's default sans — the authentic choice for
+  // the modern/native themes (and macOS-flavoured Aqua), with zero bundled
+  // font footprint. JetBrains Mono for IPs / torrents / the terminal is still
+  // applied at those call sites regardless.
+
+  /// Display / title / header / gauge-numeral family.
+  final String? displayFont;
+
+  /// Body / default family.
+  final String? bodyFont;
 
   // ---- ThemeExtension ----
 
@@ -2000,6 +2040,10 @@ class Brass extends ThemeExtension<Brass> {
 extension BrassContext on BuildContext {
   /// `context.brass` — the ambient brightness-resolved token set.
   Brass get brass => Brass.of(this);
+
+  /// The active theme's display/title family (null = platform sans). Use for
+  /// the hand-styled titles and headers that don't go through the textTheme.
+  String? get displayFont => Brass.of(this).displayFont;
 }
 
 /// A selectable theme family: a named pair of [Brass] token sets, one per

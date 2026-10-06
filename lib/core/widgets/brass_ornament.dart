@@ -207,7 +207,7 @@ class GiltWordmark extends StatelessWidget {
       child: Text(
         text,
         style: TextStyle(
-          fontFamily: 'Playfair Display',
+          fontFamily: context.displayFont,
           fontWeight: FontWeight.w700,
           fontSize: fontSize,
           letterSpacing: fontSize * letterSpacingEm,
@@ -293,7 +293,7 @@ class BrassSectionHeader extends StatelessWidget {
             title,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'Playfair Display',
+              fontFamily: context.displayFont,
               fontWeight: FontWeight.w700,
               fontSize: 19,
               color: brass.giltBright,
