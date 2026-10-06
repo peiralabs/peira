@@ -183,25 +183,30 @@ class _AstrolabePainter extends CustomPainter {
 
   static const _rimStops = [0.0, 0.32, 0.5, 0.68, 1.0];
 
-  List<Color> get _rimColors => [_edge, _bright, _peak, _mid, _deep];
+  // Theme-derived gradients, built once per painter — `metal` is final and the
+  // painter is re-created only on a theme change, so the live-spinning rete /
+  // alidade path (drawn every frame) allocates nothing here. Only
+  // `createShader` stays per-call, because the bounds vary.
+  late final LinearGradient _rimGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: metal,
+    stops: _rimStops,
+  );
+
+  /// The alidade rule's lengthwise metal sheen (edge → peak → edge).
+  late final LinearGradient _ruleGradient = LinearGradient(
+    colors: [_edge, _bright, _peak, _mid, _edge],
+    stops: const [0, 0.42, 0.5, 0.58, 1],
+  );
 
   Paint _rimStroke(Rect bounds, double width) => Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = width
-    ..shader = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: _rimColors,
-      stops: _rimStops,
-    ).createShader(bounds);
+    ..shader = _rimGradient.createShader(bounds);
 
-  Paint _rimFill(Rect bounds) => Paint()
-    ..shader = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: _rimColors,
-      stops: _rimStops,
-    ).createShader(bounds);
+  Paint _rimFill(Rect bounds) =>
+      Paint()..shader = _rimGradient.createShader(bounds);
 
   Paint _emerFill(Rect bounds) => Paint()
     ..shader = const RadialGradient(
@@ -511,10 +516,7 @@ class _AstrolabePainter extends CustomPainter {
       ..lineTo(100, 189)
       ..lineTo(97.6, 100)
       ..close();
-    final ruleShader = LinearGradient(
-      colors: [_edge, _bright, _peak, _mid, _edge],
-      stops: const [0, 0.42, 0.5, 0.58, 1],
-    ).createShader(lens.getBounds());
+    final ruleShader = _ruleGradient.createShader(lens.getBounds());
     canvas.drawPath(lens, Paint()..shader = ruleShader);
     canvas.drawPath(
       lens,
