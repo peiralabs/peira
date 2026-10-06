@@ -61,6 +61,10 @@ class _BrassPanelState extends State<BrassPanel> {
     final topLip = brass.brassStops[2].withValues(alpha: brass.isDark ? 0.1 : 0.4);
     final topRuleGilt = brass.brassStops[3];
     final topRuleCenter = brass.brassStops[2];
+    // The top-rule gradient's edge and mid inks (an optional override, else
+    // the theme's metal).
+    final ruleEdge = widget.topRuleColor ?? topRuleGilt;
+    final ruleMid = widget.topRuleColor ?? topRuleCenter;
 
     final gradient = widget.fill ??
         (widget.banner
@@ -123,13 +127,11 @@ class _BrassPanelState extends State<BrassPanel> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        (widget.topRuleColor ?? topRuleGilt)
-                            .withValues(alpha: 0),
-                        widget.topRuleColor ?? topRuleGilt,
-                        widget.topRuleColor ?? topRuleCenter,
-                        widget.topRuleColor ?? topRuleGilt,
-                        (widget.topRuleColor ?? topRuleGilt)
-                            .withValues(alpha: 0),
+                        ruleEdge.withValues(alpha: 0),
+                        ruleEdge,
+                        ruleMid,
+                        ruleEdge,
+                        ruleEdge.withValues(alpha: 0),
                       ],
                       stops: const [0, 0.3, 0.5, 0.7, 1],
                     ),

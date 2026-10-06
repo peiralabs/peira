@@ -132,36 +132,29 @@ abstract class AppSettings with _$AppSettings {
       proxmoxTokenId.isNotEmpty &&
       proxmoxTokenSecret.isNotEmpty;
 
+  /// Returns [override] when set; otherwise [base] with its port replaced by
+  /// [port] (empty when [base] is missing or unparseable). The shared shape
+  /// behind the service-endpoint fallbacks below.
+  static String _derive(String override, String base, int port) {
+    if (override.isNotEmpty) return override;
+    if (base.isEmpty) return '';
+    final u = Uri.tryParse(base);
+    if (u == null || u.host.isEmpty) return '';
+    return u.replace(port: port).toString();
+  }
+
   /// Prometheus endpoint for the native Metrics tab. Falls back to the
   /// Grafana host on the standard :9090 port (they share the monitoring CT),
   /// so existing installs work without re-seeding the keyring.
-  String get prometheusEndpoint {
-    if (prometheusUrl.isNotEmpty) return prometheusUrl;
-    if (grafanaUrl.isEmpty) return '';
-    final g = Uri.tryParse(grafanaUrl);
-    if (g == null || g.host.isEmpty) return '';
-    return g.replace(port: 9090).toString();
-  }
+  String get prometheusEndpoint => _derive(prometheusUrl, grafanaUrl, 9090);
 
   /// Ollama daemon API endpoint for the native model-library tab. Falls back
   /// to the Open WebUI host on the standard :11434 daemon port.
-  String get ollamaApiEndpoint {
-    if (ollamaApiUrl.isNotEmpty) return ollamaApiUrl;
-    if (ollamaUrl.isEmpty) return '';
-    final u = Uri.tryParse(ollamaUrl);
-    if (u == null || u.host.isEmpty) return '';
-    return u.replace(port: 11434).toString();
-  }
+  String get ollamaApiEndpoint => _derive(ollamaApiUrl, ollamaUrl, 11434);
 
   /// Hermes OpenAI-compatible API endpoint for the native chat tab. Falls
   /// back to the Hermes host on the standard :8642 API port.
-  String get hermesApiEndpoint {
-    if (hermesApiUrl.isNotEmpty) return hermesApiUrl;
-    if (hermesUrl.isEmpty) return '';
-    final u = Uri.tryParse(hermesUrl);
-    if (u == null || u.host.isEmpty) return '';
-    return u.replace(port: 8642).toString();
-  }
+  String get hermesApiEndpoint => _derive(hermesApiUrl, hermesUrl, 8642);
 
   /// Model name for the native chat tab. The personal build always talks to
   /// the Hermes agent's fixed route; the public AI Chat build sends whatever
@@ -171,13 +164,7 @@ abstract class AppSettings with _$AppSettings {
 
   /// Ask-Your-Homelab RAG endpoint for the native Ask tab. Falls back to the
   /// Wiki host on the ask-homelab service port :9113 (they share CT 106).
-  String get askEndpoint {
-    if (askUrl.isNotEmpty) return askUrl;
-    if (wikiUrl.isEmpty) return '';
-    final u = Uri.tryParse(wikiUrl);
-    if (u == null || u.host.isEmpty) return '';
-    return u.replace(port: 9113).toString();
-  }
+  String get askEndpoint => _derive(askUrl, wikiUrl, 9113);
 
   /// Effective SSH username for Proxmox-inventory terminal targets — a
   /// cleared field falls back to root rather than producing `@host`.

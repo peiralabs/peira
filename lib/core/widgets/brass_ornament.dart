@@ -128,10 +128,11 @@ class GiltRule extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pal = _Palette.of(context);
+    // The rule is simply the theme's deep gilt fading to transparent.
+    final g = context.brass.giltDeep;
     final colors = reverse
-        ? [pal.ruleFadeIn, pal.ruleBright]
-        : [pal.ruleGilt, pal.ruleFadeOut];
+        ? [g.withValues(alpha: 0), g]
+        : [g, g.withValues(alpha: 0.05)];
     return Container(
       height: 1,
       width: width,
@@ -326,10 +327,6 @@ class BrassSectionHeader extends StatelessWidget {
 class _Palette {
   const _Palette({
     required this.studShadow,
-    required this.ruleGilt,
-    required this.ruleBright,
-    required this.ruleFadeIn,
-    required this.ruleFadeOut,
     required this.bracket,
     required this.wordmarkShadow,
     required this.dividerGilt,
@@ -342,10 +339,6 @@ class _Palette {
   });
 
   final Color studShadow;
-  final Color ruleGilt;
-  final Color ruleBright;
-  final Color ruleFadeIn;
-  final Color ruleFadeOut;
   final Color bracket;
   final Color wordmarkShadow;
   final Color dividerGilt;
@@ -365,10 +358,6 @@ class _Palette {
     return _Palette(
       studShadow:
           b.isDark ? const Color(0x80000000) : const Color(0x33352511),
-      ruleGilt: b.giltDeep,
-      ruleBright: b.giltDeep,
-      ruleFadeIn: b.giltDeep.withValues(alpha: 0),
-      ruleFadeOut: b.giltDeep.withValues(alpha: 0.05),
       bracket: b.giltBright.withValues(alpha: 0.7),
       wordmarkShadow:
           b.isDark ? const Color(0x59000000) : const Color(0x66FFFBEE),

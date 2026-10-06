@@ -63,6 +63,9 @@ class DashboardScreen extends ConsumerWidget {
 
     final nodes = ref.watch(nodesProvider);
     final containers = ref.watch(allContainersProvider);
+    final guests = containers.value ?? const [];
+    final runningGuests = guests.where((c) => c.status == 'running').length;
+    final totalGuests = guests.length;
     final alerts = ref.watch(activeAlertsProvider);
     final history = ref.watch(clusterCpuHistoryProvider);
     final nodeHistory = ref.watch(nodeCpuHistoryProvider);
@@ -87,10 +90,8 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(height: 22),
                   _GrandBanner(
                     nodes: nodes,
-                    runningGuests: (containers.value ?? const [])
-                        .where((c) => c.status == 'running')
-                        .length,
-                    totalGuests: (containers.value ?? const []).length,
+                    runningGuests: runningGuests,
+                    totalGuests: totalGuests,
                   ),
                   const SizedBox(height: 22),
                   const BrassSectionHeader(title: 'Nodes'),
@@ -116,10 +117,8 @@ class DashboardScreen extends ConsumerWidget {
                   nodes.maybeWhen(
                     data: (nodeList) => _InstrumentsPanel(
                       nodes: nodeList,
-                      running: (containers.value ?? const [])
-                          .where((c) => c.status == 'running')
-                          .length,
-                      total: (containers.value ?? const []).length,
+                      running: runningGuests,
+                      total: totalGuests,
                     ),
                     orElse: () => const SizedBox.shrink(),
                   ),
