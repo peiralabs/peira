@@ -7,7 +7,7 @@ const kReleaseRepo = 'peiralabs/homelab-app';
 /// Version baked into this build. `test/update_check_test.dart` asserts it
 /// matches pubspec.yaml, and the release workflow refuses a tag that doesn't
 /// match pubspec — so all three move together or CI goes red.
-const kAppVersion = '1.0.0';
+const kAppVersion = '1.1.0';
 
 /// Outcome of an update check. Check-only by design: an AppImage cannot
 /// replace itself in place, so "update" means pointing the operator at the
