@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/build_config.dart';
 import 'core/providers/settings_providers.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/window_background.dart';
 import 'screens/app_shell.dart';
 
 class HomeLabApp extends ConsumerWidget {
@@ -28,6 +29,12 @@ class HomeLabApp extends ConsumerWidget {
       // snap between them — a half-lerped instrument looks broken, not
       // transitional.
       themeAnimationDuration: Duration.zero,
+      // Persist the resolved theme's base background so the native runner can
+      // paint the launch window that colour next time (no wrong-theme flash).
+      builder: (context, child) {
+        persistWindowBackground(context.brass.bg);
+        return child ?? const SizedBox.shrink();
+      },
       home: const AppShell(),
     );
   }
