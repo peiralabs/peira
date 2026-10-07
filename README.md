@@ -39,8 +39,8 @@ variants; pick one in Settings. The shots below are demo mode.
 - **Proxmox VE and an API token** — that's the only hard requirement. A
   read-only token (`PVEAuditor`) lights up everything except management
   actions; the first-run wizard shows the exact `pveum` commands.
-- A Linux desktop with GTK 3, an X11 or XWayland session, and a Secret
-  Service (GNOME Keyring or KWallet) for credential storage.
+- A Linux desktop with GTK 3, an X11 or Wayland (with XWayland) session, and a
+  Secret Service (GNOME Keyring or KWallet) for credential storage.
 - Everything else — Prometheus, Grafana, media services, AI endpoints — is
   optional; panels appear as you configure them.
 
@@ -128,7 +128,8 @@ Every endpoint and credential is stored in the system keychain via
 | Ubuntu 24.04 | Automated acceptance: launch, wizard + token round-trip through GNOME Keyring, CEF webview rendering |
 | Fedora 44 | Same automated acceptance |
 | Arch (2026-04 base) | Same automated acceptance |
-| Wayland-native (no XWayland) | **Partial** — the app runs; embedded webviews detect the missing X11 surface and offer to open in your browser instead of failing. Full Wayland-native webviews are [roadmapped](docs/wayland-and-cross-platform.md). |
+| Wayland session **with XWayland** (GNOME/KDE default) | **Supported** — the shell runs natively on the Wayland GDK backend and embedded webviews render via XWayland. Verified on openSUSE + GNOME/Wayland. |
+| Pure Wayland, **no XWayland** | **Partial** — the shell runs; embedded webviews detect the missing X11 surface and offer to open in your browser instead of failing. (Rare on desktops — all mainstream Wayland sessions ship XWayland.) |
 | Windows / macOS | Never; out of scope |
 
 Two honest footnotes: the automated acceptance ran under headless X11 with
