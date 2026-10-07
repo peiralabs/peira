@@ -3,8 +3,17 @@ name: Build AppImage
 # Manual trigger only: PR CI (ci.yml) stays fast, and release automation on
 # tags is its own workflow. Re-verify action majors when this first runs on
 # a real repository.
+#
+# Produces a uniquely-named artifact — Peira-v<version>-<flavor>-<shortsha>-
+# x86_64.AppImage — so repeated test builds don't collide in Downloads and the
+# flavor (e.g. wayland) is spelled out, distinct from the X11 release asset.
 on:
   workflow_dispatch:
+    inputs:
+      flavor:
+        description: 'Build label baked into the filename (e.g. wayland, x11, dev)'
+        required: false
+        default: 'dev'
 
 jobs:
   appimage:
@@ -52,12 +61,19 @@ jobs:
           path: ${{ steps.cef.outputs.dir }}
           key: cef-linux64-${{ steps.cef.outputs.version }}
 
+      - name: Compute artifact name
+        id: name
+        run: |
+          pv=$(grep -oP '^version:\s*\K[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml)
+          echo "file=Peira-v${pv}-${{ inputs.flavor }}-${GITHUB_SHA::7}-x86_64.AppImage" \
+            >> "$GITHUB_OUTPUT"
+
       - run: flutter build linux --release
 
-      - run: bash tool/build_appimage.sh dist/Peira-x86_64.AppImage
+      - run: bash tool/build_appimage.sh "dist/${{ steps.name.outputs.file }}"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Peira-x86_64.AppImage
-          path: dist/Peira-x86_64.AppImage
+          name: ${{ steps.name.outputs.file }}
+          path: dist/${{ steps.name.outputs.file }}
           if-no-files-found: error
