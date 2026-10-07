@@ -1,0 +1,46 @@
+name: Update goldens
+
+# Manual: regenerate the alchemist CI golden baselines in the SAME pinned
+# environment the `goldens` CI job checks them in, then commit them back to the
+# branch it was run from. Use this to accept an intended visual change — never
+# hand-regenerate baselines on a random machine again.
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: regenerate + commit goldens
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.6
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter test --update-goldens --tags golden
+
+      # Re-attest every tracked binary (the regenerated PNGs change their
+      # SHA-256) so the marker-scan gate in ci.yml accepts them.
+      - run: dart run tool/check_public_markers.dart --update-binary-allowlist
+
+      - name: Commit regenerated goldens + allowlist (if any changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/goldens tool/binary_allowlist.txt
+          if git diff --cached --quiet; then
+            echo "No golden changes to commit."
+          else
+            # No [skip ci]: let CI re-run so the goldens + marker gates validate
+            # the freshly generated, CI-matched baselines.
+            git commit -m "chore: regenerate alchemist goldens in CI"
+            git push
+          fi
