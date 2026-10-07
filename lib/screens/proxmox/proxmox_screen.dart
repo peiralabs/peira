@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/proxmox_api.dart';
 import '../../core/models/proxmox_container.dart';
 import '../../core/models/proxmox_node.dart';
 import '../../core/models/proxmox_vm.dart';
@@ -34,8 +35,9 @@ class SelectedGuest extends Notifier<Object?> {
   void select(Object? guest) => state = guest;
 }
 
-final selectedGuestProvider =
-    NotifierProvider<SelectedGuest, Object?>(SelectedGuest.new);
+final selectedGuestProvider = NotifierProvider<SelectedGuest, Object?>(
+  SelectedGuest.new,
+);
 
 /// Native Proxmox view in the Brass Edition language (design §2): brass
 /// screen header with stat chips, gilt divider, node instrument cards, and
@@ -65,7 +67,8 @@ class ProxmoxScreen extends ConsumerWidget {
         final containers = ref.watch(allContainersProvider).value ?? const [];
         final vms = ref.watch(allVmsProvider).value ?? const [];
         final guests = containers.length + vms.length;
-        final running = containers.where((c) => c.status == 'running').length +
+        final running =
+            containers.where((c) => c.status == 'running').length +
             vms.where((v) => v.status == 'running').length;
 
         return Column(
@@ -76,7 +79,8 @@ class ProxmoxScreen extends ConsumerWidget {
               child: ScreenHeader(
                 icon: Ph.hardDrives,
                 title: 'Proxmox VE',
-                subtitle: 'VIRTUAL ENVIRONMENT · ${nodeList.length} '
+                subtitle:
+                    'VIRTUAL ENVIRONMENT · ${nodeList.length} '
                     'NODE${nodeList.length == 1 ? '' : 'S'}',
                 trailing: [
                   const SizedBox(width: 12),
@@ -128,22 +132,23 @@ class ProxmoxScreen extends ConsumerWidget {
                   final selected = ref.watch(selectedGuestProvider);
                   final detail = switch (selected) {
                     final ProxmoxContainer ct => CtDetailScreen(
-                        key: ValueKey('ct-${ct.vmid}'),
-                        container: ct,
-                        embedded: true,
-                      ),
+                      key: ValueKey('ct-${ct.vmid}'),
+                      container: ct,
+                      embedded: true,
+                    ),
                     final ProxmoxVm vm => VmDetailScreen(
-                        key: ValueKey('vm-${vm.vmid}'),
-                        vm: vm,
-                        embedded: true,
-                      ),
+                      key: ValueKey('vm-${vm.vmid}'),
+                      vm: vm,
+                      embedded: true,
+                    ),
                     final ProxmoxNode n => NodeDetailScreen(
-                        key: ValueKey('node-${n.node}'),
-                        node: n,
-                        embedded: true,
-                        onSelectGuest:
-                            ref.read(selectedGuestProvider.notifier).select,
-                      ),
+                      key: ValueKey('node-${n.node}'),
+                      node: n,
+                      embedded: true,
+                      onSelectGuest: ref
+                          .read(selectedGuestProvider.notifier)
+                          .select,
+                    ),
                     _ => const _DetailPlaceholder(),
                   };
                   return Row(
@@ -178,9 +183,7 @@ class ProxmoxScreen extends ConsumerWidget {
     void openNode(ProxmoxNode n) => wide
         ? ref.read(selectedGuestProvider.notifier).select(n)
         : Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => NodeDetailScreen(node: n),
-            ),
+            MaterialPageRoute<void>(builder: (_) => NodeDetailScreen(node: n)),
           );
     return RefreshIndicator(
       onRefresh: () async {
@@ -195,9 +198,10 @@ class ProxmoxScreen extends ConsumerWidget {
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              final cols = (constraints.maxWidth / 300)
-                  .floor()
-                  .clamp(1, nodeList.length.clamp(1, 4));
+              final cols = (constraints.maxWidth / 300).floor().clamp(
+                1,
+                nodeList.length.clamp(1, 4),
+              );
               final w = (constraints.maxWidth - (cols - 1) * 14) / cols;
               return Wrap(
                 spacing: 14,
@@ -209,7 +213,8 @@ class ProxmoxScreen extends ConsumerWidget {
                       child: _NodeCard(
                         node: n,
                         cpuHistory: histories[n.node] ?? const [],
-                        guestCount: (containers.value ?? const [])
+                        guestCount:
+                            (containers.value ?? const [])
                                 .where((c) => c.node == n.node)
                                 .length +
                             (vms.value ?? const [])
@@ -237,14 +242,14 @@ class ProxmoxScreen extends ConsumerWidget {
                   if (cts.any((c) => c.node == n.node))
                     _NodeContainerGroup(
                       node: n.node,
-                      containers:
-                          cts.where((c) => c.node == n.node).toList(),
+                      containers: cts.where((c) => c.node == n.node).toList(),
                       onOpenNode: () => openNode(n),
                       onSelect: wide
                           ? ref.read(selectedGuestProvider.notifier).select
                           : null,
-                      selectedVmid: switch (
-                          wide ? ref.watch(selectedGuestProvider) : null) {
+                      selectedVmid: switch (wide
+                          ? ref.watch(selectedGuestProvider)
+                          : null) {
                         final ProxmoxContainer ct => ct.vmid,
                         _ => null,
                       },
@@ -272,14 +277,12 @@ class ProxmoxScreen extends ConsumerWidget {
                         if (vmList.any((v) => v.node == n.node))
                           _NodeVmGroup(
                             node: n.node,
-                            vms: vmList
-                                .where((v) => v.node == n.node)
-                                .toList(),
+                            vms: vmList.where((v) => v.node == n.node).toList(),
                             onOpenNode: () => openNode(n),
                             onSelect: wide
                                 ? ref
-                                    .read(selectedGuestProvider.notifier)
-                                    .select
+                                      .read(selectedGuestProvider.notifier)
+                                      .select
                                 : null,
                             selectedVmid: switch (wide
                                 ? ref.watch(selectedGuestProvider)
@@ -368,8 +371,9 @@ class _NewButton extends StatelessWidget {
         // Derive from labelLarge: a bare TextStyle here would REPLACE the
         // theme style (ButtonStyle.textStyle doesn't merge), dropping the
         // EB Garamond family.
-        textStyle:
-            Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 13),
+        textStyle: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(fontSize: 13),
       ),
       icon: const Icon(Ph.plus, size: 14),
       label: Text(label),
@@ -472,11 +476,13 @@ class _NodeCard extends StatelessWidget {
     final online = node.status == 'online';
     final cpu = (node.cpu ?? 0).clamp(0.0, 1.0);
     final maxmem = node.maxmem ?? 0;
-    final ramFrac =
-        maxmem > 0 ? ((node.mem ?? 0) / maxmem).clamp(0.0, 1.0) : 0.0;
+    final ramFrac = maxmem > 0
+        ? ((node.mem ?? 0) / maxmem).clamp(0.0, 1.0)
+        : 0.0;
     final maxdisk = node.maxdisk ?? 0;
-    final diskFrac =
-        maxdisk > 0 ? ((node.disk ?? 0) / maxdisk).clamp(0.0, 1.0) : 0.0;
+    final diskFrac = maxdisk > 0
+        ? ((node.disk ?? 0) / maxdisk).clamp(0.0, 1.0)
+        : 0.0;
 
     return BrassPanel(
       topRule: true,
@@ -931,9 +937,9 @@ class _NodeContainerGroup extends ConsumerWidget {
       final api = await ref.read(proxmoxApiProvider.future);
       for (final c in targets) {
         if (start) {
-          await api.startContainer(node, c.vmid);
+          await api.changeGuestStatus(GuestKind.lxc, node, c.vmid, 'start');
         } else {
-          await api.stopContainer(node, c.vmid);
+          await api.changeGuestStatus(GuestKind.lxc, node, c.vmid, 'stop');
         }
       }
       ref.invalidate(allContainersProvider);
@@ -965,8 +971,11 @@ class _NodeContainerGroup extends ConsumerWidget {
             onTap: onOpenNode,
             menu: PopupMenuButton<bool>(
               tooltip: 'Bulk actions',
-              icon: Icon(Icons.more_horiz,
-                  size: 20, color: palette.chevronIdle),
+              icon: Icon(
+                Icons.more_horiz,
+                size: 20,
+                color: palette.chevronIdle,
+              ),
               onSelected: (start) => _bulk(context, ref, start),
               itemBuilder: (context) => const [
                 PopupMenuItem(
@@ -1006,10 +1015,10 @@ class _NodeContainerGroup extends ConsumerWidget {
                     onTap: onSelect != null
                         ? () => onSelect!(ct)
                         : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => CtDetailScreen(container: ct),
-                              ),
+                            MaterialPageRoute<void>(
+                              builder: (_) => CtDetailScreen(container: ct),
                             ),
+                          ),
                   ),
               ],
             ),
@@ -1046,9 +1055,9 @@ class _NodeVmGroup extends ConsumerWidget {
         .where((v) => v.status == (start ? 'stopped' : 'running'))
         .toList();
     if (targets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No VMs to $verb on $node.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No VMs to $verb on $node.')));
       return;
     }
     final ok = await showDialog<bool>(
@@ -1081,9 +1090,9 @@ class _NodeVmGroup extends ConsumerWidget {
       final api = await ref.read(proxmoxApiProvider.future);
       for (final v in targets) {
         if (start) {
-          await api.startVm(node, v.vmid);
+          await api.changeGuestStatus(GuestKind.qemu, node, v.vmid, 'start');
         } else {
-          await api.shutdownVm(node, v.vmid);
+          await api.changeGuestStatus(GuestKind.qemu, node, v.vmid, 'shutdown');
         }
       }
       ref.invalidate(allVmsProvider);
@@ -1115,8 +1124,11 @@ class _NodeVmGroup extends ConsumerWidget {
             onTap: onOpenNode,
             menu: PopupMenuButton<bool>(
               tooltip: 'Bulk actions',
-              icon: Icon(Icons.more_horiz,
-                  size: 20, color: palette.chevronIdle),
+              icon: Icon(
+                Icons.more_horiz,
+                size: 20,
+                color: palette.chevronIdle,
+              ),
               onSelected: (start) => _bulk(context, ref, start),
               itemBuilder: (context) => const [
                 PopupMenuItem(
@@ -1156,10 +1168,10 @@ class _NodeVmGroup extends ConsumerWidget {
                     onTap: onSelect != null
                         ? () => onSelect!(vm)
                         : () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => VmDetailScreen(vm: vm),
-                              ),
+                            MaterialPageRoute<void>(
+                              builder: (_) => VmDetailScreen(vm: vm),
                             ),
+                          ),
                   ),
               ],
             ),

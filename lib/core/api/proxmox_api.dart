@@ -27,6 +27,142 @@ class TermProxyTicket {
   final String user;
 }
 
+/// The two Proxmox guest APIs share the same wire shape except for this
+/// segment and a small set of kind-specific fields.
+enum GuestKind {
+  lxc(
+    pathSegment: 'lxc',
+    label: 'CT',
+    cloneNameField: 'hostname',
+    installMediaContent: 'vztmpl',
+    diskStorageContent: 'rootdir',
+  ),
+  qemu(
+    pathSegment: 'qemu',
+    label: 'VM',
+    cloneNameField: 'name',
+    installMediaContent: 'iso',
+    diskStorageContent: 'images',
+  );
+
+  const GuestKind({
+    required this.pathSegment,
+    required this.label,
+    required this.cloneNameField,
+    required this.installMediaContent,
+    required this.diskStorageContent,
+  });
+
+  final String pathSegment;
+  final String label;
+  final String cloneNameField;
+  final String installMediaContent;
+  final String diskStorageContent;
+
+  /// Builds the exact form field order historically sent by each create
+  /// screen. Keeping this here makes the kind-specific wire contract explicit.
+  Map<String, dynamic> createFields({
+    required int vmid,
+    required String name,
+    required int cores,
+    required int memory,
+    required String storage,
+    required String disk,
+    required bool start,
+    String? installMedia,
+    String password = '',
+    int swap = 512,
+    bool dhcp = true,
+    bool unprivileged = true,
+    int sockets = 1,
+    String osType = 'l26',
+  }) => switch (this) {
+    GuestKind.lxc => <String, dynamic>{
+      'vmid': vmid,
+      'ostemplate': installMedia,
+      'hostname': name,
+      'cores': cores,
+      'memory': memory,
+      'swap': swap,
+      'rootfs': '$storage:$disk',
+      'net0': 'name=eth0,bridge=vmbr0,ip=${dhcp ? 'dhcp' : 'manual'}',
+      'unprivileged': unprivileged ? 1 : 0,
+      'start': start ? 1 : 0,
+      if (password.isNotEmpty) 'password': password,
+    },
+    GuestKind.qemu => <String, dynamic>{
+      'vmid': vmid,
+      'name': name,
+      'cores': cores,
+      'sockets': sockets,
+      'memory': memory,
+      'ostype': osType,
+      'scsihw': 'virtio-scsi-pci',
+      'scsi0': '$storage:$disk',
+      'net0': 'virtio,bridge=vmbr0',
+      if (installMedia != null) 'ide2': '$installMedia,media=cdrom',
+      'boot': 'order=scsi0;ide2;net0',
+      'start': start ? 1 : 0,
+    },
+  };
+}
+
+/// Common status projection used by the shared CT/VM detail screen.
+class GuestStatus {
+  const GuestStatus({
+    required this.status,
+    this.qmpstatus,
+    this.cpu,
+    this.cpus,
+    this.mem,
+    this.maxmem,
+    this.disk,
+    this.maxdisk,
+    this.uptime,
+    this.netin,
+    this.netout,
+  });
+
+  final String status;
+  final String? qmpstatus;
+  final double? cpu;
+  final int? cpus;
+  final int? mem;
+  final int? maxmem;
+  final int? disk;
+  final int? maxdisk;
+  final int? uptime;
+  final int? netin;
+  final int? netout;
+}
+
+GuestStatus _containerGuestStatus(ContainerStatus status) => GuestStatus(
+  status: status.status,
+  cpu: status.cpu,
+  cpus: status.cpus,
+  mem: status.mem,
+  maxmem: status.maxmem,
+  disk: status.disk,
+  maxdisk: status.maxdisk,
+  uptime: status.uptime,
+  netin: status.netin,
+  netout: status.netout,
+);
+
+GuestStatus _vmGuestStatus(VmStatus status) => GuestStatus(
+  status: status.status,
+  qmpstatus: status.qmpstatus,
+  cpu: status.cpu,
+  cpus: status.cpus,
+  mem: status.mem,
+  maxmem: status.maxmem,
+  disk: status.disk,
+  maxdisk: status.maxdisk,
+  uptime: status.uptime,
+  netin: status.netin,
+  netout: status.netout,
+);
+
 /// Dio-based client for the Proxmox VE JSON API.
 ///
 /// Auth is API-token only (no CSRF needed):
@@ -81,8 +217,7 @@ class ProxmoxApi {
   Future<List<Map<String, dynamic>>> getNodeRrd(
     String node, {
     String timeframe = 'hour',
-  }) =>
-      _getList('/nodes/$node/rrddata?timeframe=$timeframe&cf=AVERAGE');
+  }) => _getList('/nodes/$node/rrddata?timeframe=$timeframe&cf=AVERAGE');
 
   /// Recent tasks on [node] (running and archived — `source` defaults to
   /// archive-only without the explicit `all`), newest first.
@@ -154,25 +289,32 @@ class ProxmoxApi {
     return all;
   }
 
-  Future<ContainerStatus> getContainerStatus(String node, int vmid) async {
-    return ContainerStatus.fromJson(
-      await _getMap('/nodes/$node/lxc/$vmid/status/current'),
-    );
+  Future<GuestStatus> getGuestStatus(
+    GuestKind kind,
+    String node,
+    int vmid,
+  ) async {
+    final path = '/nodes/$node/${kind.pathSegment}/$vmid/status/current';
+    final data = await _getMap(path);
+    return switch (kind) {
+      GuestKind.lxc => _containerGuestStatus(ContainerStatus.fromJson(data)),
+      GuestKind.qemu => _vmGuestStatus(VmStatus.fromJson(data)),
+    };
   }
 
-  /// Raw CT config (hostname, ostype, cores, memory, net0, ...).
-  Future<Map<String, dynamic>> getContainerConfig(String node, int vmid) =>
-      _getMap('/nodes/$node/lxc/$vmid/config');
+  Future<Map<String, dynamic>> getGuestConfig(
+    GuestKind kind,
+    String node,
+    int vmid,
+  ) => _getMap('/nodes/$node/${kind.pathSegment}/$vmid/config');
 
   /// Returns the UPID of the spawned task.
-  Future<String> startContainer(String node, int vmid) =>
-      _postForUpid('/nodes/$node/lxc/$vmid/status/start');
-
-  Future<String> stopContainer(String node, int vmid) =>
-      _postForUpid('/nodes/$node/lxc/$vmid/status/stop');
-
-  Future<String> rebootContainer(String node, int vmid) =>
-      _postForUpid('/nodes/$node/lxc/$vmid/status/reboot');
+  Future<String> changeGuestStatus(
+    GuestKind kind,
+    String node,
+    int vmid,
+    String action,
+  ) => _postForUpid('/nodes/$node/${kind.pathSegment}/$vmid/status/$action');
 
   /// Next free VMID for a new guest.
   Future<int> nextVmid() async {
@@ -195,10 +337,7 @@ class ProxmoxApi {
       _getList('/nodes/$node/storage?content=backup');
 
   /// Backup volumes on [storage], returned as raw Proxmox content maps.
-  Future<List<Map<String, dynamic>>> getBackups(
-    String node,
-    String storage,
-  ) =>
+  Future<List<Map<String, dynamic>>> getBackups(String node, String storage) =>
       _getList('/nodes/$node/storage/$storage/content?content=backup');
 
   /// Starts an immediate vzdump backup and returns the task UPID.
@@ -208,70 +347,57 @@ class ProxmoxApi {
     required String storage,
     String mode = 'snapshot',
     bool compress = true,
-  }) =>
-      _postForm('/nodes/$node/vzdump', {
-        'vmid': vmid,
-        'storage': storage,
-        'mode': mode,
-        'compress': compress ? 'zstd' : '0',
-      });
+  }) => _postForm('/nodes/$node/vzdump', {
+    'vmid': vmid,
+    'storage': storage,
+    'mode': mode,
+    'compress': compress ? 'zstd' : '0',
+  });
 
   /// Cluster backup schedules, returned as raw Proxmox job maps.
   Future<List<Map<String, dynamic>>> getBackupJobs() =>
       _getList('/cluster/backup');
 
   /// Deletes [volid] from [storage] and returns the task UPID.
-  Future<String> deleteBackupFile(
-    String node,
-    String storage,
-    String volid,
-  ) {
+  Future<String> deleteBackupFile(String node, String storage, String volid) {
     final encodedVolid = Uri.encodeComponent(volid);
     return _deleteForUpid(
       '/nodes/$node/storage/$storage/content/$encodedVolid',
     );
   }
 
-  /// Available LXC templates on [node] (across all template-capable storages),
-  /// as `{volid, ...}` maps. `volid` is what `ostemplate` needs.
-  Future<List<Map<String, dynamic>>> getTemplates(String node) =>
-      _contentAcrossStorages(node, 'vztmpl');
+  /// Templates for LXC and install ISOs for QEMU, across all capable storage.
+  Future<List<Map<String, dynamic>>> getGuestInstallMedia(
+    GuestKind kind,
+    String node,
+  ) => _contentAcrossStorages(node, kind.installMediaContent);
 
-  /// Creates an LXC container on [node]. [params] are the raw Proxmox create
-  /// fields (vmid, ostemplate, hostname, storage, rootfs, cores, memory, ...).
-  /// Returns the task UPID.
-  Future<String> createLxc(String node, Map<String, dynamic> params) =>
-      _postForm('/nodes/$node/lxc', params);
+  Future<String> createGuest(
+    GuestKind kind,
+    String node,
+    Map<String, dynamic> params,
+  ) => _postForm('/nodes/$node/${kind.pathSegment}', params);
 
-  // --- Phase 2: lifecycle ops -------------------------------------------
-
-  /// Destroys the container. [purge] also removes it from any backup/HA jobs;
-  /// [destroyUnreferenced] wipes disks not otherwise referenced. The container
-  /// must be stopped. Returns the task UPID.
-  Future<String> deleteLxc(
+  Future<String> deleteGuest(
+    GuestKind kind,
     String node,
     int vmid, {
     bool purge = true,
     bool destroyUnreferenced = true,
-  }) {
-    return _deleteForUpid(
-      '/nodes/$node/lxc/$vmid',
-      queryParameters: {
-        if (purge) 'purge': 1,
-        if (destroyUnreferenced) 'destroy-unreferenced-disks': 1,
-      },
-    );
-  }
+  }) => _deleteForUpid(
+    '/nodes/$node/${kind.pathSegment}/$vmid',
+    queryParameters: {
+      if (purge) 'purge': 1,
+      if (destroyUnreferenced) 'destroy-unreferenced-disks': 1,
+    },
+  );
 
-  /// Clones [vmid] to [newid]. A [full] clone is an independent copy (works on
-  /// any container); a linked clone requires the source to be a template.
-  /// [storage] targets the clone's disks; [target] its destination node.
-  /// Returns the task UPID.
-  Future<String> cloneLxc(
+  Future<String> cloneGuest(
+    GuestKind kind,
     String node,
     int vmid, {
     required int newid,
-    String? hostname,
+    String? name,
     bool full = true,
     String? storage,
     String? target,
@@ -279,48 +405,62 @@ class ProxmoxApi {
     final params = <String, dynamic>{
       'newid': newid,
       'full': full ? 1 : 0,
-      if (hostname != null && hostname.isNotEmpty) 'hostname': hostname,
+      if (name != null && name.isNotEmpty) kind.cloneNameField: name,
       'storage': ?storage,
       'target': ?target,
     };
-    return _postForm('/nodes/$node/lxc/$vmid/clone', params);
+    return _postForm('/nodes/$node/${kind.pathSegment}/$vmid/clone', params);
   }
 
-  /// Snapshots for [vmid], as `{name, snaptime, description, parent, ...}` maps.
-  /// Includes a synthetic `{name: 'current'}` entry (the live state) that
-  /// cannot be rolled back to or deleted — callers filter it out.
-  Future<List<Map<String, dynamic>>> getSnapshots(String node, int vmid) =>
-      _getList('/nodes/$node/lxc/$vmid/snapshot');
+  Future<List<Map<String, dynamic>>> getGuestSnapshots(
+    GuestKind kind,
+    String node,
+    int vmid,
+  ) => _getList('/nodes/$node/${kind.pathSegment}/$vmid/snapshot');
 
-  /// Takes a snapshot named [snapname] of [vmid]. Returns the task UPID.
-  Future<String> createSnapshot(
+  Future<String> createGuestSnapshot(
+    GuestKind kind,
     String node,
     int vmid,
     String snapname, {
     String? description,
+    bool vmstate = false,
   }) {
     final params = <String, dynamic>{
       'snapname': snapname,
+      if (kind == GuestKind.qemu && vmstate) 'vmstate': 1,
       if (description != null && description.isNotEmpty)
         'description': description,
     };
-    return _postForm('/nodes/$node/lxc/$vmid/snapshot', params);
+    return _postForm('/nodes/$node/${kind.pathSegment}/$vmid/snapshot', params);
   }
 
-  /// Rolls [vmid] back to snapshot [snapname]. Returns the task UPID.
-  Future<String> rollbackSnapshot(String node, int vmid, String snapname) =>
-      _postForUpid('/nodes/$node/lxc/$vmid/snapshot/$snapname/rollback');
+  Future<String> rollbackGuestSnapshot(
+    GuestKind kind,
+    String node,
+    int vmid,
+    String snapname,
+  ) => _postForUpid(
+    '/nodes/$node/${kind.pathSegment}/$vmid/snapshot/$snapname/rollback',
+  );
 
-  /// Deletes snapshot [snapname] from [vmid]. Returns the task UPID.
-  Future<String> deleteSnapshot(String node, int vmid, String snapname) =>
-      _deleteForUpid('/nodes/$node/lxc/$vmid/snapshot/$snapname');
+  Future<String> deleteGuestSnapshot(
+    GuestKind kind,
+    String node,
+    int vmid,
+    String snapname,
+  ) => _deleteForUpid(
+    '/nodes/$node/${kind.pathSegment}/$vmid/snapshot/$snapname',
+  );
 
   // --- Phase 3: QEMU virtual machines -----------------------------------
 
   Future<List<ProxmoxVm>> getVms(String node) async {
     final data = await _getList('/nodes/$node/qemu');
     final vms =
-        data.map((json) => ProxmoxVm.fromJson(json).copyWith(node: node)).toList()
+        data
+            .map((json) => ProxmoxVm.fromJson(json).copyWith(node: node))
+            .toList()
           ..sort((a, b) => a.vmid.compareTo(b.vmid));
     return vms;
   }
@@ -335,112 +475,6 @@ class ProxmoxApi {
     all.sort((a, b) => a.vmid.compareTo(b.vmid));
     return all;
   }
-
-  Future<VmStatus> getVmStatus(String node, int vmid) async {
-    return VmStatus.fromJson(
-      await _getMap('/nodes/$node/qemu/$vmid/status/current'),
-    );
-  }
-
-  /// Raw VM config (name, cores, memory, ostype, net0, scsi0, ...).
-  Future<Map<String, dynamic>> getVmConfig(String node, int vmid) =>
-      _getMap('/nodes/$node/qemu/$vmid/config');
-
-  Future<String> startVm(String node, int vmid) =>
-      _postForUpid('/nodes/$node/qemu/$vmid/status/start');
-
-  /// Hard power-off (like pulling the plug). Prefer [shutdownVm] for a clean
-  /// ACPI shutdown when the guest supports it.
-  Future<String> stopVm(String node, int vmid) =>
-      _postForUpid('/nodes/$node/qemu/$vmid/status/stop');
-
-  /// Graceful ACPI shutdown (requires guest cooperation).
-  Future<String> shutdownVm(String node, int vmid) =>
-      _postForUpid('/nodes/$node/qemu/$vmid/status/shutdown');
-
-  Future<String> rebootVm(String node, int vmid) =>
-      _postForUpid('/nodes/$node/qemu/$vmid/status/reboot');
-
-  /// Available install ISOs on [node] (across all iso-capable storages), as
-  /// `{volid, ...}` maps. `volid` is what a cdrom drive (`ide2`) needs.
-  Future<List<Map<String, dynamic>>> getIsos(String node) =>
-      _contentAcrossStorages(node, 'iso');
-
-  /// Creates a QEMU VM on [node]. [params] are the raw Proxmox create fields
-  /// (vmid, name, cores, memory, ostype, scsi0, ide2, net0, ...). Returns the
-  /// task UPID.
-  Future<String> createVm(String node, Map<String, dynamic> params) =>
-      _postForm('/nodes/$node/qemu', params);
-
-  /// Destroys the VM. [purge] also removes it from any backup/HA jobs;
-  /// [destroyUnreferenced] wipes disks not otherwise referenced. The VM must
-  /// be stopped. Returns the task UPID.
-  Future<String> deleteVm(
-    String node,
-    int vmid, {
-    bool purge = true,
-    bool destroyUnreferenced = true,
-  }) {
-    return _deleteForUpid(
-      '/nodes/$node/qemu/$vmid',
-      queryParameters: {
-        if (purge) 'purge': 1,
-        if (destroyUnreferenced) 'destroy-unreferenced-disks': 1,
-      },
-    );
-  }
-
-  /// Clones [vmid] to [newid]. A [full] clone is an independent copy; a linked
-  /// clone requires the source to be a template. Returns the task UPID.
-  Future<String> cloneVm(
-    String node,
-    int vmid, {
-    required int newid,
-    String? name,
-    bool full = true,
-    String? storage,
-    String? target,
-  }) {
-    final params = <String, dynamic>{
-      'newid': newid,
-      'full': full ? 1 : 0,
-      if (name != null && name.isNotEmpty) 'name': name,
-      'storage': ?storage,
-      'target': ?target,
-    };
-    return _postForm('/nodes/$node/qemu/$vmid/clone', params);
-  }
-
-  /// Snapshots for [vmid], as `{name, snaptime, description, parent, ...}` maps.
-  /// Includes a synthetic `{name: 'current'}` entry — callers filter it out.
-  Future<List<Map<String, dynamic>>> getVmSnapshots(String node, int vmid) =>
-      _getList('/nodes/$node/qemu/$vmid/snapshot');
-
-  /// Takes a snapshot named [snapname] of [vmid]. [vmstate] also saves RAM
-  /// (only meaningful for a running VM). Returns the task UPID.
-  Future<String> createVmSnapshot(
-    String node,
-    int vmid,
-    String snapname, {
-    String? description,
-    bool vmstate = false,
-  }) {
-    final params = <String, dynamic>{
-      'snapname': snapname,
-      if (vmstate) 'vmstate': 1,
-      if (description != null && description.isNotEmpty)
-        'description': description,
-    };
-    return _postForm('/nodes/$node/qemu/$vmid/snapshot', params);
-  }
-
-  /// Rolls [vmid] back to snapshot [snapname]. Returns the task UPID.
-  Future<String> rollbackVmSnapshot(String node, int vmid, String snapname) =>
-      _postForUpid('/nodes/$node/qemu/$vmid/snapshot/$snapname/rollback');
-
-  /// Deletes snapshot [snapname] from [vmid]. Returns the task UPID.
-  Future<String> deleteVmSnapshot(String node, int vmid, String snapname) =>
-      _deleteForUpid('/nodes/$node/qemu/$vmid/snapshot/$snapname');
 
   // --- Phase 4: console -------------------------------------------------
 
