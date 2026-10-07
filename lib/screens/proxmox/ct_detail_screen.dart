@@ -5,10 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/proxmox_api.dart';
-import '../../core/models/container_status.dart';
 import '../../core/models/proxmox_container.dart';
 import '../../core/providers/proxmox_providers.dart';
+import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/util/proxmox_console.dart';
 import '../../core/widgets/brass_panel.dart';
 import '../../core/widgets/chart_card.dart';
 import 'console_screen.dart';
@@ -19,7 +20,7 @@ import 'proxmox_screen.dart' show selectedGuestProvider;
 ///
 /// [embedded] renders it as a pane (inline header, no Scaffold/AppBar) for
 /// the wide-layout master-detail split on the Proxmox tab.
-class CtDetailScreen extends ConsumerStatefulWidget {
+class CtDetailScreen extends StatelessWidget {
   const CtDetailScreen({
     super.key,
     required this.container,
@@ -30,7 +31,35 @@ class CtDetailScreen extends ConsumerStatefulWidget {
   final bool embedded;
 
   @override
-  ConsumerState<CtDetailScreen> createState() => _CtDetailScreenState();
+  Widget build(BuildContext context) => GuestDetailScreen(
+    kind: GuestKind.lxc,
+    node: container.node ?? '',
+    vmid: container.vmid,
+    name: container.name,
+    embedded: embedded,
+  );
+}
+
+/// Shared CT/VM detail implementation. The wrappers retain the public screen
+/// constructors while lifecycle, snapshot, and layout logic live here once.
+class GuestDetailScreen extends ConsumerStatefulWidget {
+  const GuestDetailScreen({
+    super.key,
+    required this.kind,
+    required this.node,
+    required this.vmid,
+    required this.name,
+    this.embedded = false,
+  });
+
+  final GuestKind kind;
+  final String node;
+  final int vmid;
+  final String? name;
+  final bool embedded;
+
+  @override
+  ConsumerState<GuestDetailScreen> createState() => _GuestDetailScreenState();
 }
 
 class _Sample {
@@ -40,12 +69,12 @@ class _Sample {
   final double ramPct;
 }
 
-class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
+class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
   static const _pollInterval = Duration(seconds: 5);
   static const _maxSamples = 60; // 5 minutes of history
 
   Timer? _timer;
-  ContainerStatus? _status;
+  GuestStatus? _status;
   Map<String, dynamic>? _config;
   Object? _error;
   final _samples = <_Sample>[];
@@ -54,8 +83,10 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
   bool _actionRunning = false;
   List<Map<String, dynamic>>? _snapshots;
 
-  String get _node => widget.container.node ?? '';
-  int get _vmid => widget.container.vmid;
+  GuestKind get _kind => widget.kind;
+  String get _node => widget.node;
+  int get _vmid => widget.vmid;
+  bool get _isVm => _kind == GuestKind.qemu;
 
   @override
   void initState() {
@@ -74,8 +105,8 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
   Future<void> _poll() async {
     try {
       final api = await ref.read(proxmoxApiProvider.future);
-      final status = await api.getContainerStatus(_node, _vmid);
-      _config ??= await api.getContainerConfig(_node, _vmid);
+      final status = await api.getGuestStatus(_kind, _node, _vmid);
+      _config ??= await api.getGuestConfig(_kind, _node, _vmid);
       if (!mounted) return;
       setState(() {
         _error = null;
@@ -109,9 +140,9 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('$verb CT $_vmid?'),
+        title: Text('$verb ${_kind.label} $_vmid?'),
         content: Text(
-          '$verb ${widget.container.name ?? 'container'} on $_node.',
+          '$verb ${widget.name ?? (_isVm ? 'VM' : 'container')} on $_node.',
         ),
         actions: [
           TextButton(
@@ -147,19 +178,36 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     }
   }
 
+  Future<void> _openVmConsole() async {
+    final proxmoxUrl =
+        ref.read(settingsControllerProvider).value?.proxmoxUrl ?? '';
+    final err = await openProxmoxConsole(
+      proxmoxUrl: proxmoxUrl,
+      node: _node,
+      vmid: _vmid,
+      kind: 'kvm',
+    );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(err ?? 'Opening VM $_vmid console in your browser…'),
+      ),
+    );
+  }
+
   Future<void> _loadSnapshots() async {
     try {
       final api = await ref.read(proxmoxApiProvider.future);
-      final snaps = await api.getSnapshots(_node, _vmid);
+      final snaps = await api.getGuestSnapshots(_kind, _node, _vmid);
       if (!mounted) return;
       // Drop the synthetic 'current' entry; show newest first.
       setState(() {
-        _snapshots =
-            snaps.where((s) => s['name'] != 'current').toList()..sort(
-              (a, b) => ((b['snaptime'] as num?) ?? 0).compareTo(
-                (a['snaptime'] as num?) ?? 0,
-              ),
-            );
+        _snapshots = snaps.where((s) => s['name'] != 'current').toList()
+          ..sort(
+            (a, b) => ((b['snaptime'] as num?) ?? 0).compareTo(
+              (a['snaptime'] as num?) ?? 0,
+            ),
+          );
       });
     } catch (_) {
       // Non-fatal — the card just shows nothing.
@@ -196,43 +244,54 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
   Future<void> _takeSnapshot() async {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    var withRam = false;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Snapshot CT $_vmid'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Name',
-                hintText: 'e.g. before-upgrade',
+      builder: (context) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: Text('Snapshot ${_kind.label} $_vmid'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                  hintText: 'e.g. before-upgrade',
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_-]')),
+                ],
               ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_-]')),
-              ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: descCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                ),
+              ),
+              if (_isVm)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Include RAM'),
+                  subtitle: const Text('Save running memory state'),
+                  value: withRam,
+                  onChanged: (v) => setLocal(() => withRam = v),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
             ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: descCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-              ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Snapshot'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Snapshot'),
-          ),
-        ],
       ),
     );
     final name = nameCtrl.text.trim();
@@ -242,11 +301,13 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     if (ok != true || name.isEmpty || !mounted) return;
     await _runSnapshotAction(
       'Snapshot $name requested',
-      (api) => api.createSnapshot(
+      (api) => api.createGuestSnapshot(
+        _kind,
         _node,
         _vmid,
         name,
         description: desc.isEmpty ? null : desc,
+        vmstate: withRam,
       ),
     );
   }
@@ -257,8 +318,8 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
       builder: (context) => AlertDialog(
         title: Text('Roll back to "$snapname"?'),
         content: Text(
-          'CT $_vmid will be reverted to this snapshot. Any changes made since '
-          'then are lost.',
+          '${_kind.label} $_vmid will be reverted to this snapshot. Any '
+          'changes made since then are lost.',
         ),
         actions: [
           TextButton(
@@ -278,7 +339,7 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     if (ok != true || !mounted) return;
     await _runSnapshotAction(
       'Rollback to $snapname requested',
-      (api) => api.rollbackSnapshot(_node, _vmid, snapname),
+      (api) => api.rollbackGuestSnapshot(_kind, _node, _vmid, snapname),
     );
   }
 
@@ -305,7 +366,7 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     if (ok != true || !mounted) return;
     await _runSnapshotAction(
       'Delete $snapname requested',
-      (api) => api.deleteSnapshot(_node, _vmid, snapname),
+      (api) => api.deleteGuestSnapshot(_kind, _node, _vmid, snapname),
     );
   }
 
@@ -317,13 +378,13 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     } catch (_) {}
     if (!mounted) return;
     final idCtrl = TextEditingController(text: newid?.toString() ?? '');
-    final hostCtrl = TextEditingController();
+    final nameCtrl = TextEditingController();
     var full = true;
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocal) => AlertDialog(
-          title: Text('Clone CT $_vmid'),
+          title: Text('Clone ${_kind.label} $_vmid'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -335,9 +396,9 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
               ),
               const SizedBox(height: 8),
               TextField(
-                controller: hostCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Hostname (optional)',
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: _isVm ? 'Name (optional)' : 'Hostname (optional)',
                 ),
               ),
               SwitchListTile(
@@ -363,25 +424,32 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
       ),
     );
     final targetId = int.tryParse(idCtrl.text);
-    final host = hostCtrl.text.trim();
+    final cloneName = nameCtrl.text.trim();
     idCtrl.dispose();
-    hostCtrl.dispose();
+    nameCtrl.dispose();
     if (ok != true || targetId == null || !mounted) return;
     setState(() => _actionRunning = true);
     try {
       final api = await ref.read(proxmoxApiProvider.future);
-      final upid = await api.cloneLxc(
+      final upid = await api.cloneGuest(
+        _kind,
         _node,
         _vmid,
         newid: targetId,
-        hostname: host.isEmpty ? null : host,
+        name: cloneName.isEmpty ? null : cloneName,
         full: full,
       );
-      ref.invalidate(allContainersProvider);
+      if (_isVm) {
+        ref.invalidate(allVmsProvider);
+      } else {
+        ref.invalidate(allContainersProvider);
+      }
       ref.invalidate(recentTasksProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cloning to CT $targetId… ($upid)')),
+          SnackBar(
+            content: Text('Cloning to ${_kind.label} $targetId… ($upid)'),
+          ),
         );
       }
     } catch (e) {
@@ -399,7 +467,13 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     final running = _status?.status == 'running';
     if (running) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stop the container before deleting.')),
+        SnackBar(
+          content: Text(
+            _isVm
+                ? 'Stop the VM before deleting.'
+                : 'Stop the container before deleting.',
+          ),
+        ),
       );
       return;
     }
@@ -409,14 +483,15 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setLocal) => AlertDialog(
-          title: Text('Delete CT $_vmid?'),
+          title: Text('Delete ${_kind.label} $_vmid?'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'This permanently destroys ${widget.container.name ?? 'the '
-                'container'} and its disks. Type $_vmid to confirm.',
+                'This permanently destroys '
+                '${widget.name ?? (_isVm ? 'the VM' : 'the container')} and '
+                'its disks. Type $_vmid to confirm.',
               ),
               const SizedBox(height: 12),
               TextField(
@@ -458,12 +533,16 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
     setState(() => _actionRunning = true);
     try {
       final api = await ref.read(proxmoxApiProvider.future);
-      final upid = await api.deleteLxc(_node, _vmid, purge: purge);
-      ref.invalidate(allContainersProvider);
+      final upid = await api.deleteGuest(_kind, _node, _vmid, purge: purge);
+      if (_isVm) {
+        ref.invalidate(allVmsProvider);
+      } else {
+        ref.invalidate(allContainersProvider);
+      }
       ref.invalidate(recentTasksProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Deleting CT $_vmid… ($upid)')),
+          SnackBar(content: Text('Deleting ${_kind.label} $_vmid… ($upid)')),
         );
         if (widget.embedded) {
           // No pushed route in the wide-split pane — popping here would
@@ -499,12 +578,12 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'CT $_vmid — ${widget.container.name ?? ''}',
+                    '${_kind.label} $_vmid — ${widget.name ?? ''}',
                     style: Theme.of(context).textTheme.titleLarge,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                _consoleButton(running),
+                if (!_isVm) _consoleButton(running),
                 _overflowMenu(context),
               ],
             ),
@@ -516,143 +595,153 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('CT $_vmid — ${widget.container.name ?? ''}'),
-        actions: [
-          _consoleButton(running),
-          _overflowMenu(context),
-        ],
+        title: Text('${_kind.label} $_vmid — ${widget.name ?? ''}'),
+        actions: [if (!_isVm) _consoleButton(running), _overflowMenu(context)],
       ),
       body: _body(status, running),
     );
   }
 
   Widget _consoleButton(bool running) => IconButton(
-        icon: const Icon(Icons.terminal),
-        tooltip: running ? 'Console' : 'Console (start the container first)',
-        onPressed: running
-            ? () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => ConsoleScreen(
-                    node: _node,
-                    vmid: _vmid,
-                    title: widget.container.name ?? '',
-                  ),
-                ),
-              )
-            : null,
-      );
+    icon: const Icon(Icons.terminal),
+    tooltip: running ? 'Console' : 'Console (start the container first)',
+    onPressed: running
+        ? () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ConsoleScreen(
+                node: _node,
+                vmid: _vmid,
+                title: widget.name ?? '',
+              ),
+            ),
+          )
+        : null,
+  );
 
   Widget _overflowMenu(BuildContext context) => PopupMenuButton<String>(
-            enabled: !_actionRunning,
-            onSelected: (v) {
-              switch (v) {
-                case 'clone':
-                  _clone();
-                case 'snapshot':
-                  _takeSnapshot();
-                case 'delete':
-                  _delete();
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'clone',
-                child: ListTile(
-                  leading: Icon(Icons.copy_all),
-                  title: Text('Clone…'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'snapshot',
-                child: ListTile(
-                  leading: Icon(Icons.camera_alt),
-                  title: Text('Take snapshot…'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                  leading: Icon(
-                    Icons.delete_forever,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  title: const Text('Delete…'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          );
+    enabled: !_actionRunning,
+    onSelected: (v) {
+      switch (v) {
+        case 'clone':
+          _clone();
+        case 'snapshot':
+          _takeSnapshot();
+        case 'delete':
+          _delete();
+      }
+    },
+    itemBuilder: (context) => [
+      const PopupMenuItem(
+        value: 'clone',
+        child: ListTile(
+          leading: Icon(Icons.copy_all),
+          title: Text('Clone…'),
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+      const PopupMenuItem(
+        value: 'snapshot',
+        child: ListTile(
+          leading: Icon(Icons.camera_alt),
+          title: Text('Take snapshot…'),
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+      const PopupMenuDivider(),
+      PopupMenuItem(
+        value: 'delete',
+        child: ListTile(
+          leading: Icon(
+            Icons.delete_forever,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          title: const Text('Delete…'),
+          contentPadding: EdgeInsets.zero,
+        ),
+      ),
+    ],
+  );
 
-  Widget _body(ContainerStatus? status, bool running) => status == null
+  Widget _statusChip(GuestStatus status, bool running, Color ok, Color crit) =>
+      Chip(
+        avatar: Icon(
+          running ? Icons.play_arrow : Icons.stop,
+          size: 16,
+          color: running ? ok : crit,
+        ),
+        label: Text(status.status),
+      );
+
+  Widget _powerButton(String label, bool enabled, String action) =>
+      OutlinedButton(
+        onPressed: !_actionRunning && enabled
+            ? () => _confirmAndRun(
+                label,
+                (api) => api.changeGuestStatus(_kind, _node, _vmid, action),
+              )
+            : null,
+        child: Text(label),
+      );
+
+  Widget _body(GuestStatus? status, bool running) => status == null
       ? Center(
           child: _error == null
               ? const CircularProgressIndicator()
               : Text('Failed to load: $_error'),
         )
-      : LayoutBuilder(builder: (context, constraints) {
-          final brass = context.brass;
-          // Wide panes pair the cards up two-across so the space works
-          // instead of stacking narrow full-width strips. No IntrinsicHeight
-          // (fl_chart throws); top-aligned, cards size to content.
-          final twoCol = constraints.maxWidth >= 520;
-          Widget pair(Widget a, Widget b) => twoCol
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: a),
-                    const SizedBox(width: 16),
-                    Expanded(child: b),
-                  ],
-                )
-              : Column(children: [a, const SizedBox(height: 16), b]);
-          return ListView(
+      : LayoutBuilder(
+          builder: (context, constraints) {
+            final brass = context.brass;
+            // Wide panes pair the cards up two-across so the space works
+            // instead of stacking narrow full-width strips. No IntrinsicHeight
+            // (fl_chart throws); top-aligned, cards size to content.
+            final twoCol = constraints.maxWidth >= 520;
+            Widget pair(Widget a, Widget b) => twoCol
+                ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: a),
+                      const SizedBox(width: 16),
+                      Expanded(child: b),
+                    ],
+                  )
+                : Column(children: [a, const SizedBox(height: 16), b]);
+            return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Row(
-                  children: [
-                    Chip(
-                      avatar: Icon(
-                        running ? Icons.play_arrow : Icons.stop,
-                        size: 16,
-                        color: running ? brass.ok : brass.crit,
+                if (!_isVm)
+                  Row(
+                    children: [
+                      _statusChip(status, running, brass.ok, brass.crit),
+                      const Spacer(),
+                      _powerButton('Start', !running, 'start'),
+                      const SizedBox(width: 8),
+                      _powerButton('Stop', running, 'stop'),
+                      const SizedBox(width: 8),
+                      _powerButton('Reboot', running, 'reboot'),
+                    ],
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _statusChip(status, running, brass.ok, brass.crit),
+                      _powerButton('Start', !running, 'start'),
+                      _powerButton('Shutdown', running, 'shutdown'),
+                      _powerButton('Stop', running, 'stop'),
+                      _powerButton('Reboot', running, 'reboot'),
+                      OutlinedButton.icon(
+                        onPressed: running ? _openVmConsole : null,
+                        icon: const Icon(
+                          Icons.desktop_windows_outlined,
+                          size: 16,
+                        ),
+                        label: const Text('Console'),
                       ),
-                      label: Text(status.status),
-                    ),
-                    const Spacer(),
-                    OutlinedButton(
-                      onPressed: !_actionRunning && !running
-                          ? () => _confirmAndRun(
-                              'Start',
-                              (api) => api.startContainer(_node, _vmid),
-                            )
-                          : null,
-                      child: const Text('Start'),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: !_actionRunning && running
-                          ? () => _confirmAndRun(
-                              'Stop',
-                              (api) => api.stopContainer(_node, _vmid),
-                            )
-                          : null,
-                      child: const Text('Stop'),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: !_actionRunning && running
-                          ? () => _confirmAndRun(
-                              'Reboot',
-                              (api) => api.rebootContainer(_node, _vmid),
-                            )
-                          : null,
-                      child: const Text('Reboot'),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
@@ -677,6 +766,7 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
                 const SizedBox(height: 16),
                 pair(
                   _InfoCard(
+                    kind: _kind,
                     status: status,
                     config: _config,
                     netinRate: _netinRate,
@@ -692,7 +782,8 @@ class _CtDetailScreenState extends ConsumerState<CtDetailScreen> {
                 ),
               ],
             );
-        });
+          },
+        );
 }
 
 /// Snapshot list + management for the current container.
@@ -783,9 +874,7 @@ class _SnapshotCard extends StatelessWidget {
                       IconButton(
                         tooltip: 'Delete',
                         icon: const Icon(Icons.delete_outline),
-                        onPressed: busy
-                            ? null
-                            : () => onDelete('${s['name']}'),
+                        onPressed: busy ? null : () => onDelete('${s['name']}'),
                       ),
                     ],
                   ),
@@ -799,13 +888,15 @@ class _SnapshotCard extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   const _InfoCard({
+    required this.kind,
     required this.status,
     required this.config,
     required this.netinRate,
     required this.netoutRate,
   });
 
-  final ContainerStatus status;
+  final GuestKind kind;
+  final GuestStatus status;
   final Map<String, dynamic>? config;
   final double netinRate;
   final double netoutRate;
@@ -836,16 +927,36 @@ class _InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cfg = config ?? const <String, dynamic>{};
-    final rows = <(String, String)>[
-      ('Uptime', _uptime(status.uptime)),
-      ('OS', '${cfg['ostype'] ?? '—'}'),
-      ('IP', _ipFromNet0(cfg['net0'] as String?) ?? '—'),
-      ('Cores', '${cfg['cores'] ?? status.cpus ?? '—'}'),
-      ('RAM', '${_bytes(status.mem)} / ${_bytes(status.maxmem)}'),
-      ('Disk', '${_bytes(status.disk)} / ${_bytes(status.maxdisk)}'),
-      ('Net in', _rate(netinRate)),
-      ('Net out', _rate(netoutRate)),
-    ];
+    final cores = cfg['cores'];
+    final sockets = cfg['sockets'];
+    final vcpus = (cores is num && sockets is num)
+        ? '${(cores * sockets).toInt()}'
+        : '${cores ?? status.cpus ?? '—'}';
+    final rows = kind == GuestKind.lxc
+        ? <(String, String)>[
+            ('Uptime', _uptime(status.uptime)),
+            ('OS', '${cfg['ostype'] ?? '—'}'),
+            ('IP', _ipFromNet0(cfg['net0'] as String?) ?? '—'),
+            ('Cores', '${cfg['cores'] ?? status.cpus ?? '—'}'),
+            ('RAM', '${_bytes(status.mem)} / ${_bytes(status.maxmem)}'),
+            ('Disk', '${_bytes(status.disk)} / ${_bytes(status.maxdisk)}'),
+            ('Net in', _rate(netinRate)),
+            ('Net out', _rate(netoutRate)),
+          ]
+        : <(String, String)>[
+            ('Uptime', _uptime(status.uptime)),
+            ('OS type', '${cfg['ostype'] ?? '—'}'),
+            ('QMP status', status.qmpstatus ?? '—'),
+            ('vCPUs', vcpus),
+            ('RAM', '${_bytes(status.mem)} / ${_bytes(status.maxmem)}'),
+            ('Disk', '${_bytes(status.disk)} / ${_bytes(status.maxdisk)}'),
+            (
+              'Boot disk',
+              '${cfg['scsi0'] ?? cfg['virtio0'] ?? cfg['sata0'] ?? '—'}',
+            ),
+            ('Net in', _rate(netinRate)),
+            ('Net out', _rate(netoutRate)),
+          ];
     return BrassPanel(
       padding: EdgeInsets.zero,
       child: Padding(
@@ -855,8 +966,7 @@ class _InfoCard extends StatelessWidget {
           children: [
             const ProxmoxSectionHeader('INFO'),
             const SizedBox(height: 8),
-            for (final (label, value) in rows)
-              pair(context, label, value),
+            for (final (label, value) in rows) pair(context, label, value),
           ],
         ),
       ),
