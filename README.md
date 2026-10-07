@@ -46,11 +46,12 @@ variants; pick one in Settings. The shots below are demo mode.
 
 ## Install
 
-Download the AppImage from the releases page, then:
+Download the AppImage from the releases page (named
+`Peira-v<version>-x86_64.AppImage`), then:
 
 ```bash
-chmod +x Peira-x86_64.AppImage
-./Peira-x86_64.AppImage
+chmod +x Peira-v*-x86_64.AppImage
+./Peira-v*-x86_64.AppImage
 ```
 
 Verify a release before running it:
@@ -67,7 +68,7 @@ it to (a single GET; no telemetry of any kind).
 **Want to look around without a Proxmox cluster?**
 
 ```bash
-./Peira-x86_64.AppImage --demo
+./Peira-v*-x86_64.AppImage --demo
 ```
 
 Demo mode boots a fully populated, obviously-fake lab — no configuration,
