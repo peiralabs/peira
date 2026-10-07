@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:peira/core/theme/app_theme.dart';
 import 'package:peira/core/webview/cef_webview.dart';
 import 'package:peira/core/webview/web_masks.dart';
 import 'package:webview_cef/webview_cef.dart';
@@ -10,20 +11,46 @@ void main() {
   group('WebMasks.scriptFor', () {
     test('resolves a distinct palette per brightness', () {
       for (final service in ['Wiki', 'Open WebUI', 'Jellyseerr']) {
-        final dark = WebMasks.scriptFor(service, isDark: true)!;
-        final light = WebMasks.scriptFor(service, isDark: false)!;
+        final dark = WebMasks.scriptFor(service, palette: Brass.dark)!;
+        final light = WebMasks.scriptFor(service, palette: Brass.light)!;
         expect(dark, isNot(equals(light)));
         expect(dark, contains('color-scheme: dark'));
         expect(light, contains('color-scheme: light'));
       }
-      expect(WebMasks.scriptFor('Grafana', isDark: true), isNull);
+      expect(WebMasks.scriptFor('Grafana', palette: Brass.dark), isNull);
+    });
+
+    test('uses a non-Brass family palette and fonts', () {
+      final graphite = WebMasks.scriptFor('Wiki', palette: Brass.graphiteDark)!;
+      final graphiteLight = WebMasks.scriptFor(
+        'Wiki',
+        palette: Brass.graphiteLight,
+      )!;
+      final terminal = WebMasks.scriptFor('Wiki', palette: Brass.terminalDark)!;
+
+      expect(graphite, contains('background: #121417 !important'));
+      expect(graphite, contains('color: #E8EEF4 !important'));
+      expect(graphiteLight, contains('background: #E6EAEF !important'));
+      expect(graphiteLight, contains('color-scheme: light'));
+      expect(terminal, contains("font-family: 'JetBrains Mono'"));
+      expect(terminal, contains('background: #050806 !important'));
+    });
+
+    test('keeps the shipped Brass palette and typography', () {
+      final dark = WebMasks.scriptFor('Wiki', palette: Brass.dark)!;
+      final light = WebMasks.scriptFor('Wiki', palette: Brass.light)!;
+
+      expect(dark, contains('background: #0E1810 !important'));
+      expect(light, contains('background: #EDE4CF !important'));
+      expect(dark, contains("font-family: 'EB Garamond', Georgia"));
+      expect(dark, contains("font-family: 'Playfair Display', Georgia"));
     });
 
     test('re-running replaces the injected style node content', () {
       // The injector must overwrite #__mol_mask unconditionally — an
       // only-if-absent guard would make a live brightness flip a no-op
       // (the creation-time palette would win forever).
-      final script = WebMasks.scriptFor('Wiki', isDark: true)!;
+      final script = WebMasks.scriptFor('Wiki', palette: Brass.dark)!;
       expect(script, contains("getElementById('__mol_mask')"));
       expect(script, contains('s.textContent ='));
       expect(
@@ -37,7 +64,7 @@ void main() {
       // Confluence they would half-apply. The whole mask (style node, theme
       // poller, brass observer) must sit inside the DOM-detection gate, and a
       // superseded gate's poller must stop on re-injection.
-      final script = WebMasks.scriptFor('Wiki', isDark: true)!;
+      final script = WebMasks.scriptFor('Wiki', palette: Brass.dark)!;
       final gate = script.indexOf("document.querySelector('.v-application')");
       expect(gate, greaterThanOrEqualTo(0));
       expect(script.indexOf("getElementById('__mol_mask')"), greaterThan(gate));
@@ -45,12 +72,14 @@ void main() {
       expect(script.indexOf('__molBrassMo'), greaterThan(gate));
       expect(script, contains('if (gen !== window.__molWikiGateGen) return;'));
       // The generic base-only services stay ungated.
-      expect(WebMasks.scriptFor('Open WebUI', isDark: true),
-          isNot(contains('__molWikiGateGen')));
+      expect(
+        WebMasks.scriptFor('Open WebUI', palette: Brass.dark),
+        isNot(contains('__molWikiGateGen')),
+      );
     });
 
     test('Wiki script replaces its observer and theme poller on re-run', () {
-      final script = WebMasks.scriptFor('Wiki', isDark: false)!;
+      final script = WebMasks.scriptFor('Wiki', palette: Brass.light)!;
       // The previous injection's MutationObserver closed over its own palette
       // and would keep re-painting it; and a superseded vuetify-theme poll
       // must stop instead of racing its stale value in.
@@ -66,25 +95,23 @@ void main() {
         ..add(UserScript('base', ScriptInjectTime.LOAD_START));
 
       var tracked = replaceMaskScripts(scripts, const [], 'dark-mask');
-      expect(
-        scripts.retrieveLoadStartInjectScripts().map((s) => s.script),
-        ['base', 'dark-mask'],
-      );
-      expect(
-        scripts.retrieveLoadEndInjectScripts().map((s) => s.script),
-        ['dark-mask'],
-      );
+      expect(scripts.retrieveLoadStartInjectScripts().map((s) => s.script), [
+        'base',
+        'dark-mask',
+      ]);
+      expect(scripts.retrieveLoadEndInjectScripts().map((s) => s.script), [
+        'dark-mask',
+      ]);
 
       // Flip: the old entries go, the base scripts stay untouched.
       tracked = replaceMaskScripts(scripts, tracked, 'light-mask');
-      expect(
-        scripts.retrieveLoadStartInjectScripts().map((s) => s.script),
-        ['base', 'light-mask'],
-      );
-      expect(
-        scripts.retrieveLoadEndInjectScripts().map((s) => s.script),
-        ['light-mask'],
-      );
+      expect(scripts.retrieveLoadStartInjectScripts().map((s) => s.script), [
+        'base',
+        'light-mask',
+      ]);
+      expect(scripts.retrieveLoadEndInjectScripts().map((s) => s.script), [
+        'light-mask',
+      ]);
 
       tracked = replaceMaskScripts(scripts, tracked, null);
       expect(tracked, isEmpty);

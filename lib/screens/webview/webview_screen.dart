@@ -107,24 +107,21 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen>
       'changedetection.io' => 'Embedded · changedetection.io',
       _ => null,
     };
-    // The mask palette follows the effective brightness live: context.brass is
-    // Theme-resolved, so a System/Light/Dark flip (or an OS brightness change
-    // under System) rebuilds this screen with a new maskScript, and the
+    // The mask palette follows the active family and effective brightness live:
+    // context.brass is Theme-resolved, so a family or System/Light/Dark change
+    // rebuilds this screen with a new maskScript, and the
     // platform webviews re-inject it into already-open pages
     // (didUpdateWidget → executeJavaScript / runJavaScript).
     // Combine the cosmetic mask with an autofill script for the service's own
     // login form (when a credential is stored), so both are injected on load
     // and re-run together on a theme flip.
-    final mask = WebMasks.scriptFor(widget.service, isDark: brass.isDark);
+    final mask = WebMasks.scriptFor(widget.service, palette: brass);
     final login = WebLogins.scriptFor(
       widget.service,
       login: settings?.webLoginFor(widget.service),
       autoSubmit: settings?.webAutoLogin ?? true,
     );
-    final script = [
-      mask,
-      login,
-    ].where((s) => s != null).join('\n');
+    final script = [mask, login].where((s) => s != null).join('\n');
 
     final webView = ref
         .watch(webViewFactoryProvider)

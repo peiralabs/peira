@@ -1,7 +1,11 @@
+import 'package:flutter/material.dart' show Color;
+
+import '../theme/brass.dart';
+
 /// Per-service "masks": JavaScript injected into each embedded web view so it
 /// blends into the app instead of looking like a website. Every service gets a
 /// base field matching the app background and themed scrollbars, resolved for
-/// the brightness passed to [WebMasks.scriptFor]. The script is injected on
+/// the active theme palette passed to [WebMasks.scriptFor]. The script is injected on
 /// every page load and re-run into live pages when the effective brightness
 /// flips, so each run must fully replace the previous mask (style node,
 /// observers, pollers) rather than append to it.
@@ -47,7 +51,7 @@ class WebMasks {
 
     /* Body copy — antique serif on a warm parchment-ink colour. */
     .v-main, .v-main .contents, .v-main .page {
-      font-family: 'EB Garamond', Georgia, 'Times New Roman', serif !important;
+      font-family: ${p.bodyFont} !important;
       color: ${p.bodyInk} !important;
       font-size: 17px !important;
       line-height: 1.72 !important;
@@ -56,7 +60,7 @@ class WebMasks {
     /* Headings — Playfair, cream, with the first (page title) larger. */
     .v-main h1, .v-main h2, .v-main h3, .v-main h4,
     .v-main .page-header, .v-main .page-header * {
-      font-family: 'Playfair Display', Georgia, serif !important;
+      font-family: ${p.displayFont} !important;
       color: ${p.headingInk} !important;
       font-weight: 800 !important;
       letter-spacing: .2px !important;
@@ -77,7 +81,7 @@ class WebMasks {
        <div>, so match the first <p> anywhere under .contents, not a child). */
     .v-main .contents p:first-of-type::first-letter,
     .v-main .page p:first-of-type::first-letter {
-      font-family: 'Playfair Display', Georgia, serif;
+      font-family: ${p.displayFont};
       font-size: 3.1em;
       line-height: .78;
       float: left;
@@ -112,7 +116,7 @@ class WebMasks {
     .v-main th {
       background: ${p.tableHeadBg} !important;
       color: ${p.tableHeadInk} !important;
-      font-family: 'Playfair Display', Georgia, serif !important;
+      font-family: ${p.displayFont} !important;
       font-weight: 700 !important;
       text-transform: uppercase !important;
       letter-spacing: .12em !important;
@@ -134,7 +138,7 @@ class WebMasks {
 
     /* Code + fenced blocks → a small, recessed mono panel. */
     .v-main code, .v-main kbd {
-      font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+      font-family: ${p.codeFont} !important;
       font-size: 13px !important;
       background: ${p.codeBg} !important;
       color: ${p.codeInk} !important;
@@ -155,7 +159,7 @@ class WebMasks {
     .v-main pre, .v-main pre *, .v-main pre code, .v-main pre span,
     .v-main .hljs, .v-main .hljs *,
     .v-main code[class*="language-"], .v-main code[class*="language-"] * {
-      font-family: 'JetBrains Mono', ui-monospace, monospace !important;
+      font-family: ${p.codeFont} !important;
       font-size: 13px !important;
       color: ${p.codeInk} !important;
       background: transparent !important;
@@ -176,14 +180,14 @@ class WebMasks {
     /* Page-header title → brass Playfair (was Roboto grey); subtitle → sage.
        The duplicate content <h1> is hidden in JS, so this is the one title. */
     .v-application .page-header-headings .headline {
-      font-family: 'Playfair Display', Georgia, serif !important;
+      font-family: ${p.displayFont} !important;
       color: ${p.headingInk} !important;
       font-weight: 800 !important;
       font-size: 2.3em !important;
       letter-spacing: .2px !important;
     }
     .v-application .page-header-headings .caption {
-      font-family: 'EB Garamond', Georgia, serif !important;
+      font-family: ${p.bodyUiFont} !important;
       color: ${p.captionSage} !important;
       font-size: 15px !important;
     }
@@ -197,7 +201,7 @@ class WebMasks {
     .v-application .v-navigation-drawer .v-list-item__title,
     .v-application .v-navigation-drawer .v-list-item__content {
       color: ${p.drawerInk} !important;
-      font-family: 'EB Garamond', Georgia, serif !important;
+      font-family: ${p.bodyUiFont} !important;
       font-size: 15px !important;
       letter-spacing: .2px !important;
     }
@@ -327,13 +331,13 @@ class WebMasks {
 })();
 ''';
 
-  /// The JS mask for a service, or null if none applies. [isDark] selects the
-  /// palette. The script is safe to re-run into a live page — it replaces the
+  /// The JS mask for a service, or null if none applies. [palette] is the
+  /// active brightness-resolved theme family. The script is safe to re-run into a live page — it replaces the
   /// prior style node, observer, and theme poller — which the platform
   /// webviews do when the effective brightness changes (didUpdateWidget →
   /// executeJavaScript / runJavaScript).
-  static String? scriptFor(String service, {required bool isDark}) {
-    final p = isDark ? _MaskPalette.dark : _MaskPalette.light;
+  static String? scriptFor(String service, {required Brass palette}) {
+    final p = _MaskPalette.fromTheme(palette);
     switch (service) {
       case 'Wiki':
         return _wikiGate(
@@ -414,6 +418,10 @@ class _MaskPalette {
     required this.navIcon,
     required this.drawerInk,
     required this.drawerBg,
+    required this.displayFont,
+    required this.bodyFont,
+    required this.bodyUiFont,
+    required this.codeFont,
   });
 
   /// CSS `color-scheme` (native form controls, UA scrollbars).
@@ -457,6 +465,86 @@ class _MaskPalette {
   final String navIcon;
   final String drawerInk;
   final String drawerBg;
+  final String displayFont;
+  final String bodyFont;
+  final String bodyUiFont;
+  final String codeFont;
+
+  factory _MaskPalette.fromTheme(Brass theme) {
+    // Preserve the shipped Brass masks exactly; the other families project
+    // their own base/surface/accent and typography tokens into the same roles.
+    if (identical(theme, Brass.dark)) return dark;
+    if (identical(theme, Brass.light)) return light;
+
+    final displayFont = _fontStack(
+      theme.displayFont,
+      'system-ui, -apple-system, sans-serif',
+    );
+    final bodyFont = _fontStack(
+      theme.bodyFont,
+      'system-ui, -apple-system, sans-serif',
+    );
+    return _MaskPalette(
+      scheme: theme.isDark ? 'dark' : 'light',
+      vuetifyDark: theme.isDark ? 'true' : 'false',
+      themeClass: theme.isDark ? 'theme--dark' : 'theme--light',
+      base: _hex(theme.bg),
+      scrollThumb: _rgba(theme.bronze, .35),
+      scrollThumbHover: _rgba(theme.bronze, .6),
+      radialTop: _hex(theme.panelTop),
+      radialEdge: _hex(theme.recess),
+      bodyInk: _hex(theme.textBody),
+      headingInk: _hex(theme.textHeading),
+      h2Gilt: _hex(theme.bronze),
+      h3Gilt: _hex(theme.giltBright),
+      link: _hex(theme.bronze),
+      linkHover: _hex(theme.giltBright),
+      cardBg: _rgba(theme.surface, .66),
+      cardBorder: _rgba(theme.bronze, .14),
+      cardInk: _hex(theme.textBody),
+      captionSage: _hex(theme.textMuted),
+      tagChipBg: _rgba(theme.moss, .18),
+      tagChipBorder: _rgba(theme.moss, .42),
+      tagChipInk: _hex(theme.moss),
+      tableHeadBg: _hex(theme.panelTop),
+      tableHeadInk: _hex(theme.bronze),
+      cellBorder: _rgba(theme.bronze, .18),
+      zebra: _rgba(theme.textHeading, .02),
+      quoteRule: _rgba(theme.bronze, .55),
+      quoteInk: _hex(theme.textBody),
+      quoteBg: _rgba(theme.recess, .45),
+      codeBg: _rgba(theme.recess, .72),
+      fencedCodeBg: _rgba(theme.recess, .78),
+      codeInk: _hex(theme.textBody),
+      codeBorder: _rgba(theme.bronze, .16),
+      navIcon: _hex(theme.copper),
+      drawerInk: _hex(theme.bronze),
+      drawerBg: _hex(theme.railTop),
+      displayFont: displayFont,
+      bodyFont: bodyFont,
+      bodyUiFont: bodyFont,
+      codeFont: theme.bodyFont == 'JetBrains Mono'
+          ? bodyFont
+          : "'JetBrains Mono', ui-monospace, monospace",
+    );
+  }
+
+  static String _fontStack(String? family, String fallback) =>
+      family == null ? fallback : "'$family', $fallback";
+
+  static String _hex(Color color) {
+    final rgb = color.toARGB32() & 0x00ffffff;
+    return '#${rgb.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+  }
+
+  static String _rgba(Color color, double opacity) {
+    final rgb = color.toARGB32();
+    final alpha = opacity
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+    return 'rgba(${(rgb >> 16) & 0xff},${(rgb >> 8) & 0xff},${rgb & 0xff},$alpha)';
+  }
 
   static const dark = _MaskPalette(
     scheme: 'dark',
@@ -494,6 +582,10 @@ class _MaskPalette {
     navIcon: '#C4574B',
     drawerInk: '#E8CD78',
     drawerBg: '#152619',
+    displayFont: "'Playfair Display', Georgia, serif",
+    bodyFont: "'EB Garamond', Georgia, 'Times New Roman', serif",
+    bodyUiFont: "'EB Garamond', Georgia, serif",
+    codeFont: "'JetBrains Mono', ui-monospace, monospace",
   );
 
   static const light = _MaskPalette(
@@ -532,5 +624,9 @@ class _MaskPalette {
     navIcon: '#9C4136',
     drawerInk: '#6E5620',
     drawerBg: '#E8DEC6',
+    displayFont: "'Playfair Display', Georgia, serif",
+    bodyFont: "'EB Garamond', Georgia, 'Times New Roman', serif",
+    bodyUiFont: "'EB Garamond', Georgia, serif",
+    codeFont: "'JetBrains Mono', ui-monospace, monospace",
   );
 }
