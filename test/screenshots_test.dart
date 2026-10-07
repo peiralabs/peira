@@ -1,19 +1,14 @@
-// Renders key screens to PNGs headlessly (goldens) so layout can be
-// verified before the app ever runs on a real display:
-//   flutter test test/screenshots_test.dart --update-goldens
-// Every screen renders in BOTH brightness modes. Output:
-// test/goldens/<name>_dark.png + <name>_light.png — inspection artifacts,
-// not regression goldens.
-//
-// Tagged `golden` so CI can exclude it: exact-pixel PNGs rendered on the
-// maintainer machine's fontconfig never match a CI runner's text rendering.
+// Machine-independent visual regression tests for key screens. Every screen
+// renders in both brightness modes under Alchemist's CI-golden configuration.
 @Tags(['golden'])
 library;
 
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:alchemist/alchemist.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,8 +52,6 @@ import 'package:peira/screens/metrics/metrics_screen.dart';
 import 'package:peira/screens/proxmox/ct_detail_screen.dart';
 import 'package:peira/screens/proxmox/failed_tasks_screen.dart';
 import 'package:peira/screens/proxmox/node_detail_screen.dart';
-
-import 'support/render_fonts.dart';
 
 class _FakeSettingsRepository implements SettingsRepository {
   _FakeSettingsRepository(this._settings);
@@ -269,12 +262,7 @@ const _vms = [
     mem: 6 << 30,
     maxmem: 8 << 30,
   ),
-  ProxmoxVm(
-    vmid: 202,
-    status: 'stopped',
-    name: 'ubuntu-server',
-    node: 'node3',
-  ),
+  ProxmoxVm(vmid: 202, status: 'stopped', name: 'ubuntu-server', node: 'node3'),
 ];
 
 /// Believable per-node series for the Metrics golden: gentle waves with
@@ -288,12 +276,7 @@ ClusterMetrics _fakeMetrics() {
       ),
   ];
   List<MetricSeries> panel(double base, double amp) => [
-    for (final (i, n) in [
-      'node1',
-      'node2',
-      'node3',
-      'node4',
-    ].indexed)
+    for (final (i, n) in ['node1', 'node2', 'node3', 'node4'].indexed)
       MetricSeries(label: n, points: wave(base + i * amp * 0.5, amp, i * 1.7)),
   ];
   return ClusterMetrics(
@@ -308,12 +291,7 @@ ClusterMetrics _fakeMetrics() {
 MetricsInsights _fakeInsights() => const MetricsInsights(
   targetsUp: 8,
   targetsTotal: 8,
-  diskRunwayDays: {
-    'node1': 412,
-    'node2': 388,
-    'node3': 74,
-    'node4': 520,
-  },
+  diskRunwayDays: {'node1': 412, 'node2': 388, 'node3': 74, 'node4': 520},
   topGuests: [
     GuestLoad(
       id: 'lxc/104',
@@ -424,17 +402,17 @@ SmartHealth _fakeSmartHealth() {
         pending: null,
       );
   DiskHealth bay(String device, double temp) => DiskHealth(
-        host: 'nas',
-        device: device,
-        model: 'ST8000VN0022-2EL112',
-        passed: true,
-        tempC: temp,
-        wearPct: null,
-        mediaErrors: null,
-        criticalWarning: null,
-        reallocated: 0,
-        pending: 0,
-      );
+    host: 'nas',
+    device: device,
+    model: 'ST8000VN0022-2EL112',
+    passed: true,
+    tempC: temp,
+    wearPct: null,
+    mediaErrors: null,
+    criticalWarning: null,
+    reallocated: 0,
+    pending: 0,
+  );
   final disks = [
     nvme('node1', 'SAMSUNG MZVLB512HAJQ-000H7', 49, 6),
     nvme('node2', 'KBG30ZMV256G TOSHIBA', 59, 14),
@@ -666,7 +644,8 @@ const _tasksWithFailures = [
     id: '108',
     starttime: 1783080001,
     endtime: 1783080034,
-    status: "unable to activate storage 'nas-backup' - directory "
+    status:
+        "unable to activate storage 'nas-backup' - directory "
         "'/mnt/pve/nas-backup' does not exist or is unreachable",
   ),
   ProxmoxTask(
@@ -713,17 +692,22 @@ final _alerts = [
   ),
 ];
 
+typedef _GoldenPump = Future<void> Function(Widget child);
+
+class _GoldenStage extends StatelessWidget {
+  const _GoldenStage(this.child);
+
+  final ValueListenable<Widget> child;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<Widget>(
+    valueListenable: child,
+    builder: (context, value, _) => value,
+  );
+}
+
 void main() {
-  setUpAll(loadRealFonts);
-
-  Future<void> setSize(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-  }
-
-  /// Defines one screen as TWO goldens — goldens/<golden>_dark.png and
-  /// goldens/<golden>_light.png — so every screen is inspected in both
+  /// Defines one screen as two CI goldens so every screen is checked in both
   /// brightness modes. [pump] builds the tree and runs any interactions;
   /// it receives the target brightness and must route it through the real
   /// theme path for that screen (settings.themeMode for HomeLabApp pumps,
@@ -731,18 +715,74 @@ void main() {
   void screenshotBoth(
     String description,
     String golden,
-    Future<void> Function(WidgetTester tester, Brightness brightness) pump,
-  ) {
+    Future<void> Function(
+      WidgetTester tester,
+      Brightness brightness,
+      _GoldenPump pumpWidget,
+    )
+    pump, {
+    bool directCapture = false,
+  }) {
     for (final brightness in const [Brightness.dark, Brightness.light]) {
       final mode = _modeName(brightness);
-      testWidgets('screenshot: $description ($mode)', (tester) async {
-        await setSize(tester);
-        await pump(tester, brightness);
-        await expectLater(
-          find.byType(MaterialApp),
-          matchesGoldenFile('goldens/${golden}_$mode.png'),
-        );
-      });
+      final stagedChild = ValueNotifier<Widget>(const SizedBox.shrink());
+
+      goldenTest(
+        'screenshot: $description ($mode)',
+        fileName: '${golden}_$mode',
+        constraints: const BoxConstraints.tightFor(width: 1200, height: 800),
+        builder: () => _GoldenStage(stagedChild),
+        pumpWidget: directCapture
+            ? (tester, alchemistWrapper) async {
+                // CommandPalette.show targets the root navigator. Alchemist's
+                // normal wrapper adds a navigator outside the app, so retain
+                // its capture keys but remove that extra navigator for this
+                // nested full-app case.
+                await tester.pumpWidget(alchemistWrapper);
+                final stageElement = find
+                    .byType(_GoldenStage)
+                    .evaluate()
+                    .single;
+                Key? alchemistChildKey;
+                stageElement.visitAncestorElements((ancestor) {
+                  if (ancestor.widget case Center(key: final Key key)) {
+                    alchemistChildKey = key;
+                    return false;
+                  }
+                  return true;
+                });
+                assert(alchemistChildKey != null);
+                await tester.pumpWidget(
+                  RepaintBoundary(
+                    key: alchemistWrapper.key,
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: OverflowBox(
+                        alignment: Alignment.topLeft,
+                        minWidth: 1200,
+                        minHeight: 800,
+                        maxWidth: 1200,
+                        maxHeight: 800,
+                        child: SizedBox(
+                          key: alchemistChildKey,
+                          width: 1200,
+                          height: 800,
+                          child: stageElement.widget,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+            : onlyPumpWidget,
+        pumpBeforeTest: (tester) async {
+          addTearDown(stagedChild.dispose);
+          await pump(tester, brightness, (child) async {
+            stagedChild.value = child;
+            await tester.pump();
+          });
+        },
+      );
     }
   }
 
@@ -752,14 +792,23 @@ void main() {
   void screenshotPersonal(
     String description,
     String golden,
-    Future<void> Function(WidgetTester tester, Brightness brightness) pump,
+    Future<void> Function(
+      WidgetTester tester,
+      Brightness brightness,
+      _GoldenPump pumpWidget,
+    )
+    pump,
   ) {
     if (kPublicBuild) return;
     screenshotBoth(description, golden, pump);
   }
 
-  screenshotBoth('dashboard', 'dashboard', (tester, brightness) async {
-    await tester.pumpWidget(
+  screenshotBoth('dashboard', 'dashboard', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -787,8 +836,9 @@ void main() {
   screenshotBoth('command palette', 'command_palette', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -819,10 +869,14 @@ void main() {
       'lab',
     );
     await tester.pumpAndSettle();
-  });
+  }, directCapture: true);
 
-  screenshotBoth('tailscale tab', 'tailscale_tab', (tester, brightness) async {
-    await tester.pumpWidget(
+  screenshotBoth('tailscale tab', 'tailscale_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -849,7 +903,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  screenshotBoth('proxmox tab', 'proxmox_tab', (tester, brightness) async {
+  screenshotBoth('proxmox tab', 'proxmox_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
     // The wide split layout embeds the live CT detail pane, which polls a
     // real client — back it with fixture responses.
     final api = ProxmoxApi(
@@ -867,7 +925,7 @@ void main() {
               '"description":"before adding mods"},{"name":"current"}]}',
         }),
     );
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -936,8 +994,12 @@ void main() {
     lokiTailProvider.overrideWith((ref, filter) async => _fakeLokiEntries()),
   ];
 
-  screenshotBoth('metrics tab', 'metrics_tab', (tester, brightness) async {
-    await tester.pumpWidget(
+  screenshotBoth('metrics tab', 'metrics_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -953,8 +1015,9 @@ void main() {
   screenshotPersonal('metrics tab AI section', 'metrics_tab_ai', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -981,8 +1044,9 @@ void main() {
   screenshotPersonal('metrics tab what-if section', 'metrics_tab_twin', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -1010,8 +1074,9 @@ void main() {
   screenshotBoth('metrics tab power section', 'metrics_tab_power', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -1039,8 +1104,9 @@ void main() {
   screenshotBoth('metrics tab disk health', 'metrics_tab_smart', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -1067,8 +1133,9 @@ void main() {
   screenshotPersonal('metrics tab WAN section', 'metrics_tab_wan', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -1091,8 +1158,12 @@ void main() {
   });
 
   // The native Loki tail behind the Metrics hub's Logs sub-tab.
-  screenshotBoth('logs tab', 'logs_tab', (tester, brightness) async {
-    await tester.pumpWidget(
+  screenshotBoth('logs tab', 'logs_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
+    await pumpWidget(
       ProviderScope(
         overrides: metricsTabOverrides(brightness),
         child: const HomeLabApp(),
@@ -1108,13 +1179,14 @@ void main() {
   screenshotBoth('setup wizard', 'setup_wizard', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
     // Unconfigured repo → the first-run wizard (t_abe366ce) gates the shell;
     // themeMode stays 'system', so the mode resolves through the platform
     // brightness instead of the settings path.
     tester.platformDispatcher.platformBrightnessTestValue = brightness;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1133,7 +1205,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  screenshotBoth('media tab (Radarr)', 'media_tab', (tester, brightness) async {
+  screenshotBoth('media tab (Radarr)', 'media_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
     const media = AppSettings(
       proxmoxUrl: 'https://pve.example:8006',
       proxmoxTokenId: 'user@pve!token',
@@ -1175,7 +1251,7 @@ void main() {
         timeleft: '00:14:20',
       ),
     ];
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1204,6 +1280,7 @@ void main() {
   screenshotBoth('media tab (Jellyfin)', 'media_tab_jellyfin', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
     const media = AppSettings(
       proxmoxUrl: 'https://pve.example:8006',
@@ -1241,7 +1318,7 @@ void main() {
         MediaRecentItem(title: 'Andor', subtitle: 'Season 2'),
       ],
     );
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1266,6 +1343,7 @@ void main() {
   screenshotBoth('ct detail with live charts', 'ct_detail', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
     // Real client against fixture responses; CPU/RAM samples accumulate as
     // the 5s poll timer fires.
@@ -1286,7 +1364,7 @@ void main() {
               '"description":""},{"name":"current"}]}',
         }),
     );
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1314,8 +1392,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   });
 
-  screenshotBoth('ollama tab', 'ollama_tab', (tester, brightness) async {
-    await tester.pumpWidget(
+  screenshotBoth('ollama tab', 'ollama_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1343,7 +1425,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  screenshotBoth('hermes tab', 'hermes_tab', (tester, brightness) async {
+  screenshotBoth('hermes tab', 'hermes_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
     const transcript = <HermesTurn>[
       (
         role: 'assistant',
@@ -1363,7 +1449,7 @@ void main() {
       ),
       (role: 'user', text: 'Yes, prune them and retry the snapshot.'),
     ];
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1384,7 +1470,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  screenshotPersonal('ask tab', 'ask_tab', (tester, brightness) async {
+  screenshotPersonal('ask tab', 'ask_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
     const transcript = <AskEntry>[
       AskEntry(role: 'user', text: 'Why did media-sync page at 5am?'),
       AskEntry(
@@ -1403,7 +1493,8 @@ void main() {
             title: 'Media-sync Plex-cloud flap de-noise',
             heading: 'Alert',
             score: 0.7,
-            snippet: 'Uptime Kuma media-sync heartbeat paged down with '
+            snippet:
+                'Uptime Kuma media-sync heartbeat paged down with '
                 'Fatal: TimeoutError and HTTPError 522.',
           ),
           AskSource(
@@ -1413,7 +1504,8 @@ void main() {
             title: 'Media-sync Plex-cloud flap de-noise',
             heading: 'Fix',
             score: 0.65,
-            snippet: 'plex_get() retry+backoff; degradation counter pages '
+            snippet:
+                'plex_get() retry+backoff; degradation counter pages '
                 'only after PLEX_DEGRADE_RUNS consecutive fails.',
           ),
         ],
@@ -1435,7 +1527,8 @@ void main() {
             title: 'Hardware Operations',
             heading: 'NAS command transport',
             score: 0.72,
-            snippet: 'Write a script to a file and base64-pipe it through '
+            snippet:
+                'Write a script to a file and base64-pipe it through '
                 'the double-hop.',
           ),
         ],
@@ -1444,7 +1537,7 @@ void main() {
         model: 'claude-haiku-4-5-20251001',
       ),
     ];
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1466,8 +1559,9 @@ void main() {
   screenshotBoth('brass instruments', 'brass_instruments', (
     tester,
     brightness,
+    pumpWidget,
   ) async {
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -1529,7 +1623,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  screenshotBoth('failed tasks', 'failed_tasks', (tester, brightness) async {
+  screenshotBoth('failed tasks', 'failed_tasks', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
     // Tiles auto-expand and fetch each task's log from the API.
     final api = ProxmoxApi(
       Dio(BaseOptions(baseUrl: 'https://x/api2/json'))
@@ -1542,7 +1640,7 @@ void main() {
               'code 1"}]}',
         }),
     );
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
@@ -1563,7 +1661,11 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  screenshotBoth('node detail', 'node_detail', (tester, brightness) async {
+  screenshotBoth('node detail', 'node_detail', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
     // The screen polls a real client (status/rrddata/storage/tasks) and the
     // guest families call through the same fake adapter.
     final api = ProxmoxApi(
@@ -1576,7 +1678,7 @@ void main() {
           '/api2/json/nodes/node4/lxc': _fixture('containers'),
         }),
     );
-    await tester.pumpWidget(
+    await pumpWidget(
       ProviderScope(
         overrides: [
           // No network in widget tests — pin reachability pills to healthy.
