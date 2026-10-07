@@ -7,9 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/proxmox_api.dart';
 import '../../core/models/proxmox_container.dart';
 import '../../core/providers/proxmox_providers.dart';
-import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/util/proxmox_console.dart';
 import '../../core/widgets/brass_panel.dart';
 import '../../core/widgets/chart_card.dart';
 import 'console_screen.dart';
@@ -160,11 +158,11 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
     setState(() => _actionRunning = true);
     try {
       final api = await ref.read(proxmoxApiProvider.future);
-      final upid = await action(api);
+      await action(api);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('$verb requested ($upid)')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$verb sent to ${_kind.label} $_vmid')),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -178,19 +176,27 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
     }
   }
 
-  Future<void> _openVmConsole() async {
-    final proxmoxUrl =
-        ref.read(settingsControllerProvider).value?.proxmoxUrl ?? '';
-    final err = await openProxmoxConsole(
-      proxmoxUrl: proxmoxUrl,
-      node: _node,
-      vmid: _vmid,
-      kind: 'kvm',
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(err ?? 'Opening VM $_vmid console in your browser…'),
+  void _openConsole() {
+    final hasSerial = _config?.keys.any((key) => key.startsWith('serial'));
+    if (_isVm && hasSerial == false) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'VM $_vmid has no serial device. Add serial0: socket in Proxmox, '
+            'then retry.',
+          ),
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ConsoleScreen(
+          kind: _kind,
+          node: _node,
+          vmid: _vmid,
+          title: widget.name ?? '',
+        ),
       ),
     );
   }
@@ -605,17 +611,7 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
   Widget _consoleButton(bool running) => IconButton(
     icon: const Icon(Icons.terminal),
     tooltip: running ? 'Console' : 'Console (start the container first)',
-    onPressed: running
-        ? () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => ConsoleScreen(
-                node: _node,
-                vmid: _vmid,
-                title: widget.name ?? '',
-              ),
-            ),
-          )
-        : null,
+    onPressed: running ? _openConsole : null,
   );
 
   Widget _overflowMenu(BuildContext context) => PopupMenuButton<String>(
@@ -733,7 +729,7 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
                       _powerButton('Stop', running, 'stop'),
                       _powerButton('Reboot', running, 'reboot'),
                       OutlinedButton.icon(
-                        onPressed: running ? _openVmConsole : null,
+                        onPressed: running ? _openConsole : null,
                         icon: const Icon(
                           Icons.desktop_windows_outlined,
                           size: 16,

@@ -5,11 +5,11 @@ import 'dart:io';
 import '../api/proxmox_api.dart';
 import '../models/app_settings.dart';
 
-/// A live LXC console over Proxmox's `vncwebsocket`, speaking the pve-xtermjs
+/// A live guest serial console over Proxmox's `vncwebsocket`, speaking the pve-xtermjs
 /// wire protocol so it can drive an `xterm` [Terminal] directly.
 ///
 /// Flow (all over the app's API token — no login cookie needed, verified live):
-///   1. caller does `ProxmoxApi.lxcTermProxy` → [TermProxyTicket]
+///   1. caller does `ProxmoxApi.guestTermProxy` → [TermProxyTicket]
 ///   2. [connect] opens `wss://…/vncwebsocket?port=&vncticket=` with the token
 ///      in the `Authorization` header and the `binary` subprotocol
 ///   3. first frame sent is the auth line `user:ticket\n`; Proxmox replies `OK`
@@ -21,12 +21,14 @@ import '../models/app_settings.dart';
 class ProxmoxTermSocket {
   ProxmoxTermSocket({
     required this.settings,
+    required this.kind,
     required this.node,
     required this.vmid,
     required this.ticket,
   });
 
   final AppSettings settings;
+  final GuestKind kind;
   final String node;
   final int vmid;
   final TermProxyTicket ticket;
@@ -45,7 +47,7 @@ class ProxmoxTermSocket {
       scheme: base.scheme == 'https' ? 'wss' : 'ws',
       host: base.host,
       port: base.hasPort ? base.port : null,
-      path: '/api2/json/nodes/$node/lxc/$vmid/vncwebsocket',
+      path: '/api2/json/nodes/$node/${kind.pathSegment}/$vmid/vncwebsocket',
       queryParameters: {'port': '${ticket.port}', 'vncticket': ticket.ticket},
     );
 
