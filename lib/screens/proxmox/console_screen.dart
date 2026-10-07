@@ -2,23 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:xterm/xterm.dart';
 
+import '../../core/api/proxmox_api.dart';
 import '../../core/console/proxmox_term_socket.dart';
 import '../../core/providers/proxmox_providers.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../terminal/terminal_screen.dart' show molTerminalTheme;
 
-/// Live LXC serial console: a native `xterm` terminal wired to Proxmox's
+/// Live guest serial console: a native `xterm` terminal wired to Proxmox's
 /// `vncwebsocket` PTY stream via [ProxmoxTermSocket]. Opened from the CT detail
-/// screen for a running container; the socket is torn down on dispose.
+/// screen for a running container or VM; the socket is torn down on dispose.
 class ConsoleScreen extends ConsumerStatefulWidget {
   const ConsoleScreen({
     super.key,
+    required this.kind,
     required this.node,
     required this.vmid,
     required this.title,
   });
 
+  final GuestKind kind;
   final String node;
   final int vmid;
   final String title;
@@ -43,9 +46,14 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
     try {
       final settings = await ref.read(settingsControllerProvider.future);
       final api = await ref.read(proxmoxApiProvider.future);
-      final ticket = await api.lxcTermProxy(widget.node, widget.vmid);
+      final ticket = await api.guestTermProxy(
+        widget.kind,
+        widget.node,
+        widget.vmid,
+      );
       final socket = ProxmoxTermSocket(
         settings: settings,
+        kind: widget.kind,
         node: widget.node,
         vmid: widget.vmid,
         ticket: ticket,
@@ -61,7 +69,10 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
       );
       _terminal.onOutput = socket.write;
       _terminal.onResize = (w, h, pw, ph) => socket.resize(w, h);
-      await socket.connect(cols: _terminal.viewWidth, rows: _terminal.viewHeight);
+      await socket.connect(
+        cols: _terminal.viewWidth,
+        rows: _terminal.viewHeight,
+      );
       if (!mounted) {
         socket.dispose();
         return;
@@ -73,7 +84,11 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e;
+          _error = widget.kind == GuestKind.qemu
+              ? 'Could not open the VM serial console. Ensure the VM has a '
+                    'serial device configured (for example, serial0: socket), '
+                    'then retry.\n$e'
+              : e;
           _connecting = false;
         });
       }
@@ -89,7 +104,11 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Console — CT ${widget.vmid} ${widget.title}')),
+      appBar: AppBar(
+        title: Text(
+          'Console — ${widget.kind.label} ${widget.vmid} ${widget.title}',
+        ),
+      ),
       body: _error != null
           ? Center(
               child: Padding(
@@ -138,6 +157,9 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
                   clipBehavior: Clip.antiAlias,
                   child: TerminalView(
                     _terminal,
+                    // Grab the keyboard on open; without this the console
+                    // connects but keystrokes never reach the socket.
+                    autofocus: true,
                     theme: molTerminalTheme,
                     textStyle: const TerminalStyle(
                       fontFamily: 'JetBrains Mono',

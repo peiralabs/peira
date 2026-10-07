@@ -170,6 +170,23 @@ class _CreateGuestScreenState extends ConsumerState<CreateGuestScreen> {
     }
   }
 
+  // Proxmox requires the guest name/hostname to be a single DNS label:
+  // letters, digits and hyphens only (no underscores, spaces or dots), not
+  // starting or ending with a hyphen, max 63 chars. Validating here turns an
+  // opaque 400 from the API into an inline, fixable message.
+  static final _guestNameRe =
+      RegExp(r'^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$');
+
+  String? _validateGuestName(String? v) {
+    final name = (v ?? '').trim();
+    if (name.isEmpty) return 'Required';
+    if (name.length > 63) return 'Too long (max 63 characters)';
+    if (!_guestNameRe.hasMatch(name)) {
+      return 'Letters, numbers and hyphens only — no underscores or spaces';
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -280,8 +297,7 @@ class _CreateGuestScreenState extends ConsumerState<CreateGuestScreen> {
                               ? 'Hostname'
                               : 'Name',
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: _validateGuestName,
                       ),
                       const SizedBox(height: 12),
                       if (widget.kind == GuestKind.qemu) ...[

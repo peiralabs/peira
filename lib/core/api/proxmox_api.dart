@@ -100,6 +100,7 @@ enum GuestKind {
       'scsihw': 'virtio-scsi-pci',
       'scsi0': '$storage:$disk',
       'net0': 'virtio,bridge=vmbr0',
+      'serial0': 'socket',
       if (installMedia != null) 'ide2': '$installMedia,media=cdrom',
       'boot': 'order=scsi0;ide2;net0',
       'start': start ? 1 : 0,
@@ -478,13 +479,17 @@ class ProxmoxApi {
 
   // --- Phase 4: console -------------------------------------------------
 
-  /// Opens a serial/term console proxy for LXC [vmid] and returns the one-time
+  /// Opens a serial/term console proxy for [kind] [vmid] and returns the one-time
   /// VNC ticket, allocated port, and authenticated user — the inputs to the
   /// `vncwebsocket` terminal stream ([ProxmoxTermSocket]). Verified to work with
   /// the API token against the live cluster (no login ticket/cookie required).
-  Future<TermProxyTicket> lxcTermProxy(String node, int vmid) async {
+  Future<TermProxyTicket> guestTermProxy(
+    GuestKind kind,
+    String node,
+    int vmid,
+  ) async {
     final response = await _dio.post<Map<String, dynamic>>(
-      '/nodes/$node/lxc/$vmid/termproxy',
+      '/nodes/$node/${kind.pathSegment}/$vmid/termproxy',
     );
     final d = response.data?['data'] as Map<String, dynamic>? ?? const {};
     return TermProxyTicket(
