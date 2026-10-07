@@ -99,6 +99,16 @@ degrades gracefully:
   owning node, which requires root there — a non-root username is wrapped in
   `sudo`, so that user needs sudo rights on the node. Nodes must be
   SSH-reachable from the machine running the app.
+- **Consoles open in the app, not a browser.** A container's console is a live
+  shell. A VM's console is a *serial* console, so new VMs are created with a
+  `serial0` device and the guest OS must use that serial port (most server and
+  cloud images do) — a VM with no OS, or one that only outputs to VGA, shows a
+  blank console.
+- **VMs are created as bare hardware; you install the OS.** Attach a bootable
+  installer ISO and run it in the console (server and Alpine ISOs output to
+  serial; desktop ISOs use VGA). Provisioning a VM directly from a cloud image
+  (disk import + cloud-init) is not supported yet — a cloud `.img` will not
+  boot when attached as a CD-ROM.
 - **The Wiki tab targets Wiki.js v2 specifically.** The native reskin detects
   Wiki.js's DOM and switches itself off on anything else — BookStack,
   Outline, or Confluence load with their own styling rather than a

@@ -70,6 +70,10 @@ void main() {
           '{"data":"UPID:node4:reboot"}',
       '/api2/json/nodes/node4/qemu/204/status/start':
           '{"data":"UPID:node4:vm-start"}',
+      '/api2/json/nodes/node4/lxc/104/termproxy':
+          '{"data":{"ticket":"lxc-ticket","port":"5900","user":"user@pve"}}',
+      '/api2/json/nodes/node4/qemu/204/termproxy':
+          '{"data":{"ticket":"qemu-ticket","port":"5901","user":"user@pve"}}',
       '/api2/json/nodes/node4/lxc/104/snapshot':
           '{"data":"UPID:node4:lxc-snapshot"}',
       '/api2/json/nodes/node4/qemu/204/snapshot':
@@ -137,6 +141,49 @@ void main() {
     );
     expect(adapter.requests.map((r) => r.method).toSet(), {'POST'});
   });
+
+  test('qemu create fields include a socket-backed serial console', () {
+    final fields = GuestKind.qemu.createFields(
+      vmid: 204,
+      name: 'vm-one',
+      cores: 2,
+      memory: 4096,
+      storage: 'local-lvm',
+      disk: '32',
+      start: false,
+    );
+
+    expect(fields['serial0'], 'socket');
+    expect(
+      GuestKind.lxc.createFields(
+        vmid: 104,
+        name: 'ct-one',
+        cores: 2,
+        memory: 2048,
+        storage: 'local-lvm',
+        disk: '16',
+        start: false,
+      ),
+      isNot(contains('serial0')),
+    );
+  });
+
+  for (final (kind, vmid, ticket) in [
+    (GuestKind.lxc, 104, 'lxc-ticket'),
+    (GuestKind.qemu, 204, 'qemu-ticket'),
+  ]) {
+    test('${kind.name} termproxy request uses the guest endpoint', () async {
+      final result = await api.guestTermProxy(kind, 'node4', vmid);
+
+      expect(result.ticket, ticket);
+      final request = adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(
+        request.uri.path,
+        '/api2/json/nodes/node4/${kind.pathSegment}/$vmid/termproxy',
+      );
+    });
+  }
 
   for (final (kind, vmid) in [(GuestKind.lxc, 104), (GuestKind.qemu, 204)]) {
     test('${kind.name} status request is exact', () async {
