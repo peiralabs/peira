@@ -17,6 +17,7 @@ import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/status_light.dart';
 import '../../core/widgets/task_log_tile.dart';
 import 'ct_detail_screen.dart';
+import 'proxmox_common.dart';
 import 'vm_detail_screen.dart';
 
 /// Live per-node detail: identity strip (/nodes/{n}/status), CPU/RAM/disk/net
@@ -393,7 +394,6 @@ class _NodeDetailScreenState extends ConsumerState<NodeDetailScreen> {
   }
 
   Widget _identityCard(NodeStatus status, ProxmoxNode liveNode) {
-    final brass = context.brass;
     final mem = status.memory;
     final swap = status.swap;
     final rows = <(String, String)>[
@@ -412,30 +412,10 @@ class _NodeDetailScreenState extends ConsumerState<NodeDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('NODE', style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              )),
+            const ProxmoxSectionHeader('NODE'),
             const SizedBox(height: 8),
             for (final (label, value) in rows)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        label,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(value, overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
-              ),
+              pair(context, label, value, ellipsis: true),
           ],
         ),
       ),
@@ -455,11 +435,7 @@ class _NodeDetailScreenState extends ConsumerState<NodeDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('STORAGE', style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              )),
+            const ProxmoxSectionHeader('STORAGE'),
             const SizedBox(height: 10),
             if (storages.isEmpty)
               Text(
@@ -538,11 +514,7 @@ class _NodeDetailScreenState extends ConsumerState<NodeDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('GUESTS', style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              )),
+            const ProxmoxSectionHeader('GUESTS'),
             const SizedBox(height: 6),
             // The per-node families are cold on first open — don't claim
             // "no guests" while they're still loading.
@@ -611,7 +583,6 @@ class _NodeDetailScreenState extends ConsumerState<NodeDetailScreen> {
   }
 
   Widget _tasksCard() {
-    final brass = context.brass;
     final tasks = _tasks;
     return BrassPanel(
       padding: EdgeInsets.zero,
@@ -620,11 +591,7 @@ class _NodeDetailScreenState extends ConsumerState<NodeDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('RECENT TASKS', style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              )),
+            const ProxmoxSectionHeader('RECENT TASKS'),
             const SizedBox(height: 6),
             if (tasks == null)
               const Padding(
