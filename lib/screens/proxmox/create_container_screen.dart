@@ -2,38 +2,59 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/proxmox_api.dart';
 import '../../core/providers/proxmox_providers.dart';
 import '../../core/widgets/brass_panel.dart';
 
 /// Guided "new LXC container" form. Picks a node → loads that node's templates
 /// and disk storages → collects resources → POSTs to Proxmox and (optionally)
 /// starts the container.
-class CreateContainerScreen extends ConsumerStatefulWidget {
+class CreateContainerScreen extends StatelessWidget {
   const CreateContainerScreen({super.key});
 
   @override
-  ConsumerState<CreateContainerScreen> createState() =>
-      _CreateContainerScreenState();
+  Widget build(BuildContext context) =>
+      const CreateGuestScreen(kind: GuestKind.lxc);
 }
 
-class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
+class CreateGuestScreen extends ConsumerStatefulWidget {
+  const CreateGuestScreen({super.key, required this.kind});
+
+  final GuestKind kind;
+
+  @override
+  ConsumerState<CreateGuestScreen> createState() => _CreateGuestScreenState();
+}
+
+const _osTypes = <(String, String)>[
+  ('l26', 'Linux 6.x / 5.x / 2.6 Kernel'),
+  ('win11', 'Windows 11 / 2022 / 2025'),
+  ('win10', 'Windows 10 / 2016 / 2019'),
+  ('win8', 'Windows 8 / 2012'),
+  ('other', 'Other'),
+];
+
+class _CreateGuestScreenState extends ConsumerState<CreateGuestScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _hostname = TextEditingController();
+  final _name = TextEditingController();
   final _password = TextEditingController();
   final _cores = TextEditingController(text: '2');
+  final _sockets = TextEditingController(text: '1');
   final _memory = TextEditingController(text: '2048');
   final _swap = TextEditingController(text: '512');
-  final _disk = TextEditingController(text: '8');
+  late final _disk = TextEditingController(
+    text: widget.kind == GuestKind.lxc ? '8' : '32',
+  );
 
   String? _node;
-  String? _template; // volid
+  String? _installMedia;
   String? _storage;
-  final String _bridge = 'vmbr0';
+  String _ostype = 'l26';
   bool _dhcp = true;
-  bool _startAfter = true;
+  late bool _startAfter = widget.kind == GuestKind.lxc;
   bool _unprivileged = true;
 
-  List<Map<String, dynamic>> _templates = const [];
+  List<Map<String, dynamic>> _installMediaOptions = const [];
   List<Map<String, dynamic>> _storages = const [];
   bool _loadingNodeData = false;
   bool _submitting = false;
@@ -41,7 +62,15 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
 
   @override
   void dispose() {
-    for (final c in [_hostname, _password, _cores, _memory, _swap, _disk]) {
+    for (final c in [
+      _name,
+      _password,
+      _cores,
+      _sockets,
+      _memory,
+      _swap,
+      _disk,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -50,9 +79,9 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
   Future<void> _onNodeChanged(String? node) async {
     setState(() {
       _node = node;
-      _template = null;
+      _installMedia = null;
       _storage = null;
-      _templates = const [];
+      _installMediaOptions = const [];
       _storages = const [];
       _error = null;
     });
@@ -60,15 +89,20 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
     setState(() => _loadingNodeData = true);
     try {
       final api = await ref.read(proxmoxApiProvider.future);
-      final templates = await api.getTemplates(node);
-      final storages = await api.getStorages(node, content: 'rootdir');
+      final media = await api.getGuestInstallMedia(widget.kind, node);
+      final storages = await api.getStorages(
+        node,
+        content: widget.kind.diskStorageContent,
+      );
       if (!mounted) return;
       setState(() {
-        _templates = templates;
+        _installMediaOptions = media;
         _storages = storages;
-        _template = templates.isNotEmpty
-            ? templates.first['volid'] as String?
-            : null;
+        if (widget.kind == GuestKind.lxc) {
+          _installMedia = media.isNotEmpty
+              ? media.first['volid'] as String?
+              : null;
+        }
         _storage = storages.isNotEmpty
             ? storages.first['storage'] as String?
             : null;
@@ -82,8 +116,14 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (_node == null || _template == null || _storage == null) {
-      setState(() => _error = 'Pick a node, template and storage.');
+    if (_node == null ||
+        _storage == null ||
+        (widget.kind == GuestKind.lxc && _installMedia == null)) {
+      setState(
+        () => _error = widget.kind == GuestKind.lxc
+            ? 'Pick a node, template and storage.'
+            : 'Pick a node and disk storage.',
+      );
       return;
     }
     setState(() {
@@ -93,25 +133,34 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
     try {
       final api = await ref.read(proxmoxApiProvider.future);
       final vmid = await api.nextVmid();
-      final params = <String, dynamic>{
-        'vmid': vmid,
-        'ostemplate': _template,
-        'hostname': _hostname.text.trim(),
-        'cores': int.parse(_cores.text),
-        'memory': int.parse(_memory.text),
-        'swap': int.parse(_swap.text),
-        'rootfs': '$_storage:${_disk.text}',
-        'net0': 'name=eth0,bridge=$_bridge,ip=${_dhcp ? 'dhcp' : 'manual'}',
-        'unprivileged': _unprivileged ? 1 : 0,
-        'start': _startAfter ? 1 : 0,
-        if (_password.text.isNotEmpty) 'password': _password.text,
-      };
-      await api.createLxc(_node!, params);
-      ref.invalidate(allContainersProvider);
+      final params = widget.kind.createFields(
+        vmid: vmid,
+        name: _name.text.trim(),
+        cores: int.parse(_cores.text),
+        memory: int.parse(_memory.text),
+        storage: _storage!,
+        disk: _disk.text,
+        start: _startAfter,
+        installMedia: _installMedia,
+        password: _password.text,
+        swap: int.parse(_swap.text),
+        dhcp: _dhcp,
+        unprivileged: _unprivileged,
+        sockets: int.parse(_sockets.text),
+        osType: _ostype,
+      );
+      await api.createGuest(widget.kind, _node!, params);
+      if (widget.kind == GuestKind.lxc) {
+        ref.invalidate(allContainersProvider);
+      } else {
+        ref.invalidate(allVmsProvider);
+      }
       ref.invalidate(recentTasksProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Creating CT $vmid ($_node)…')),
+        SnackBar(
+          content: Text('Creating ${widget.kind.label} $vmid ($_node)…'),
+        ),
       );
       Navigator.of(context).pop();
     } catch (e) {
@@ -129,16 +178,14 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('New container'),
+        title: Text(widget.kind == GuestKind.lxc ? 'New container' : 'New VM'),
         backgroundColor: Colors.transparent,
       ),
       body: nodes.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Failed to load nodes: $e')),
         data: (nodeList) {
-          final online = nodeList
-              .where((n) => n.status == 'online')
-              .toList();
+          final online = nodeList.where((n) => n.status == 'online').toList();
           return Form(
             key: _formKey,
             child: ListView(
@@ -169,26 +216,35 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
                         )
                       else ...[
                         DropdownButtonFormField<String>(
-                          initialValue: _template,
+                          initialValue: _installMedia,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Template',
+                          decoration: InputDecoration(
+                            labelText: widget.kind == GuestKind.lxc
+                                ? 'Template'
+                                : 'Install ISO (optional)',
                           ),
                           items: [
-                            for (final t in _templates)
+                            if (widget.kind == GuestKind.qemu)
+                              const DropdownMenuItem(
+                                child: Text('None (no CD-ROM)'),
+                              ),
+                            for (final media in _installMediaOptions)
                               DropdownMenuItem(
-                                value: t['volid'] as String?,
+                                value: media['volid'] as String?,
                                 child: Text(
-                                  (t['volid'] as String? ?? '').split('/').last,
+                                  (media['volid'] as String? ?? '')
+                                      .split('/')
+                                      .last,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                           ],
                           onChanged: _node == null
                               ? null
-                              : (v) => setState(() => _template = v),
-                          validator: (v) =>
-                              v == null ? 'Pick a template' : null,
+                              : (v) => setState(() => _installMedia = v),
+                          validator: widget.kind == GuestKind.lxc
+                              ? (v) => v == null ? 'Pick a template' : null
+                              : null,
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
@@ -218,72 +274,108 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       TextFormField(
-                        controller: _hostname,
-                        decoration: const InputDecoration(
-                          labelText: 'Hostname',
+                        controller: _name,
+                        decoration: InputDecoration(
+                          labelText: widget.kind == GuestKind.lxc
+                              ? 'Hostname'
+                              : 'Name',
                         ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Required'
-                            : null,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      if (widget.kind == GuestKind.qemu) ...[
+                        DropdownButtonFormField<String>(
+                          initialValue: _ostype,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'OS type',
+                          ),
+                          items: [
+                            for (final (code, label) in _osTypes)
+                              DropdownMenuItem(value: code, child: Text(label)),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _ostype = v ?? 'l26'),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      Row(
+                        children: [
+                          Expanded(child: _numField(_cores, 'Cores')),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: widget.kind == GuestKind.lxc
+                                ? _numField(_memory, 'Memory (MB)')
+                                : _numField(_sockets, 'Sockets'),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
-                            child: _numField(_cores, 'Cores'),
+                            child: widget.kind == GuestKind.lxc
+                                ? _numField(_swap, 'Swap (MB)')
+                                : _numField(_memory, 'Memory (MB)'),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(child: _numField(_memory, 'Memory (MB)')),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(child: _numField(_swap, 'Swap (MB)')),
                           const SizedBox(width: 12),
                           Expanded(child: _numField(_disk, 'Disk (GB)')),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _password,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Root password',
-                          helperText: 'Required unless the template has keys',
+                      if (widget.kind == GuestKind.lxc) ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _password,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Root password',
+                            helperText: 'Required unless the template has keys',
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 BrassPanel(
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Network: DHCP on vmbr0'),
-                        value: _dhcp,
-                        onChanged: (v) => setState(() => _dhcp = v),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Unprivileged'),
-                        value: _unprivileged,
-                        onChanged: (v) => setState(() => _unprivileged = v),
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('Start after create'),
-                        value: _startAfter,
-                        onChanged: (v) => setState(() => _startAfter = v),
-                      ),
-                    ],
-                  ),
+                  child: widget.kind == GuestKind.lxc
+                      ? Column(
+                          children: [
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Network: DHCP on vmbr0'),
+                              value: _dhcp,
+                              onChanged: (v) => setState(() => _dhcp = v),
+                            ),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Unprivileged'),
+                              value: _unprivileged,
+                              onChanged: (v) =>
+                                  setState(() => _unprivileged = v),
+                            ),
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Start after create'),
+                              value: _startAfter,
+                              onChanged: (v) => setState(() => _startAfter = v),
+                            ),
+                          ],
+                        )
+                      : SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Start after create'),
+                          value: _startAfter,
+                          onChanged: (v) => setState(() => _startAfter = v),
+                        ),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+                  Text(
+                    _error!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
                 ],
                 const SizedBox(height: 20),
                 FilledButton.icon(
@@ -295,7 +387,13 @@ class _CreateContainerScreenState extends ConsumerState<CreateContainerScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.add),
-                  label: Text(_submitting ? 'Creating…' : 'Create container'),
+                  label: Text(
+                    _submitting
+                        ? 'Creating…'
+                        : widget.kind == GuestKind.lxc
+                        ? 'Create container'
+                        : 'Create VM',
+                  ),
                 ),
               ],
             ),

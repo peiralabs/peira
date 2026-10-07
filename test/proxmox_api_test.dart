@@ -15,16 +15,23 @@ class _FakeAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options,
-      Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
     requests.add(options);
     final body = routes[options.uri.path];
     if (body == null) {
       return ResponseBody.fromString('{"data":null}', 501);
     }
-    return ResponseBody.fromString(body, 200, headers: {
-      Headers.contentTypeHeader: [Headers.jsonContentType],
-    });
+    return ResponseBody.fromString(
+      body,
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
   }
 
   @override
@@ -49,8 +56,11 @@ void main() {
       '/api2/json/nodes': _fixture('nodes'),
       '/api2/json/nodes/node4/status': _fixture('node_status'),
       '/api2/json/nodes/node4/lxc': _fixture('containers'),
-      '/api2/json/nodes/node4/lxc/104/status/current':
-          _fixture('container_status'),
+      '/api2/json/nodes/node4/lxc/104/status/current': _fixture(
+        'container_status',
+      ),
+      '/api2/json/nodes/node4/qemu/204/status/current':
+          '{"data":{"status":"running","vmid":204,"qmpstatus":"running"}}',
       '/api2/json/cluster/tasks': _fixture('tasks'),
       '/api2/json/nodes/node4/lxc/104/status/start':
           '{"data":"UPID:node4:start"}',
@@ -58,26 +68,36 @@ void main() {
           '{"data":"UPID:node4:stop"}',
       '/api2/json/nodes/node4/lxc/104/status/reboot':
           '{"data":"UPID:node4:reboot"}',
+      '/api2/json/nodes/node4/qemu/204/status/start':
+          '{"data":"UPID:node4:vm-start"}',
+      '/api2/json/nodes/node4/lxc/104/snapshot':
+          '{"data":"UPID:node4:lxc-snapshot"}',
+      '/api2/json/nodes/node4/qemu/204/snapshot':
+          '{"data":"UPID:node4:qemu-snapshot"}',
+      '/api2/json/nodes/node4/lxc/104/clone': '{"data":"UPID:node4:lxc-clone"}',
+      '/api2/json/nodes/node4/qemu/204/clone':
+          '{"data":"UPID:node4:qemu-clone"}',
+      '/api2/json/nodes/node4/lxc/104': '{"data":"UPID:node4:lxc-delete"}',
+      '/api2/json/nodes/node4/qemu/204': '{"data":"UPID:node4:qemu-delete"}',
       '/api2/json/nodes/node4/storage/pbs-local/content':
           '{"data":[{"volid":"pbs-local:backup/vm/104/2026-08-28T10:00:00Z","vmid":104,"ctime":1787911200,"size":4096}]}',
-      '/api2/json/nodes/node4/vzdump':
-          '{"data":"UPID:node4:vzdump"}',
+      '/api2/json/nodes/node4/vzdump': '{"data":"UPID:node4:vzdump"}',
     });
-    final dio = Dio(BaseOptions(
-      baseUrl: '${settings.proxmoxUrl}/api2/json',
-      headers: {
-        'Authorization':
-            'PVEAPIToken=${settings.proxmoxTokenId}=${settings.proxmoxTokenSecret}',
-      },
-    ))
-      ..httpClientAdapter = adapter;
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: '${settings.proxmoxUrl}/api2/json',
+        headers: {
+          'Authorization':
+              'PVEAPIToken=${settings.proxmoxTokenId}=${settings.proxmoxTokenSecret}',
+        },
+      ),
+    )..httpClientAdapter = adapter;
     api = ProxmoxApi(dio);
   });
 
   test('getNodes parses and sorts, sends the PVEAPIToken header', () async {
     final nodes = await api.getNodes();
-    expect(nodes.map((n) => n.node),
-        ['node1', 'node2', 'node3', 'node4']);
+    expect(nodes.map((n) => n.node), ['node1', 'node2', 'node3', 'node4']);
     expect(
       adapter.requests.single.headers['Authorization'],
       'PVEAPIToken=user@pve!token=secret-uuid',
@@ -97,24 +117,116 @@ void main() {
     expect(vmids, orderedEquals([...vmids]..sort()));
   });
 
-  test('getContainerStatus parses current status', () async {
-    final status = await api.getContainerStatus('node4', 104);
+  test('getGuestStatus parses current status', () async {
+    final status = await api.getGuestStatus(GuestKind.lxc, 'node4', 104);
     expect(status.status, 'running');
   });
 
   test('start/stop/reboot POST and return the UPID', () async {
-    expect(await api.startContainer('node4', 104), 'UPID:node4:start');
-    expect(await api.stopContainer('node4', 104), 'UPID:node4:stop');
     expect(
-        await api.rebootContainer('node4', 104), 'UPID:node4:reboot');
+      await api.changeGuestStatus(GuestKind.lxc, 'node4', 104, 'start'),
+      'UPID:node4:start',
+    );
+    expect(
+      await api.changeGuestStatus(GuestKind.lxc, 'node4', 104, 'stop'),
+      'UPID:node4:stop',
+    );
+    expect(
+      await api.changeGuestStatus(GuestKind.lxc, 'node4', 104, 'reboot'),
+      'UPID:node4:reboot',
+    );
     expect(adapter.requests.map((r) => r.method).toSet(), {'POST'});
   });
+
+  for (final (kind, vmid) in [(GuestKind.lxc, 104), (GuestKind.qemu, 204)]) {
+    test('${kind.name} status request is exact', () async {
+      await api.getGuestStatus(kind, 'node4', vmid);
+
+      final request = adapter.requests.single;
+      expect(request.method, 'GET');
+      expect(
+        request.uri.path,
+        '/api2/json/nodes/node4/${kind.pathSegment}/$vmid/status/current',
+      );
+      expect(request.queryParameters, isEmpty);
+      expect(request.data, isNull);
+    });
+
+    test('${kind.name} snapshot-create request is exact', () async {
+      await api.createGuestSnapshot(
+        kind,
+        'node4',
+        vmid,
+        'before-upgrade',
+        description: 'known good',
+        vmstate: true,
+      );
+
+      final request = adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(
+        request.uri.path,
+        '/api2/json/nodes/node4/${kind.pathSegment}/$vmid/snapshot',
+      );
+      expect(request.queryParameters, isEmpty);
+      expect(request.contentType, Headers.formUrlEncodedContentType);
+      expect(request.data, {
+        'snapname': 'before-upgrade',
+        if (kind == GuestKind.qemu) 'vmstate': 1,
+        'description': 'known good',
+      });
+    });
+
+    test('${kind.name} clone request is exact', () async {
+      await api.cloneGuest(
+        kind,
+        'node4',
+        vmid,
+        newid: vmid + 1,
+        name: 'copy-one',
+        full: false,
+        storage: 'local-lvm',
+        target: 'node3',
+      );
+
+      final request = adapter.requests.single;
+      expect(request.method, 'POST');
+      expect(
+        request.uri.path,
+        '/api2/json/nodes/node4/${kind.pathSegment}/$vmid/clone',
+      );
+      expect(request.queryParameters, isEmpty);
+      expect(request.contentType, Headers.formUrlEncodedContentType);
+      expect(request.data, {
+        'newid': vmid + 1,
+        'full': 0,
+        kind.cloneNameField: 'copy-one',
+        'storage': 'local-lvm',
+        'target': 'node3',
+      });
+    });
+
+    test('${kind.name} delete request is exact', () async {
+      await api.deleteGuest(kind, 'node4', vmid);
+
+      final request = adapter.requests.single;
+      expect(request.method, 'DELETE');
+      expect(
+        request.uri.path,
+        '/api2/json/nodes/node4/${kind.pathSegment}/$vmid',
+      );
+      expect(request.queryParameters, {
+        'purge': 1,
+        'destroy-unreferenced-disks': 1,
+      });
+      expect(request.data, isNull);
+    });
+  }
 
   test('getRecentTasks sorts newest first and applies limit', () async {
     final tasks = await api.getRecentTasks(limit: 3);
     expect(tasks, hasLength(3));
-    expect(tasks.first.starttime,
-        greaterThanOrEqualTo(tasks.last.starttime));
+    expect(tasks.first.starttime, greaterThanOrEqualTo(tasks.last.starttime));
   });
 
   test('getBackups requests backup content and returns raw maps', () async {
