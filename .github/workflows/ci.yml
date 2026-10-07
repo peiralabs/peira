@@ -41,14 +41,14 @@ jobs:
 
   goldens:
     name: visual goldens
-    # ADVISORY for now (continue-on-error): alchemist's CI goldens remove most
-    # machine dependence, but a small runner-vs-maintainer-laptop rendering
-    # delta remains, so baselines generated off-runner don't match exactly.
-    # To make this a HARD gate: once `update-goldens.yml` is on the default
-    # branch it becomes dispatchable — run it once to regenerate the baselines
-    # ON this runner (it also re-attests the binaries), then drop
-    # `continue-on-error` here.
-    continue-on-error: true
+    # ADVISORY for now: alchemist's CI goldens remove most machine dependence,
+    # but a small runner-vs-maintainer-laptop rendering delta remains, so
+    # baselines generated off-runner don't match exactly. The golden step is
+    # `continue-on-error` so this check stays GREEN while still uploading the
+    # diff artifact for review. To make it a HARD gate: once update-goldens.yml
+    # is on the default branch, run it once to regenerate baselines ON this
+    # runner (it re-attests the binaries too), then drop the step's
+    # continue-on-error below.
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -63,10 +63,12 @@ jobs:
       - run: flutter pub get
 
       - run: flutter test --tags golden
+        continue-on-error: true
 
-      # On a pixel diff, publish the failure images (expected / actual / masked
-      # diff that alchemist writes) so the change is reviewable from the PR.
-      - if: failure()
+      # Publish the failure images (expected / actual / masked diff that
+      # alchemist writes) for review. always() because the step above is
+      # continue-on-error, so the job stays green either way.
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: golden-failures
