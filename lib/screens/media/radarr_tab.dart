@@ -110,7 +110,21 @@ class RadarrTab extends ConsumerWidget {
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
     await showDialog<void>(
       context: context,
-      builder: (_) => _AddMovieDialog(ref: ref),
+      builder: (_) => MediaLookupDialog<RadarrMovie>(
+        title: 'Add movie',
+        hintText: 'Search TMDb…',
+        lookup: (term) async {
+          final api = await ref.read(radarrApiProvider.future);
+          return api.lookup(term);
+        },
+        add: (movie) async {
+          final api = await ref.read(radarrApiProvider.future);
+          await api.add(movie);
+          ref.invalidate(radarrMoviesProvider);
+        },
+        itemTitle: (movie) => movie.title,
+        itemSubtitle: (movie) => movie.year == null ? null : '${movie.year}',
+      ),
     );
   }
 }
@@ -164,118 +178,6 @@ class _MovieTile extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Search-and-add dialog: type a title, pick a lookup result to add it to
-/// Radarr (monitored + searched).
-class _AddMovieDialog extends StatefulWidget {
-  const _AddMovieDialog({required this.ref});
-  final WidgetRef ref;
-
-  @override
-  State<_AddMovieDialog> createState() => _AddMovieDialogState();
-}
-
-class _AddMovieDialogState extends State<_AddMovieDialog> {
-  final _controller = TextEditingController();
-  List<RadarrMovie> _results = const [];
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final term = _controller.text.trim();
-    if (term.isEmpty) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final api = await widget.ref.read(radarrApiProvider.future);
-      final results = await api.lookup(term);
-      setState(() => _results = results);
-    } on Object catch (e) {
-      setState(() => _error = '$e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _add(RadarrMovie movie) async {
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final api = await widget.ref.read(radarrApiProvider.future);
-      await api.add(movie);
-      widget.ref.invalidate(radarrMoviesProvider);
-      navigator.pop();
-      messenger.showSnackBar(SnackBar(content: Text('Added ${movie.title}')));
-    } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add movie'),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search TMDb…',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _search,
-                ),
-              ),
-              onSubmitted: (_) => _search(),
-            ),
-            const SizedBox(height: 12),
-            if (_loading) const CircularProgressIndicator(),
-            if (_error != null) Text(_error!),
-            if (!_loading)
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final movie in _results.take(20))
-                      ListTile(
-                        dense: true,
-                        title: Text(
-                          movie.title,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: movie.year == null
-                            ? null
-                            : Text('${movie.year}'),
-                        trailing: const Icon(Icons.add),
-                        onTap: () => _add(movie),
-                      ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
     );
   }
 }

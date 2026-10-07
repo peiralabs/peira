@@ -23,7 +23,22 @@ class SonarrTab extends ConsumerWidget {
           ? MediaFab(
               onPressed: () => showDialog<void>(
                 context: context,
-                builder: (_) => _AddSeriesDialog(ref: ref),
+                builder: (_) => MediaLookupDialog<SonarrSeries>(
+                  title: 'Add series',
+                  hintText: 'Search TVDb…',
+                  lookup: (term) async {
+                    final api = await ref.read(sonarrApiProvider.future);
+                    return api.lookup(term);
+                  },
+                  add: (series) async {
+                    final api = await ref.read(sonarrApiProvider.future);
+                    await api.add(series);
+                    ref.invalidate(sonarrSeriesProvider);
+                  },
+                  itemTitle: (series) => series.title,
+                  itemSubtitle: (series) =>
+                      series.year == null ? null : '${series.year}',
+                ),
               ),
               icon: const Icon(Icons.add),
               label: const Text('Add series'),
@@ -128,7 +143,8 @@ class _SeriesTile extends StatelessWidget {
     final brass = context.brass;
     final stats = series.statistics;
     final complete =
-        stats != null && stats.episodeCount > 0 &&
+        stats != null &&
+        stats.episodeCount > 0 &&
         stats.episodeFileCount >= stats.episodeCount;
     final subtitle = [
       if (series.year != null) '${series.year}',
@@ -167,117 +183,6 @@ class _SeriesTile extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Search-and-add dialog for Sonarr (TVDb lookup → add first-season-monitored).
-class _AddSeriesDialog extends StatefulWidget {
-  const _AddSeriesDialog({required this.ref});
-  final WidgetRef ref;
-
-  @override
-  State<_AddSeriesDialog> createState() => _AddSeriesDialogState();
-}
-
-class _AddSeriesDialogState extends State<_AddSeriesDialog> {
-  final _controller = TextEditingController();
-  List<SonarrSeries> _results = const [];
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _search() async {
-    final term = _controller.text.trim();
-    if (term.isEmpty) return;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final api = await widget.ref.read(sonarrApiProvider.future);
-      final results = await api.lookup(term);
-      setState(() => _results = results);
-    } on Object catch (e) {
-      setState(() => _error = '$e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _add(SonarrSeries series) async {
-    final navigator = Navigator.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final api = await widget.ref.read(sonarrApiProvider.future);
-      await api.add(series);
-      widget.ref.invalidate(sonarrSeriesProvider);
-      navigator.pop();
-      messenger.showSnackBar(SnackBar(content: Text('Added ${series.title}')));
-    } on Object catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add series'),
-      content: SizedBox(
-        width: 420,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search TVDb…',
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _search,
-                ),
-              ),
-              onSubmitted: (_) => _search(),
-            ),
-            const SizedBox(height: 12),
-            if (_loading) const CircularProgressIndicator(),
-            if (_error != null) Text(_error!),
-            if (!_loading)
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final series in _results.take(20))
-                      ListTile(
-                        dense: true,
-                        title: Text(
-                          series.title,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: series.year == null
-                            ? null
-                            : Text('${series.year}'),
-                        trailing: const Icon(Icons.add),
-                        onTap: () => _add(series),
-                      ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
-        ),
-      ],
     );
   }
 }
