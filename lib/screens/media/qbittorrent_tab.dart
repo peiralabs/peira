@@ -62,8 +62,7 @@ class QbittorrentTab extends ConsumerWidget {
               .where((t) => t.dlspeed > 0 || t.upspeed > 0)
               .length;
           return RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(qbittorrentTorrentsProvider),
+            onRefresh: () async => ref.invalidate(qbittorrentTorrentsProvider),
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
@@ -159,38 +158,6 @@ class QbittorrentTab extends ConsumerWidget {
   }
 }
 
-/// File-local tile inks (mapping `media.*` slice): dark values verbatim from
-/// the dark-only era; light is the parchment ink equivalents.
-class _TilePalette {
-  const _TilePalette({
-    required this.ink,
-    required this.caption,
-    required this.recessBorder,
-  });
-
-  /// JetBrains Mono torrent-name ink (parchment on dark, umber ink on paper).
-  final Color ink;
-
-  /// Muted sage percent/meta caption ink.
-  final Color caption;
-
-  /// Translucent green hairline around the recessed progress track.
-  final Color recessBorder;
-
-  static const dark = _TilePalette(
-    ink: Color(0xFFE6DFC9),
-    caption: Color(0xFF9AA98A),
-    recessBorder: Color(0x385FA050),
-  );
-  static const light = _TilePalette(
-    ink: Color(0xFF3A3326),
-    caption: Color(0xFF5A6650),
-    recessBorder: Color(0x4738702E),
-  );
-
-  static _TilePalette of(Brass brass) => brass.isDark ? dark : light;
-}
-
 class _TorrentTile extends StatefulWidget {
   const _TorrentTile({
     required this.torrent,
@@ -219,7 +186,7 @@ class _TorrentTileState extends State<_TorrentTile> {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final palette = _TilePalette.of(brass);
+    final palette = MediaTilePalette.of(brass);
     final torrent = widget.torrent;
     final stateColor = widget.stateColor;
     final stopped = widget.stopped;
@@ -242,8 +209,7 @@ class _TorrentTileState extends State<_TorrentTile> {
           transform: Matrix4.translationValues(_hover ? 4 : 0, 0, 0),
           child: BrassPanel(
             padding: const EdgeInsets.fromLTRB(14, 9, 8, 12),
-            borderColor:
-                _hover ? stateColor.withValues(alpha: 0.5) : null,
+            borderColor: _hover ? stateColor.withValues(alpha: 0.5) : null,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -274,8 +240,11 @@ class _TorrentTileState extends State<_TorrentTile> {
                             )
                           else
                             BoxShadow(
-                              color: Color.lerp(Colors.black, stateColor, 0.4)!
-                                  .withValues(alpha: 0.3),
+                              color: Color.lerp(
+                                Colors.black,
+                                stateColor,
+                                0.4,
+                              )!.withValues(alpha: 0.3),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -317,10 +286,7 @@ class _TorrentTileState extends State<_TorrentTile> {
                     fraction: torrent.progress,
                     height: 7,
                     borderColor: palette.recessBorder,
-                    gradient: [
-                      brass.sparkGreenDeep,
-                      brass.sparkGreen,
-                    ],
+                    gradient: [brass.sparkGreenDeep, brass.sparkGreen],
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -328,8 +294,7 @@ class _TorrentTileState extends State<_TorrentTile> {
                   '${(torrent.progress * 100).toStringAsFixed(0)}%  ·  $subtitle',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style:
-                      TextStyle(fontSize: 13, color: palette.caption),
+                  style: TextStyle(fontSize: 13, color: palette.caption),
                 ),
               ],
             ),

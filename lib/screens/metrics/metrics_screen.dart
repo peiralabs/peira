@@ -159,129 +159,152 @@ class MetricsScreen extends ConsumerWidget {
           ),
           // Personal build only: AI telemetry is fed by the `ai_*` exporters,
           // which no external user has.
-          if (!kPublicBuild) ...[
-            const SizedBox(height: MolSpace.xl),
-            const BrassSectionHeader(title: 'AI telemetry'),
-            const SizedBox(height: MolSpace.md),
-            ref.watch(aiMetricsProvider).when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  // The not-configured case is already explained by the
-                  // cluster block's full error state above — don't repeat it.
-                  error: (e, _) => e is PrometheusNotConfigured
-                      ? const SizedBox.shrink()
-                      : _AiUnavailable(
-                          onRetry: () => ref.invalidate(aiMetricsProvider),
-                        ),
-                  // Empty results with a healthy Prometheus mean the ai_*
-                  // exporters themselves are gone — say so instead of a
-                  // reassuring $0.00 strip.
-                  data: (a) => a.isEmpty
-                      ? _AiUnavailable(
-                          onRetry: () => ref.invalidate(aiMetricsProvider),
-                        )
-                      : _AiSection(ai: a, rangeLabel: range.label),
-                ),
-          ],
-          const SizedBox(height: MolSpace.xl),
-          const BrassSectionHeader(title: 'Power & cost'),
-          const SizedBox(height: MolSpace.md),
-          power.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: CircularProgressIndicator()),
+          if (!kPublicBuild)
+            _metricsSection<AiMetrics>(
+              title: 'AI telemetry',
+              value: ref.watch(aiMetricsProvider),
+              unavailableMessage:
+                  'AI telemetry unavailable (ai_* exporters offline?)',
+              onRetry: () => ref.invalidate(aiMetricsProvider),
+              isUnavailable: (a) => a.isEmpty,
+              data: (a) => _AiSection(ai: a, rangeLabel: range.label),
             ),
-            // Not-configured is already explained by the cluster block above.
-            error: (e, _) => e is PrometheusNotConfigured
-                ? const SizedBox.shrink()
-                : _PowerUnavailable(
-                    onRetry: () => ref.invalidate(powerMetricsProvider),
-                  ),
-            // Empty results with a healthy Prometheus mean the NUT exporter
-            // itself is gone — say so instead of a misleading 0 W / $0.00.
-            data: (p) => p.isEmpty
-                ? _PowerUnavailable(
-                    onRetry: () => ref.invalidate(powerMetricsProvider),
-                  )
-                : _PowerSection(power: p),
+          _metricsSection<PowerMetrics>(
+            title: 'Power & cost',
+            value: power,
+            unavailableMessage:
+                'Power telemetry unavailable (NUT exporter on node4 :9199 '
+                'offline?)',
+            onRetry: () => ref.invalidate(powerMetricsProvider),
+            isUnavailable: (p) => p.isEmpty,
+            data: (p) => _PowerSection(power: p),
           ),
           // Both builds: smartctl_exporter is standard homelab kit; the
           // queries are job-agnostic over the smartctl_device_* family.
-          const SizedBox(height: MolSpace.xl),
-          const BrassSectionHeader(title: 'Disk health'),
-          const SizedBox(height: MolSpace.md),
-          ref.watch(smartHealthProvider).when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                // Not-configured is already explained by the cluster block.
-                error: (e, _) => e is PrometheusNotConfigured
-                    ? const SizedBox.shrink()
-                    : _SmartUnavailable(
-                        onRetry: () => ref.invalidate(smartHealthProvider),
-                      ),
-                // Empty results with a healthy Prometheus mean no smartctl
-                // exporter is scraped or pushed — say so.
-                data: (s) => s.isEmpty
-                    ? _SmartUnavailable(
-                        onRetry: () => ref.invalidate(smartHealthProvider),
-                      )
-                    : _SmartSection(smart: s),
-              ),
+          _metricsSection<SmartHealth>(
+            title: 'Disk health',
+            value: ref.watch(smartHealthProvider),
+            unavailableMessage:
+                'Disk SMART telemetry unavailable (no smartctl exporter '
+                'scraped or pushed?)',
+            onRetry: () => ref.invalidate(smartHealthProvider),
+            isUnavailable: (s) => s.isEmpty,
+            data: (s) => _SmartSection(smart: s),
+          ),
           // Personal build only: the WAN/offsite pipeline is fed by
           // self-authored pushers (speedtest, NAS net-stats, offsite write
           // probe, tailscale-path exporter) no external user runs.
-          if (!kPublicBuild) ...[
-            const SizedBox(height: MolSpace.xl),
-            const BrassSectionHeader(title: 'WAN & offsite path'),
-            const SizedBox(height: MolSpace.md),
-            ref.watch(wanMetricsProvider).when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  // Not-configured is explained by the cluster block.
-                  error: (e, _) => e is PrometheusNotConfigured
-                      ? const SizedBox.shrink()
-                      : _WanUnavailable(
-                          onRetry: () => ref.invalidate(wanMetricsProvider),
-                        ),
-                  data: (wanData) => wanData.isEmpty
-                      ? _WanUnavailable(
-                          onRetry: () => ref.invalidate(wanMetricsProvider),
-                        )
-                      : _WanSection(wan: wanData, rangeLabel: range.label),
-                ),
-          ],
+          if (!kPublicBuild)
+            _metricsSection<WanMetrics>(
+              title: 'WAN & offsite path',
+              value: ref.watch(wanMetricsProvider),
+              unavailableMessage:
+                  'WAN telemetry unavailable (speedtest / path-exporter '
+                  'pushes absent?)',
+              onRetry: () => ref.invalidate(wanMetricsProvider),
+              isUnavailable: (wanData) => wanData.isEmpty,
+              data: (wanData) =>
+                  _WanSection(wan: wanData, rangeLabel: range.label),
+            ),
           // Personal build only: the What-if planner is served by the
           // homelab-twin simulator, which no external user runs.
-          if (!kPublicBuild) ...[
-            const SizedBox(height: MolSpace.xl),
-            const BrassSectionHeader(title: 'What-if planner'),
-            const SizedBox(height: MolSpace.md),
-            ref.watch(twinDataProvider).when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  // Not-configured is already explained by the cluster block.
-                  error: (e, _) => e is PrometheusNotConfigured
-                      ? const SizedBox.shrink()
-                      : _TwinUnavailable(
-                          onRetry: () => ref.invalidate(twinDataProvider),
-                        ),
-                  data: (t) => _TwinSection(twin: t),
-                ),
-          ],
+          if (!kPublicBuild)
+            _metricsSection<TwinData>(
+              title: 'What-if planner',
+              value: ref.watch(twinDataProvider),
+              unavailableMessage:
+                  'What-if planner unavailable (homelab-twin on :9112 '
+                  'offline?)',
+              onRetry: () => ref.invalidate(twinDataProvider),
+              data: (t) => _TwinSection(twin: t),
+            ),
         ],
       ),
     );
   }
 
   static String _pct(double v) => '${v.toStringAsFixed(0)}%';
+}
+
+Widget _metricsSection<T>({
+  required String title,
+  required AsyncValue<T> value,
+  required String unavailableMessage,
+  required VoidCallback onRetry,
+  required Widget Function(T value) data,
+  bool Function(T value)? isUnavailable,
+}) => Column(
+  mainAxisSize: MainAxisSize.min,
+  crossAxisAlignment: CrossAxisAlignment.stretch,
+  children: [
+    const SizedBox(height: MolSpace.xl),
+    BrassSectionHeader(title: title),
+    const SizedBox(height: MolSpace.md),
+    value.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => e is PrometheusNotConfigured
+          ? const SizedBox.shrink()
+          : _SectionUnavailable(message: unavailableMessage, onRetry: onRetry),
+      data: (result) => isUnavailable?.call(result) ?? false
+          ? _SectionUnavailable(message: unavailableMessage, onRetry: onRetry)
+          : data(result),
+    ),
+  ],
+);
+
+class _SectionUnavailable extends StatelessWidget {
+  const _SectionUnavailable({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final brass = context.brass;
+    return BrassPanel(
+      padding: const EdgeInsets.symmetric(
+        horizontal: MolSpace.lg,
+        vertical: MolSpace.sm,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(fontSize: 13, color: brass.textMuted),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthItem extends StatelessWidget {
+  const _HealthItem({required this.health, required this.text});
+
+  final Health health;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      StatusLight(health: health, size: 8),
+      const SizedBox(width: 8),
+      Text(
+        text,
+        style: TextStyle(
+          fontSize: 13,
+          color: _MetricsPalette.of(context).healthStrip,
+        ),
+      ),
+    ],
+  );
 }
 
 /// Range selector pill: gilt when selected, hairline otherwise.
@@ -609,7 +632,6 @@ class _HealthStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pal = _MetricsPalette.of(context);
     final allUp = insights.targetsUp == insights.targetsTotal;
 
     // Worst disk runway across nodes; > 1 year reads as "no risk".
@@ -634,15 +656,6 @@ class _HealthStrip extends StatelessWidget {
       }
     }
 
-    Widget item(Health h, String text) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        StatusLight(health: h, size: 8),
-        const SizedBox(width: 8),
-        Text(text, style: TextStyle(fontSize: 13, color: pal.healthStrip)),
-      ],
-    );
-
     return BrassPanel(
       padding: const EdgeInsets.symmetric(
         horizontal: MolSpace.lg,
@@ -652,12 +665,13 @@ class _HealthStrip extends StatelessWidget {
         spacing: MolSpace.xl,
         runSpacing: MolSpace.sm,
         children: [
-          item(
-            allUp ? Health.ok : Health.crit,
-            '${insights.targetsUp}/${insights.targetsTotal} '
-            'exporters reporting',
+          _HealthItem(
+            health: allUp ? Health.ok : Health.crit,
+            text:
+                '${insights.targetsUp}/${insights.targetsTotal} '
+                'exporters reporting',
           ),
-          item(runwayHealth, runwayText),
+          _HealthItem(health: runwayHealth, text: runwayText),
         ],
       ),
     );
@@ -822,15 +836,6 @@ class _AiSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pal = _MetricsPalette.of(context);
-    Widget item(Health h, String text) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        StatusLight(health: h, size: 8),
-        const SizedBox(width: 8),
-        Text(text, style: TextStyle(fontSize: 13, color: pal.healthStrip)),
-      ],
-    );
-
     final quota = ai.codexQuotaPct;
     final cache = ai.cacheHitPct;
     return Column(
@@ -844,26 +849,30 @@ class _AiSection extends StatelessWidget {
             spacing: MolSpace.xl,
             runSpacing: MolSpace.sm,
             children: [
-              item(
-                Health.ok,
-                'Hermes API ${_usd(ai.hermesCostUsd)} · last $rangeLabel',
+              _HealthItem(
+                health: Health.ok,
+                text: 'Hermes API ${_usd(ai.hermesCostUsd)} · last $rangeLabel',
               ),
-              item(
-                Health.ok,
-                'Claude Code ${_usd(ai.claudeCodeCostUsd)} quota-equivalent',
+              _HealthItem(
+                health: Health.ok,
+                text:
+                    'Claude Code ${_usd(ai.claudeCodeCostUsd)} quota-equivalent',
               ),
               if (quota != null)
-                item(
-                  quota < 70
+                _HealthItem(
+                  health: quota < 70
                       ? Health.ok
                       : (quota < 90 ? Health.warn : Health.crit),
-                  'Codex ${quota.toStringAsFixed(0)}% of 7d quota',
+                  text: 'Codex ${quota.toStringAsFixed(0)}% of 7d quota',
                 ),
               if (cache != null)
-                item(Health.ok, 'cache hit ${cache.toStringAsFixed(0)}%'),
-              item(
-                ai.fallbacks > 0 ? Health.warn : Health.ok,
-                '${ai.fallbacks.toStringAsFixed(0)} model fallbacks',
+                _HealthItem(
+                  health: Health.ok,
+                  text: 'cache hit ${cache.toStringAsFixed(0)}%',
+                ),
+              _HealthItem(
+                health: ai.fallbacks > 0 ? Health.warn : Health.ok,
+                text: '${ai.fallbacks.toStringAsFixed(0)} model fallbacks',
               ),
             ],
           ),
@@ -908,36 +917,6 @@ class _AiSection extends StatelessWidget {
   }
 }
 
-/// Compact fallback when the AI providers error while the cluster block is
-/// healthy (exporters down, Prometheus fine).
-class _AiUnavailable extends StatelessWidget {
-  const _AiUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final brass = context.brass;
-    return BrassPanel(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MolSpace.lg,
-        vertical: MolSpace.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'AI telemetry unavailable (ai_* exporters offline?)',
-              style: TextStyle(fontSize: 13, color: brass.textMuted),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Retry')),
-        ],
-      ),
-    );
-  }
-}
-
 /// UPS power + energy-cost telemetry (NUT exporter on node4): a status
 /// strip, the live power-draw chart, and a modelled electricity cost. The UPS
 /// meters the whole lab, so these read as aggregate figures — the caption
@@ -978,15 +957,6 @@ class _PowerSection extends StatelessWidget {
       statusText = 'status unknown';
     }
 
-    Widget item(Health h, String text) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        StatusLight(health: h, size: 8),
-        const SizedBox(width: 8),
-        Text(text, style: TextStyle(fontSize: 13, color: pal.healthStrip)),
-      ],
-    );
-
     final strip = BrassPanel(
       padding: const EdgeInsets.symmetric(
         horizontal: MolSpace.lg,
@@ -996,15 +966,27 @@ class _PowerSection extends StatelessWidget {
         spacing: MolSpace.xl,
         runSpacing: MolSpace.sm,
         children: [
-          item(statusHealth, statusText),
+          _HealthItem(health: statusHealth, text: statusText),
           if (p.batteryPct != null)
-            item(Health.ok, 'Battery ${p.batteryPct!.toStringAsFixed(0)}%'),
+            _HealthItem(
+              health: Health.ok,
+              text: 'Battery ${p.batteryPct!.toStringAsFixed(0)}%',
+            ),
           if (p.runtimeSeconds != null)
-            item(Health.ok, 'Runtime ${_runtime(p.runtimeSeconds!)}'),
+            _HealthItem(
+              health: Health.ok,
+              text: 'Runtime ${_runtime(p.runtimeSeconds!)}',
+            ),
           if (p.loadPct != null)
-            item(Health.ok, 'Load ${p.loadPct!.toStringAsFixed(0)}%'),
+            _HealthItem(
+              health: Health.ok,
+              text: 'Load ${p.loadPct!.toStringAsFixed(0)}%',
+            ),
           if (p.inputVolts != null)
-            item(Health.ok, 'Line ${p.inputVolts!.toStringAsFixed(0)} V'),
+            _HealthItem(
+              health: Health.ok,
+              text: 'Line ${p.inputVolts!.toStringAsFixed(0)} V',
+            ),
         ],
       ),
     );
@@ -1013,7 +995,7 @@ class _PowerSection extends StatelessWidget {
     // as a card here — these are the derived energy + cost figures.
     final cards = <Widget>[
       if (p.kWhPerDay != null)
-        _PowerStat(
+        _StatReadout(
           title: 'Energy',
           value: p.kWhPerDay!.toStringAsFixed(2),
           unit: 'kWh',
@@ -1021,7 +1003,7 @@ class _PowerSection extends StatelessWidget {
           sub: 'per day · 24 h avg',
         ),
       if (p.costPerMonth != null)
-        _PowerStat(
+        _StatReadout(
           title: 'Est. cost',
           value: _usd(p.costPerMonth!),
           unit: '/mo',
@@ -1029,7 +1011,7 @@ class _PowerSection extends StatelessWidget {
           sub: 'at \$${p.rateUsdPerKwh.toStringAsFixed(2)}/kWh',
         ),
       if (p.costPerYear != null)
-        _PowerStat(
+        _StatReadout(
           title: 'Est. cost',
           value: _usd(p.costPerYear!),
           unit: '/yr',
@@ -1094,8 +1076,8 @@ class _PowerSection extends StatelessWidget {
 
 /// One power/cost headline: series-tinted top rule, Playfair title, and a big
 /// value + small unit — the readout half of a [_MetricPanel] without a chart.
-class _PowerStat extends StatelessWidget {
-  const _PowerStat({
+class _StatReadout extends StatelessWidget {
+  const _StatReadout({
     required this.title,
     required this.value,
     required this.unit,
@@ -1167,37 +1149,6 @@ class _PowerStat extends StatelessWidget {
               style: TextStyle(fontSize: 11, color: brass.textMuted),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact fallback when the NUT exporter is offline while the cluster block
-/// is healthy (Prometheus fine, no nut_* series).
-class _PowerUnavailable extends StatelessWidget {
-  const _PowerUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final brass = context.brass;
-    return BrassPanel(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MolSpace.lg,
-        vertical: MolSpace.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Power telemetry unavailable (NUT exporter on node4 :9199 '
-              'offline?)',
-              style: TextStyle(fontSize: 13, color: brass.textMuted),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
     );
@@ -1581,36 +1532,6 @@ class _WhatIfFormState extends ConsumerState<_WhatIfForm> {
   }
 }
 
-/// Compact fallback when the twin service errors while the cluster block is
-/// healthy (service down, Prometheus fine).
-class _TwinUnavailable extends StatelessWidget {
-  const _TwinUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final brass = context.brass;
-    return BrassPanel(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MolSpace.lg,
-        vertical: MolSpace.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'What-if planner unavailable (homelab-twin on :9112 offline?)',
-              style: TextStyle(fontSize: 13, color: brass.textMuted),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Retry')),
-        ],
-      ),
-    );
-  }
-}
-
 class _ErrorState extends StatelessWidget {
   const _ErrorState({required this.error, required this.onRetry});
 
@@ -1679,7 +1600,7 @@ class _SmartSection extends StatelessWidget {
 
     final cards = <Widget>[
       if (disks.isNotEmpty)
-        _PowerStat(
+        _StatReadout(
           title: 'SMART passed',
           value: '$passed/${disks.length}',
           unit: '',
@@ -1691,7 +1612,7 @@ class _SmartSection extends StatelessWidget {
               : '$degraded disk(s) degraded — see rows below',
         ),
       if (hottest != null)
-        _PowerStat(
+        _StatReadout(
           title: 'Hottest disk',
           value: hottest.tempC!.toStringAsFixed(0),
           unit: '°C',
@@ -1699,7 +1620,7 @@ class _SmartSection extends StatelessWidget {
           sub: '${hottest.host} ${hottest.shortDevice}',
         ),
       if (mostWorn != null)
-        _PowerStat(
+        _StatReadout(
           title: 'NVMe wear',
           value: mostWorn.wearPct!.toStringAsFixed(0),
           unit: '%',
@@ -1724,11 +1645,7 @@ class _SmartSection extends StatelessWidget {
             horizontal: MolSpace.lg,
             vertical: MolSpace.sm,
           ),
-          child: Column(
-            children: [
-              for (final d in disks) _DiskRow(disk: d),
-            ],
-          ),
+          child: Column(children: [for (final d in disks) _DiskRow(disk: d)]),
         ),
         const SizedBox(height: MolSpace.sm),
         Align(
@@ -1760,14 +1677,14 @@ class _DiskRow extends StatelessWidget {
     final health = !d.passed
         ? Health.crit
         : d.degraded
-            ? Health.warn
-            : Health.ok;
+        ? Health.warn
+        : Health.ok;
     final temp = d.tempC == null ? '—' : '${d.tempC!.toStringAsFixed(0)}°C';
     final detail = d.wearPct != null
         ? '$temp · wear ${d.wearPct!.toStringAsFixed(0)}% · media errors '
-            '${(d.mediaErrors ?? 0).toStringAsFixed(0)}'
+              '${(d.mediaErrors ?? 0).toStringAsFixed(0)}'
         : '$temp · realloc ${(d.reallocated ?? 0).toStringAsFixed(0)} · '
-            'pending ${(d.pending ?? 0).toStringAsFixed(0)}';
+              'pending ${(d.pending ?? 0).toStringAsFixed(0)}';
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -1795,41 +1712,7 @@ class _DiskRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: MolSpace.md),
-          Text(
-            detail,
-            style: TextStyle(fontSize: 12, color: pal.healthStrip),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact fallback when no smartctl exporter answers while the cluster
-/// block is healthy (Prometheus fine, no smartctl_device_* series).
-class _SmartUnavailable extends StatelessWidget {
-  const _SmartUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final brass = context.brass;
-    return BrassPanel(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MolSpace.lg,
-        vertical: MolSpace.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Disk SMART telemetry unavailable (no smartctl exporter '
-              'scraped or pushed?)',
-              style: TextStyle(fontSize: 13, color: brass.textMuted),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Retry')),
+          Text(detail, style: TextStyle(fontSize: 12, color: pal.healthStrip)),
         ],
       ),
     );
@@ -1859,17 +1742,7 @@ class _WanSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final pal = _MetricsPalette.of(context);
     final w = wan;
-
-    Widget item(Health h, String text) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            StatusLight(health: h, size: 8),
-            const SizedBox(width: 8),
-            Text(text, style: TextStyle(fontSize: 13, color: pal.healthStrip)),
-          ],
-        );
 
     final (pathHealth, pathText) = switch ((w.pathOnline, w.pathDirect)) {
       (false, _) => (Health.crit, 'Tailnet path down'),
@@ -1889,27 +1762,31 @@ class _WanSection extends StatelessWidget {
         spacing: MolSpace.xl,
         runSpacing: MolSpace.sm,
         children: [
-          item(pathHealth, pathText),
+          _HealthItem(health: pathHealth, text: pathText),
           if (w.pathRttMs != null)
-            item(Health.ok, 'RTT ${w.pathRttMs!.toStringAsFixed(0)} ms'),
+            _HealthItem(
+              health: Health.ok,
+              text: 'RTT ${w.pathRttMs!.toStringAsFixed(0)} ms',
+            ),
           if (w.pathLossPct != null)
-            item(
-              w.pathLossPct! > 1 ? Health.warn : Health.ok,
-              'Loss ${w.pathLossPct!.toStringAsFixed(1)}% / $rangeLabel',
+            _HealthItem(
+              health: w.pathLossPct! > 1 ? Health.warn : Health.ok,
+              text: 'Loss ${w.pathLossPct!.toStringAsFixed(1)}% / $rangeLabel',
             ),
           if (w.rmemMaxBytes != null)
-            item(
-              clamped ? Health.warn : Health.ok,
-              clamped
+            _HealthItem(
+              health: clamped ? Health.warn : Health.ok,
+              text: clamped
                   ? 'NAS buffer clamp ACTIVE '
-                      '(rmem ${formatBytes(w.rmemMaxBytes!)})'
+                        '(rmem ${formatBytes(w.rmemMaxBytes!)})'
                   : 'NAS buffer clamp lifted',
             ),
           if (w.rcvbufErrDelta != null)
-            item(
-              w.rcvbufErrDelta! > 0 ? Health.warn : Health.ok,
-              'RcvbufErrors +${w.rcvbufErrDelta!.toStringAsFixed(0)} '
-              '/ $rangeLabel',
+            _HealthItem(
+              health: w.rcvbufErrDelta! > 0 ? Health.warn : Health.ok,
+              text:
+                  'RcvbufErrors +${w.rcvbufErrDelta!.toStringAsFixed(0)} '
+                  '/ $rangeLabel',
             ),
         ],
       ),
@@ -1917,7 +1794,7 @@ class _WanSection extends StatelessWidget {
 
     final cards = <Widget>[
       for (final site in w.siteDownBps.keys.toList()..sort())
-        _PowerStat(
+        _StatReadout(
           title: '${site[0].toUpperCase()}${site.substring(1)} circuit',
           value:
               '${_mbps(w.siteDownBps[site]!)} ↓ · '
@@ -1927,7 +1804,7 @@ class _WanSection extends StatelessWidget {
           sub: 'latest scheduled speedtest',
         ),
       if (w.offsiteBps != null)
-        _PowerStat(
+        _StatReadout(
           title: 'Offsite write',
           value: formatBytes(w.offsiteBps!),
           unit: '/s',
@@ -1987,37 +1864,6 @@ class _WanSection extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Compact fallback when the WAN pipeline is silent while the cluster block
-/// is healthy (Prometheus fine, no speedtest/path series).
-class _WanUnavailable extends StatelessWidget {
-  const _WanUnavailable({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final brass = context.brass;
-    return BrassPanel(
-      padding: const EdgeInsets.symmetric(
-        horizontal: MolSpace.lg,
-        vertical: MolSpace.sm,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'WAN telemetry unavailable (speedtest / path-exporter pushes '
-              'absent?)',
-              style: TextStyle(fontSize: 13, color: brass.textMuted),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Retry')),
-        ],
-      ),
     );
   }
 }
