@@ -12,6 +12,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brass_panel.dart';
 import '../../core/widgets/chart_card.dart';
 import 'console_screen.dart';
+import 'proxmox_common.dart';
 import 'proxmox_screen.dart' show selectedGuestProvider;
 
 /// Live CT detail: CPU/RAM charts (5s polling), info, and power actions.
@@ -723,7 +724,6 @@ class _SnapshotCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final snaps = snapshots;
-    final brass = context.brass;
     return BrassPanel(
       padding: EdgeInsets.zero,
       child: Padding(
@@ -733,14 +733,7 @@ class _SnapshotCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  'SNAPSHOTS',
-                  style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              ),
-                ),
+                const ProxmoxSectionHeader('SNAPSHOTS'),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: busy ? null : onTake,
@@ -842,7 +835,6 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brass = context.brass;
     final cfg = config ?? const <String, dynamic>{};
     final rows = <(String, String)>[
       ('Uptime', _uptime(status.uptime)),
@@ -861,28 +853,10 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('INFO', style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              )),
+            const ProxmoxSectionHeader('INFO'),
             const SizedBox(height: 8),
             for (final (label, value) in rows)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 90,
-                      child: Text(
-                        label,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                    Expanded(child: Text(value)),
-                  ],
-                ),
-              ),
+              pair(context, label, value),
           ],
         ),
       ),

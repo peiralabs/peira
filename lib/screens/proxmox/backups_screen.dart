@@ -6,6 +6,7 @@ import '../../core/models/proxmox_vm.dart';
 import '../../core/providers/proxmox_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brass_panel.dart';
+import 'proxmox_common.dart';
 
 class _SelectedBackupStorage extends Notifier<String?> {
   @override
@@ -413,7 +414,6 @@ class _BackupsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final brass = context.brass;
     return BrassPanel(
       padding: EdgeInsets.zero,
       child: Padding(
@@ -421,14 +421,7 @@ class _BackupsPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'BACKUP FILES',
-              style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              ),
-            ),
+            const ProxmoxSectionHeader('BACKUP FILES'),
             const SizedBox(height: 8),
             backups.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -514,14 +507,7 @@ class _JobsPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'SCHEDULED JOBS',
-              style: TextStyle(
-                fontSize: 11.5,
-                letterSpacing: 11.5 * 0.16,
-                color: brass.smallCaps,
-              ),
-            ),
+            const ProxmoxSectionHeader('SCHEDULED JOBS'),
             const SizedBox(height: 8),
             jobs.when(
               loading: () => const Center(child: CircularProgressIndicator()),

@@ -83,8 +83,8 @@ Widget mediaAsyncState({
 
 /// File-local media inks (mapping `media.*` slice): dark values verbatim from
 /// the dark-only era; light is the parchment ink equivalents.
-class _MediaPalette {
-  const _MediaPalette({
+class MediaTilePalette {
+  const MediaTilePalette({
     required this.ink,
     required this.caption,
     required this.recessBorder,
@@ -99,25 +99,25 @@ class _MediaPalette {
   /// Translucent green hairline around the recessed progress track.
   final Color recessBorder;
 
-  static const dark = _MediaPalette(
+  static const dark = MediaTilePalette(
     ink: Color(0xFFE6DFC9),
     caption: Color(0xFF9AA98A),
     recessBorder: Color(0x385FA050),
   );
-  static const light = _MediaPalette(
+  static const light = MediaTilePalette(
     ink: Color(0xFF3A3326),
     caption: Color(0xFF5A6650),
     recessBorder: Color(0x4738702E),
   );
 
-  static _MediaPalette of(Brass brass) => brass.isDark ? dark : light;
+  static MediaTilePalette of(Brass brass) => brass.isDark ? dark : light;
 }
 
 /// Brass stat strip (design §7): Playfair w800 values over small-caps labels
 /// in a hairline-bordered panel.
 Widget mediaSummary(BuildContext context, List<(String, String)> stats) {
   final brass = context.brass;
-  final palette = _MediaPalette.of(brass);
+  final palette = MediaTilePalette.of(brass);
   return BrassPanel(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     child: Row(
@@ -194,7 +194,7 @@ class MediaQueueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final palette = _MediaPalette.of(brass);
+    final palette = MediaTilePalette.of(brass);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: BrassPanel(
@@ -296,6 +296,131 @@ class MediaFab extends StatelessWidget {
         icon: icon,
         label: label,
       ),
+    );
+  }
+}
+
+/// Shared search-and-add dialog used by the Servarr media tabs.
+class MediaLookupDialog<T> extends StatefulWidget {
+  const MediaLookupDialog({
+    super.key,
+    required this.title,
+    required this.hintText,
+    required this.lookup,
+    required this.add,
+    required this.itemTitle,
+    required this.itemSubtitle,
+  });
+
+  final String title;
+  final String hintText;
+  final Future<List<T>> Function(String term) lookup;
+  final Future<void> Function(T item) add;
+  final String Function(T item) itemTitle;
+  final String? Function(T item) itemSubtitle;
+
+  @override
+  State<MediaLookupDialog<T>> createState() => _MediaLookupDialogState<T>();
+}
+
+class _MediaLookupDialogState<T> extends State<MediaLookupDialog<T>> {
+  final _controller = TextEditingController();
+  List<T> _results = const [];
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final term = _controller.text.trim();
+    if (term.isEmpty) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final results = await widget.lookup(term);
+      setState(() => _results = results);
+    } on Object catch (e) {
+      setState(() => _error = '$e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _add(T item) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await widget.add(item);
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Added ${widget.itemTitle(item)}')),
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _search,
+                ),
+              ),
+              onSubmitted: (_) => _search(),
+            ),
+            const SizedBox(height: 12),
+            if (_loading) const CircularProgressIndicator(),
+            if (_error != null) Text(_error!),
+            if (!_loading)
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final item in _results.take(20))
+                      ListTile(
+                        dense: true,
+                        title: Text(
+                          widget.itemTitle(item),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: switch (widget.itemSubtitle(item)) {
+                          final text? => Text(text),
+                          null => null,
+                        },
+                        trailing: const Icon(Icons.add),
+                        onTap: () => _add(item),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
     );
   }
 }
