@@ -12,8 +12,7 @@ been run.
 
 ## Outcome (2026-10-07)
 
-Run on an HP EliteBook, openSUSE, GNOME/Wayland (`WAYLAND_DISPLAY=wayland-0`,
-`DISPLAY=:0`):
+Run on openSUSE + GNOME/Wayland (`WAYLAND_DISPLAY=wayland-0`, `DISPLAY=:0`):
 
 - Double-clicking the AppImage launched the full shell natively on Wayland.
 - With `DISPLAY` present, an embedded webview (peira.dev in the Wiki tab)
