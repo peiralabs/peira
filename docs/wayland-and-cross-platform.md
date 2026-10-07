@@ -1,11 +1,30 @@
 # Wayland, dual-deploy, and cross-platform
 
-Status: **investigation + plan.** This documents what actually ties the app to
-X11 today, what a deployable Wayland build requires, and how both of those feed
-the longer-term Windows/macOS goal. Claims verified against source in this repo
-and the pinned `webview_cef` 0.5.1 package are marked **[verified]**; claims
-that need a run on real hardware are marked **[verify on device]** with the exact
-test.
+Status: **experiment run — Path B confirmed.** The on-device test (below) is
+done: on a Wayland session the shell runs natively on the Wayland GDK backend,
+and the embedded browser renders via XWayland. A pure-Wayland session with no
+XWayland degrades gracefully to the "open in browser" notice. So **one binary
+serves X11 and Wayland+XWayland** — no separate Wayland build is needed; the
+support is a documentation matter, not a code fork. The rest of this document
+is the investigation and plan that led there. Claims verified against source
+are marked **[verified]**; **[verify on device]** marks the test that has now
+been run.
+
+## Outcome (2026-10-07)
+
+Run on openSUSE + GNOME/Wayland (`WAYLAND_DISPLAY=wayland-0`, `DISPLAY=:0`):
+
+- Double-clicking the AppImage launched the full shell natively on Wayland.
+- With `DISPLAY` present, an embedded webview (peira.dev in the Wiki tab)
+  rendered fully — CEF rode XWayland. **Path B.**
+- With `DISPLAY` unset (`env -u DISPLAY … --ozone-platform=wayland`), the app
+  correctly showed the graceful "needs an X11 surface" notice instead of
+  crashing — phase-0 degradation working as designed.
+
+Decision: ship the single AppImage, documented as supporting X11 and
+Wayland-with-XWayland. True no-XWayland rendering (Path A) is not pursued —
+every mainstream Wayland desktop ships XWayland, and the fallback covers the
+rest.
 
 ## TL;DR
 
@@ -140,15 +159,17 @@ the reason to null for Wayland once CEF-on-Wayland is confirmed.
 
 - **Phase 0 — done (this change).** Display-server detection, graceful
   degradation, unit tests. No behaviour change on X11/XWayland.
-- **Phase 1 — native runner, Wayland-clean.** Forward `--ozone-platform` to CEF
-  from argv; drive the pre-first-frame window background from the active theme
-  instead of the hardcoded green; log the resolved GDK backend. Requires an
-  on-device build to verify (no display/CEF in CI container).
-- **Phase 2 — the experiment.** Run the decisive test above; pick Path A or B.
-- **Phase 3 — second AppImage.** Extend `tool/build_appimage.sh` for a Wayland
-  flavor; add its deps to the allowlist/audit; publish both artifacts with
-  distinct names and checksums.
-- **Phase 4 — docs.** Update README compatibility table and `KNOWN_ISSUES.md`.
+- **Phase 1 — done.** Native-runner cleanups: `--ozone-platform` reaches CEF
+  via argv (documented); the pre-first-frame window background follows the
+  active theme instead of the hardcoded green; the resolved GDK backend is
+  logged.
+- **Phase 2 — done.** Experiment run on a Wayland+XWayland desktop → **Path B**
+  (see Outcome above). One binary serves X11 and Wayland+XWayland.
+- **Phase 3 — not needed.** Path B is the same binary, so there is no second
+  AppImage to build. `build.yml` already version- and flavor-stamps artifact
+  names for clarity. The only remaining work is documentation (Phase 4).
+- **Phase 4 — docs.** Update the README compatibility table (done) and, if a
+  pure-Wayland caveat is worth calling out, `KNOWN_ISSUES.md`.
 
 ## Cross-platform (Windows/macOS) — longer term
 

@@ -4,6 +4,9 @@
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
+#ifdef GDK_WINDOWING_WAYLAND
+#include <gdk/gdkwayland.h>
+#endif
 
 #include "flutter/generated_plugin_registrant.h"
 #include <webview_cef/webview_cef_plugin.h>
@@ -54,14 +57,40 @@ static void window_method_cb(FlMethodChannel* channel, FlMethodCall* call,
   fl_method_call_respond(call, response, nullptr);
 }
 
+// Reads the window background colour the Dart side persisted for the active
+// theme (see lib/core/theme/window_background.dart). Returns TRUE and fills
+// [color] when a valid `#RRGGBB` value is stored; FALSE otherwise.
+static gboolean read_persisted_background(GdkRGBA* color) {
+  g_autofree gchar* path = g_build_filename(
+      g_get_user_config_dir(), "peira", "window_background", nullptr);
+  g_autofree gchar* contents = nullptr;
+  if (!g_file_get_contents(path, &contents, nullptr, nullptr)) {
+    return FALSE;
+  }
+  return gdk_rgba_parse(color, g_strstrip(contents));
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
 
-  // The app is dark-only; force the dark GTK theme so the header bar / window
-  // chrome doesn't follow a light system theme.
+  // Pre-first-frame window background: the active theme's base colour,
+  // persisted by the Dart side on the previous run, so a non-default (or
+  // light) theme doesn't flash the Brass dark green on launch. Falls back to
+  // the Brass dark default on first run or a missing/invalid file.
+  GdkRGBA background_color;
+  if (!read_persisted_background(&background_color)) {
+    gdk_rgba_parse(&background_color, "#0E1810");
+  }
+
+  // Match GTK's light/dark preference to that background's luminance so any
+  // GTK-drawn chrome agrees with the in-app theme (the app is no longer
+  // dark-only). Rec. 709 coefficients on the 0..1 GdkRGBA channels.
+  gdouble luminance = 0.2126 * background_color.red +
+                      0.7152 * background_color.green +
+                      0.0722 * background_color.blue;
   g_object_set(gtk_settings_get_default(), "gtk-application-prefer-dark-theme",
-               TRUE, nullptr);
+               luminance < 0.5, nullptr);
 
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
@@ -88,10 +117,7 @@ static void my_application_activate(GApplication* application) {
       project, self->dart_entrypoint_arguments);
 
   FlView* view = fl_view_new(project);
-  GdkRGBA background_color;
-  // Background defaults to black, override it here if necessary, e.g. #00000000
-  // for transparent.
-  gdk_rgba_parse(&background_color, "#0E1810");
+  // Resolved above from the persisted active-theme colour.
   fl_view_set_background_color(view, &background_color);
   // Route keyboard events to CEF so embedded web views receive input.
   g_signal_connect(view, "key_press_event",
@@ -119,6 +145,18 @@ static void my_application_activate(GApplication* application) {
       channel, window_method_cb, g_object_ref(window), g_object_unref);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
+
+  // Log the resolved GDK backend — the quickest way to confirm the shell is
+  // actually on Wayland (vs XWayland) when validating the Wayland path.
+  GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET(window));
+  const char* backend = "other";
+#ifdef GDK_WINDOWING_WAYLAND
+  if (GDK_IS_WAYLAND_DISPLAY(display)) backend = "wayland";
+#endif
+#ifdef GDK_WINDOWING_X11
+  if (GDK_IS_X11_DISPLAY(display)) backend = "x11";
+#endif
+  g_message("Peira: GDK backend = %s", backend);
 }
 
 // Implements GApplication::local_command_line.
