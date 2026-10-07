@@ -23,7 +23,7 @@ final sshTargetsProvider =
       label: s.label,
       group: 'Saved',
       subtitle: s.target,
-      args: [s.target],
+      args: SshTarget.savedArgs(s.target),
     ));
   }
 
@@ -54,7 +54,7 @@ final sshTargetsProvider =
         label: n.node,
         group: 'Nodes',
         subtitle: '$user@$ip',
-        args: ['$user@$ip'],
+        args: SshTarget.nodeArgs('$user@$ip'),
       ));
     }
 
@@ -71,14 +71,11 @@ final sshTargetsProvider =
         // required. -t forces a TTY for the interactive shell. pct itself
         // needs root on the node, so a non-root SSH user goes through sudo
         // (absent sudo rights fail loudly in the terminal, not silently).
-        args: [
-          '-t',
-          '$user@$ip',
-          if (user != 'root') 'sudo',
-          'pct',
-          'enter',
-          '${c.vmid}',
-        ],
+        args: SshTarget.containerArgs(
+          destination: '$user@$ip',
+          viaSudo: user != 'root',
+          vmid: c.vmid,
+        ),
       ));
     }
   } catch (_) {
