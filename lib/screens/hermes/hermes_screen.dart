@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ai/ai_chain.dart';
@@ -7,13 +6,12 @@ import '../../core/api/hermes_api.dart';
 import '../../core/build_config.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/ai_status_strip.dart';
 import '../../core/widgets/brass_icon_badge.dart';
-import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/screen_header.dart';
 import '../../core/widgets/status_light.dart';
+import '../chat_scaffold.dart';
 
 /// One transcript entry. Role is 'user', 'assistant', or 'system' (errors).
 typedef HermesTurn = ({String role, String text});
@@ -42,9 +40,6 @@ class HermesScreen extends ConsumerStatefulWidget {
 
 class _HermesScreenState extends ConsumerState<HermesScreen> {
   final List<HermesTurn> _turns = [];
-  final _input = TextEditingController();
-  final _scroll = ScrollController();
-  final _inputFocus = FocusNode();
   bool _waiting = false;
 
   @override
@@ -53,36 +48,10 @@ class _HermesScreenState extends ConsumerState<HermesScreen> {
     if (widget.testTranscript != null) _turns.addAll(widget.testTranscript!);
   }
 
-  @override
-  void dispose() {
-    _input.dispose();
-    _scroll.dispose();
-    _inputFocus.dispose();
-    super.dispose();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: MolMotion.base,
-        curve: MolMotion.standard,
-      );
-    });
-  }
-
-  Future<void> _send() async {
-    final text = _input.text.trim();
-    if (text.isEmpty || _waiting) return;
-
+  Future<void> _send(String text) async {
     final settings = ref.read(settingsControllerProvider).value;
     final endpoint = settings?.hermesApiEndpoint ?? '';
-    setState(() {
-      _turns.add((role: 'user', text: text));
-      _input.clear();
-    });
-    _scrollToBottom();
+    setState(() => _turns.add((role: 'user', text: text)));
 
     if (endpoint.isEmpty) {
       setState(() {
@@ -90,12 +59,11 @@ class _HermesScreenState extends ConsumerState<HermesScreen> {
           role: 'system',
           text: kPublicBuild
               ? 'AI Chat is not configured yet. Enter an OpenAI-compatible '
-                  'endpoint URL in Settings.'
+                    'endpoint URL in Settings.'
               : 'Hermes is not configured yet. Enter the Hermes URL '
-                  '(or API URL) and API key in Settings.',
+                    '(or API URL) and API key in Settings.',
         ));
       });
-      _scrollToBottom();
       return;
     }
 
@@ -109,7 +77,6 @@ class _HermesScreenState extends ConsumerState<HermesScreen> {
           text: 'Hermes API key is not set — add it in Settings.',
         ));
       });
-      _scrollToBottom();
       return;
     }
 
@@ -117,11 +84,11 @@ class _HermesScreenState extends ConsumerState<HermesScreen> {
       setState(() {
         _turns.add((
           role: 'system',
-          text: 'No model is set — enter the model name in Settings '
+          text:
+              'No model is set — enter the model name in Settings '
               '(e.g. llama3.2 for Ollama).',
         ));
       });
-      _scrollToBottom();
       return;
     }
 
@@ -143,18 +110,18 @@ class _HermesScreenState extends ConsumerState<HermesScreen> {
       setState(() => _turns.add((role: 'system', text: e.message)));
     } catch (e) {
       if (!mounted) return;
-      setState(() => _turns.add((
-            role: 'system',
-            text: kPublicBuild
-                ? 'AI request failed: $e'
-                : 'Hermes call failed: $e',
-          )));
+      setState(
+        () => _turns.add((
+          role: 'system',
+          text: kPublicBuild
+              ? 'AI request failed: $e'
+              : 'Hermes call failed: $e',
+        )),
+      );
     } finally {
       if (mounted) {
         setState(() => _waiting = false);
-        _inputFocus.requestFocus();
       }
-      _scrollToBottom();
     }
   }
 
@@ -168,67 +135,39 @@ class _HermesScreenState extends ConsumerState<HermesScreen> {
         ? (settings?.hermesApiEndpoint ?? '')
         : (settings?.hermesUrl ?? '');
     final model = settings?.chatModel ?? '';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
-          child: ScreenHeader(
-            icon: Ph.brain,
-            badgeField: BrassIconBadge.garnetField,
-            title: kPublicBuild ? 'AI Chat' : 'Hermes',
-            subtitle: kPublicBuild
-                ? (model.isEmpty
+    return ChatScaffold(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+        child: ScreenHeader(
+          icon: Ph.brain,
+          badgeField: BrassIconBadge.garnetField,
+          title: kPublicBuild ? 'AI Chat' : 'Hermes',
+          subtitle: kPublicBuild
+              ? (model.isEmpty
                     ? 'AI ASSISTANT · OPENAI-COMPATIBLE'
                     : 'AI ASSISTANT · ${model.toUpperCase()}')
-                : 'AI ASSISTANT · ${AiChain.primary.name.toUpperCase()}',
-            subtitleColor: pal.subtitle,
-            trailing: [
-              if (pillUrl.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                _ReachabilityPill(url: pillUrl),
-              ],
+              : 'AI ASSISTANT · ${AiChain.primary.name.toUpperCase()}',
+          subtitleColor: pal.subtitle,
+          trailing: [
+            if (pillUrl.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              _ReachabilityPill(url: pillUrl),
             ],
-          ),
+          ],
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
-          child: SectionDivider.garnet(),
-        ),
-        Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 920),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: _turns.isEmpty && !_waiting
-                        ? const _EmptyTranscript()
-                        : ListView(
-                            controller: _scroll,
-                            padding:
-                                const EdgeInsets.fromLTRB(24, 20, 24, 12),
-                            children: [
-                              for (final t in _turns) _Bubble(turn: t),
-                              if (_waiting) const _ThinkingBubble(),
-                            ],
-                          ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 6, 24, 22),
-                    child: _InputBar(
-                      controller: _input,
-                      focusNode: _inputFocus,
-                      enabled: !_waiting,
-                      onSend: _send,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      ),
+      entries: [
+        for (final turn in _turns)
+          (role: turn.role, text: turn.text, footer: null),
       ],
+      onSend: _send,
+      waiting: _waiting,
+      emptyState: const _EmptyTranscript(),
+      thinkingLabel: kPublicBuild ? 'Thinking' : 'Hermes is thinking',
+      inputHint: kPublicBuild
+          ? 'Send a message…'
+          : 'Ask Hermes anything about your homelab…',
+      style: pal.chatStyle,
     );
   }
 }
@@ -254,8 +193,8 @@ class _ReachabilityPill extends ConsumerWidget {
     final health = failed
         ? Health.crit
         : up
-            ? Health.ok
-            : Health.offline;
+        ? Health.ok
+        : Health.offline;
     final pill = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -274,8 +213,8 @@ class _ReachabilityPill extends ConsumerWidget {
             failed
                 ? 'Retry'
                 : up
-                    ? (kPublicBuild ? 'Endpoint up' : 'Hermes up')
-                    : 'Checking…',
+                ? (kPublicBuild ? 'Endpoint up' : 'Hermes up')
+                : 'Checking…',
             style: TextStyle(
               fontSize: 12,
               color: failed ? pal.pillTextFail : pal.pillTextUp,
@@ -310,7 +249,7 @@ class _EmptyTranscript extends StatelessWidget {
           Text(
             kPublicBuild
                 ? 'Chat with your own AI endpoint — Ollama, LiteLLM, '
-                    'OpenRouter, vLLM.'
+                      'OpenRouter, vLLM.'
                 : 'Ask Hermes about the lab — it can see the cluster.',
             style: TextStyle(color: context.brass.textMuted),
           ),
@@ -320,239 +259,10 @@ class _EmptyTranscript extends StatelessWidget {
   }
 }
 
-/// One chat bubble: garnet assistant (left) / sapphire user (right) /
-/// oxblood system-error (left).
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.turn});
-
-  final HermesTurn turn;
-
-  @override
-  Widget build(BuildContext context) {
-    final pal = _HermesPalette.of(context);
-    final user = turn.role == 'user';
-    final system = turn.role == 'system';
-    final gradient = user
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [pal.userBubbleTop, pal.userBubbleBottom],
-          )
-        : system
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [pal.errorTop, pal.errorBottom],
-              )
-            : LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [pal.assistantTop, pal.assistantBottom],
-              );
-    final border = user
-        ? pal.userBorder
-        : system
-            ? pal.errorBorder
-            : pal.assistantBorder;
-    final textColor = user
-        ? pal.userInk
-        : system
-            ? pal.errorInk
-            : pal.assistantInk;
-
-    return Align(
-      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        // 76% of the 920 column ≈ 700; LayoutBuilder-free approximation
-        // that also behaves on narrower windows.
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: gradient,
-            border: Border.all(color: border),
-            boxShadow: [
-              BoxShadow(
-                  color: pal.bubbleShadow,
-                  offset: const Offset(0, 3),
-                  blurRadius: 8),
-            ],
-          ),
-          child: SelectableText(
-            turn.text,
-            style: TextStyle(fontSize: 16, height: 1.45, color: textColor),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Hermes is thinking…" placeholder while the agent works. The ellipsis
-/// pulse is gated off under FLUTTER_TEST so tests settle.
-class _ThinkingBubble extends StatefulWidget {
-  const _ThinkingBubble();
-
-  @override
-  State<_ThinkingBubble> createState() => _ThinkingBubbleState();
-}
-
-class _ThinkingBubbleState extends State<_ThinkingBubble>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1400),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (kMolAnimationsEnabled) _c.repeat();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pal = _HermesPalette.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [pal.assistantTop, pal.assistantBottom],
-          ),
-          border: Border.all(color: pal.assistantBorder),
-        ),
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            final dots = '.' * (1 + ((_c.value * 3).floor() % 3));
-            return Text(
-              kPublicBuild ? 'Thinking$dots' : 'Hermes is thinking$dots',
-              style: TextStyle(
-                fontSize: 15,
-                fontStyle: FontStyle.italic,
-                color: pal.thinkingText,
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-/// Recessed input field + 42px garnet send stud. Enter sends, Shift+Enter
-/// inserts a newline.
-class _InputBar extends StatelessWidget {
-  const _InputBar({
-    required this.controller,
-    required this.focusNode,
-    required this.enabled,
-    required this.onSend,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool enabled;
-  final VoidCallback onSend;
-
-  @override
-  Widget build(BuildContext context) {
-    final pal = _HermesPalette.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              color: pal.inputBg,
-              border: Border.all(color: pal.inputBorder),
-            ),
-            child: Focus(
-              onKeyEvent: (node, event) {
-                if (event is KeyDownEvent &&
-                    event.logicalKey == LogicalKeyboardKey.enter &&
-                    !HardwareKeyboard.instance.isShiftPressed) {
-                  onSend();
-                  return KeyEventResult.handled;
-                }
-                return KeyEventResult.ignored;
-              },
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                enabled: enabled,
-                minLines: 1,
-                maxLines: 5,
-                style: TextStyle(fontSize: 15.5, color: pal.inputInk),
-                decoration: InputDecoration(
-                  hintText: kPublicBuild
-                      ? 'Send a message…'
-                      : 'Ask Hermes anything about your homelab…',
-                  hintStyle: TextStyle(color: pal.inputHint),
-                  border: InputBorder.none,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        MouseRegion(
-          cursor: enabled
-              ? SystemMouseCursors.click
-              : SystemMouseCursors.basic,
-          child: GestureDetector(
-            onTap: enabled ? onSend : null,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFC05A4E), Color(0xFF7A2B2C)],
-                ),
-                border: Border.all(color: const Color(0x80E09678)),
-                boxShadow: context.brass.cardShadow,
-              ),
-              child: Icon(
-                PhBold.paperPlaneTilt,
-                size: 18,
-                color: enabled
-                    ? const Color(0xFFFBE9DC)
-                    : const Color(0x80FBE9DC),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Hermes-local chat palette, brightness-resolved. [dark] is verbatim from
 /// the dark-only era (translucent maroons over the green field, cream inks);
 /// [light] turns the bubbles into sapphire/garnet-tinted papers with dark
-/// inks and the black bubble shadow into an umber wash. The garnet send stud
-/// (gradient, peach rim, cream icon) is a shared physical object and keeps
-/// its literals in [_InputBar].
+/// inks and the black bubble shadow into an umber wash.
 class _HermesPalette {
   const _HermesPalette({
     required this.subtitle,
@@ -611,6 +321,32 @@ class _HermesPalette {
   /// Ambient-theme resolution (registers a Theme dependency, like Brass.of).
   static _HermesPalette of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? dark : light;
+
+  ChatScaffoldStyle get chatStyle => ChatScaffoldStyle(
+    userBubbleTop: userBubbleTop,
+    userBubbleBottom: userBubbleBottom,
+    userBorder: userBorder,
+    userInk: userInk,
+    assistantTop: assistantTop,
+    assistantBottom: assistantBottom,
+    assistantBorder: assistantBorder,
+    assistantInk: assistantInk,
+    errorTop: errorTop,
+    errorBottom: errorBottom,
+    errorBorder: errorBorder,
+    errorInk: errorInk,
+    bubbleShadow: bubbleShadow,
+    thinkingText: thinkingText,
+    inputBg: inputBg,
+    inputBorder: inputBorder,
+    inputInk: inputInk,
+    inputHint: inputHint,
+    sendTop: const Color(0xFFC05A4E),
+    sendBottom: const Color(0xFF7A2B2C),
+    sendBorder: const Color(0x80E09678),
+    sendIcon: const Color(0xFFFBE9DC),
+    sendIconDisabled: const Color(0x80FBE9DC),
+  );
 
   static const dark = _HermesPalette(
     subtitle: Color(0xFFD79F92),
