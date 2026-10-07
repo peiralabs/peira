@@ -120,9 +120,9 @@ void main() {
       final targets =
           await _container(api).read(sshTargetsProvider.future);
       final node = targets.singleWhere((t) => t.group == 'Nodes');
-      expect(node.args, ['root@10.0.0.5']);
+      expect(node.args, ['--', 'root@10.0.0.5']);
       final ct = targets.singleWhere((t) => t.group == 'Containers');
-      expect(ct.args, ['-t', 'root@10.0.0.5', 'pct', 'enter', '100']);
+      expect(ct.args, ['-t', '--', 'root@10.0.0.5', 'pct', 'enter', '100']);
     });
 
     test('/cluster/status erroring entirely still yields the sole node',
@@ -131,7 +131,7 @@ void main() {
           .read(sshTargetsProvider.future); // 501 on every route
       expect(targets.where((t) => t.group == 'Nodes'), hasLength(1));
       expect(targets.singleWhere((t) => t.group == 'Nodes').args,
-          ['root@10.0.0.5']);
+          ['--', 'root@10.0.0.5']);
     });
 
     test('ip present → used as before, no fallback needed', () async {
@@ -143,7 +143,7 @@ void main() {
       final targets =
           await _container(api).read(sshTargetsProvider.future);
       expect(targets.singleWhere((t) => t.group == 'Nodes').args,
-          ['root@10.0.0.99']);
+          ['--', 'root@10.0.0.99']);
     });
 
     test('custom SSH username applies to nodes and sudo-wraps pct enter',
@@ -157,10 +157,10 @@ void main() {
               settings: _settings.copyWith(sshUsername: 'admin'))
           .read(sshTargetsProvider.future);
       expect(targets.singleWhere((t) => t.group == 'Nodes').args,
-          ['admin@10.0.0.99']);
+          ['--', 'admin@10.0.0.99']);
       // pct needs root on the node — a non-root user goes through sudo.
       expect(targets.singleWhere((t) => t.group == 'Containers').args,
-          ['-t', 'admin@10.0.0.99', 'sudo', 'pct', 'enter', '100']);
+          ['-t', '--', 'admin@10.0.0.99', 'sudo', 'pct', 'enter', '100']);
     });
 
     test('multi-node cluster with missing ips does NOT guess addresses',
