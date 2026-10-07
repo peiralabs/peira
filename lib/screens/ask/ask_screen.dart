@@ -5,12 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/ask_api.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/ai_status_strip.dart';
-import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/screen_header.dart';
 import '../../core/widgets/status_light.dart';
+import '../chat_scaffold.dart';
 
 /// One transcript entry. User/system entries carry only text; assistant
 /// entries also carry the reply's citations + revision label.
@@ -24,7 +23,7 @@ class AskEntry {
     this.model = '',
   });
 
-  final String role; // 'user' | 'assistant' | 'system'
+  final String role;
   final String text;
   final List<AskSource> sources;
   final String revision;
@@ -50,9 +49,6 @@ class AskScreen extends ConsumerStatefulWidget {
 
 class _AskScreenState extends ConsumerState<AskScreen> {
   final List<AskEntry> _entries = [];
-  final _input = TextEditingController();
-  final _scroll = ScrollController();
-  final _inputFocus = FocusNode();
   bool _waiting = false;
 
   /// Verdigris inner field for the header badge (the vault's patina accent).
@@ -67,48 +63,22 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     if (widget.testTranscript != null) _entries.addAll(widget.testTranscript!);
   }
 
-  @override
-  void dispose() {
-    _input.dispose();
-    _scroll.dispose();
-    _inputFocus.dispose();
-    super.dispose();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scroll.hasClients) return;
-      _scroll.animateTo(
-        _scroll.position.maxScrollExtent,
-        duration: MolMotion.base,
-        curve: MolMotion.standard,
-      );
-    });
-  }
-
-  Future<void> _send() async {
-    final text = _input.text.trim();
-    if (text.isEmpty || _waiting) return;
-
+  Future<void> _send(String text) async {
     final settings = ref.read(settingsControllerProvider).value;
     final endpoint = settings?.askEndpoint ?? '';
-    setState(() {
-      _entries.add(AskEntry(role: 'user', text: text));
-      _input.clear();
-    });
-    _scrollToBottom();
+    setState(() => _entries.add(AskEntry(role: 'user', text: text)));
 
     if (endpoint.isEmpty) {
       setState(() {
         _entries.add(
           const AskEntry(
             role: 'system',
-            text: 'Ask is not configured yet — set the Wiki URL (or a '
+            text:
+                'Ask is not configured yet — set the Wiki URL (or a '
                 'dedicated Ask URL) in Settings.',
           ),
         );
       });
-      _scrollToBottom();
       return;
     }
 
@@ -143,15 +113,14 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(
-        () =>
-            _entries.add(AskEntry(role: 'system', text: 'Ask call failed: $e')),
+        () => _entries.add(
+          AskEntry(role: 'system', text: 'Ask call failed: $e'),
+        ),
       );
     } finally {
       if (mounted) {
         setState(() => _waiting = false);
-        _inputFocus.requestFocus();
       }
-      _scrollToBottom();
     }
   }
 
@@ -160,62 +129,37 @@ class _AskScreenState extends ConsumerState<AskScreen> {
     final pal = _AskPalette.of(context);
     final endpoint =
         ref.watch(settingsControllerProvider).value?.askEndpoint ?? '';
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
-          child: ScreenHeader(
-            icon: Ph.chatCircleText,
-            badgeField: _verdigrisField,
-            title: 'Ask',
-            subtitle: 'YOUR HOMELAB · CITED FROM THE VAULT',
-            subtitleColor: pal.subtitle,
-            trailing: [
-              if (endpoint.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                _ReachabilityPill(url: '$endpoint/health'),
-              ],
+    return ChatScaffold(
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+        child: ScreenHeader(
+          icon: Ph.chatCircleText,
+          badgeField: _verdigrisField,
+          title: 'Ask',
+          subtitle: 'YOUR HOMELAB · CITED FROM THE VAULT',
+          subtitleColor: pal.subtitle,
+          trailing: [
+            if (endpoint.isNotEmpty) ...[
+              const SizedBox(width: 12),
+              _ReachabilityPill(url: '$endpoint/health'),
             ],
+          ],
+        ),
+      ),
+      entries: [
+        for (final entry in _entries)
+          (
+            role: entry.role,
+            text: entry.text,
+            footer: _AskBubbleFooter(entry: entry),
           ),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 24),
-          child: SectionDivider.garnet(),
-        ),
-        Expanded(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 920),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: _entries.isEmpty && !_waiting
-                        ? const _EmptyTranscript()
-                        : ListView(
-                            controller: _scroll,
-                            padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-                            children: [
-                              for (final e in _entries) _Bubble(entry: e),
-                              if (_waiting) const _ThinkingBubble(),
-                            ],
-                          ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 6, 24, 22),
-                    child: _InputBar(
-                      controller: _input,
-                      focusNode: _inputFocus,
-                      enabled: !_waiting,
-                      onSend: _send,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ],
+      onSend: _send,
+      waiting: _waiting,
+      emptyState: const _EmptyTranscript(),
+      thinkingLabel: 'Consulting the vault',
+      inputHint: 'Ask your homelab — "what\'s the NAS double-hop again?"',
+      style: pal.chatStyle,
     );
   }
 }
@@ -299,120 +243,61 @@ class _EmptyTranscript extends StatelessWidget {
   }
 }
 
-/// One chat bubble: verdigris assistant (left, with source chips + revision
-/// footer) / sapphire user (right) / oxblood system-error (left).
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.entry});
+/// Ask-specific content appended to the shared record-based chat bubble.
+class _AskBubbleFooter extends StatelessWidget {
+  const _AskBubbleFooter({required this.entry});
 
   final AskEntry entry;
 
   @override
   Widget build(BuildContext context) {
     final pal = _AskPalette.of(context);
-    final user = entry.role == 'user';
-    final system = entry.role == 'system';
-    final gradient = user
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [pal.userBubbleTop, pal.userBubbleBottom],
-          )
-        : system
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [pal.errorTop, pal.errorBottom],
-          )
-        : LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [pal.assistantTop, pal.assistantBottom],
-          );
-    final border = user
-        ? pal.userBorder
-        : system
-        ? pal.errorBorder
-        : pal.assistantBorder;
-    final textColor = user
-        ? pal.userInk
-        : system
-        ? pal.errorInk
-        : pal.assistantInk;
-
-    return Align(
-      alignment: user ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 14),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            gradient: gradient,
-            border: Border.all(color: border),
-            boxShadow: [
-              BoxShadow(
-                color: pal.bubbleShadow,
-                offset: const Offset(0, 3),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (entry.sources.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              SelectableText(
-                entry.text,
-                style: TextStyle(fontSize: 16, height: 1.45, color: textColor),
+              for (final source in entry.sources) _SourceChip(source: source),
+            ],
+          ),
+        ],
+        if (entry.revision.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'vault @ ${entry.revision.length >= 8 ? entry.revision.substring(0, 8) : entry.revision}'
+                '${entry.model.isNotEmpty ? ' · ${entry.model}' : ''}',
+                style: TextStyle(fontSize: 11.5, color: pal.metaText),
               ),
-              if (entry.sources.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final s in entry.sources) _SourceChip(source: s),
-                  ],
-                ),
-              ],
-              if (entry.revision.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'vault @ ${entry.revision.length >= 8 ? entry.revision.substring(0, 8) : entry.revision}'
-                      '${entry.model.isNotEmpty ? ' · ${entry.model}' : ''}',
-                      style: TextStyle(fontSize: 11.5, color: pal.metaText),
-                    ),
-                    if (entry.stale) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(6),
-                          color: pal.staleBg,
-                          border: Border.all(color: pal.staleBorder),
-                        ),
-                        child: Text(
-                          'index stale',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            color: pal.staleText,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+              if (entry.stale) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: pal.staleBg,
+                    border: Border.all(color: pal.staleBorder),
+                  ),
+                  child: Text(
+                    'index stale',
+                    style: TextStyle(fontSize: 10.5, color: pal.staleText),
+                  ),
                 ),
               ],
             ],
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }
@@ -505,167 +390,9 @@ class _SourceChip extends StatelessWidget {
   }
 }
 
-/// "Consulting the vault…" placeholder while retrieval + generation run.
-/// The ellipsis pulse is gated off under FLUTTER_TEST so tests settle.
-class _ThinkingBubble extends StatefulWidget {
-  const _ThinkingBubble();
-
-  @override
-  State<_ThinkingBubble> createState() => _ThinkingBubbleState();
-}
-
-class _ThinkingBubbleState extends State<_ThinkingBubble>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1400),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    if (kMolAnimationsEnabled) _c.repeat();
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final pal = _AskPalette.of(context);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [pal.assistantTop, pal.assistantBottom],
-          ),
-          border: Border.all(color: pal.assistantBorder),
-        ),
-        child: AnimatedBuilder(
-          animation: _c,
-          builder: (context, _) {
-            final dots = '.' * (1 + ((_c.value * 3).floor() % 3));
-            return Text(
-              'Consulting the vault$dots',
-              style: TextStyle(
-                fontSize: 15,
-                fontStyle: FontStyle.italic,
-                color: pal.thinkingText,
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-/// Recessed input field + 42px verdigris send stud. Enter sends, Shift+Enter
-/// inserts a newline.
-class _InputBar extends StatelessWidget {
-  const _InputBar({
-    required this.controller,
-    required this.focusNode,
-    required this.enabled,
-    required this.onSend,
-  });
-
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final bool enabled;
-  final VoidCallback onSend;
-
-  @override
-  Widget build(BuildContext context) {
-    final pal = _AskPalette.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              color: pal.inputBg,
-              border: Border.all(color: pal.inputBorder),
-            ),
-            child: Focus(
-              onKeyEvent: (node, event) {
-                if (event is KeyDownEvent &&
-                    event.logicalKey == LogicalKeyboardKey.enter &&
-                    !HardwareKeyboard.instance.isShiftPressed) {
-                  onSend();
-                  return KeyEventResult.handled;
-                }
-                return KeyEventResult.ignored;
-              },
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                enabled: enabled,
-                minLines: 1,
-                maxLines: 5,
-                style: TextStyle(fontSize: 15.5, color: pal.inputInk),
-                decoration: InputDecoration(
-                  hintText: 'Ask your homelab — "what\'s the NAS double-hop '
-                      'again?"',
-                  hintStyle: TextStyle(color: pal.inputHint),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        MouseRegion(
-          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-          child: GestureDetector(
-            onTap: enabled ? onSend : null,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF3E8E76), Color(0xFF1E5946)],
-                ),
-                border: Border.all(color: const Color(0x8078C8AE)),
-                boxShadow: context.brass.cardShadow,
-              ),
-              child: Icon(
-                PhBold.paperPlaneTilt,
-                size: 18,
-                color: enabled
-                    ? const Color(0xFFDCF2E8)
-                    : const Color(0x80DCF2E8),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Ask-local chat palette, brightness-resolved. Assistant bubbles wear the
 /// vault's verdigris patina (distinct from Hermes's garnet); user bubbles
-/// share the sapphire idiom; errors share the oxblood idiom. The verdigris
-/// send stud (gradient, patina rim, mint icon) is a shared physical object
-/// and keeps its literals in [_InputBar].
+/// share the sapphire idiom; errors share the oxblood idiom.
 class _AskPalette {
   const _AskPalette({
     required this.subtitle,
@@ -738,6 +465,32 @@ class _AskPalette {
   /// Ambient-theme resolution (registers a Theme dependency, like Brass.of).
   static _AskPalette of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? dark : light;
+
+  ChatScaffoldStyle get chatStyle => ChatScaffoldStyle(
+    userBubbleTop: userBubbleTop,
+    userBubbleBottom: userBubbleBottom,
+    userBorder: userBorder,
+    userInk: userInk,
+    assistantTop: assistantTop,
+    assistantBottom: assistantBottom,
+    assistantBorder: assistantBorder,
+    assistantInk: assistantInk,
+    errorTop: errorTop,
+    errorBottom: errorBottom,
+    errorBorder: errorBorder,
+    errorInk: errorInk,
+    bubbleShadow: bubbleShadow,
+    thinkingText: thinkingText,
+    inputBg: inputBg,
+    inputBorder: inputBorder,
+    inputInk: inputInk,
+    inputHint: inputHint,
+    sendTop: const Color(0xFF3E8E76),
+    sendBottom: const Color(0xFF1E5946),
+    sendBorder: const Color(0x8078C8AE),
+    sendIcon: const Color(0xFFDCF2E8),
+    sendIconDisabled: const Color(0x80DCF2E8),
+  );
 
   static const dark = _AskPalette(
     subtitle: Color(0xFF8FC8B4),
