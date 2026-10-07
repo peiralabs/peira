@@ -27,14 +27,20 @@ jobs:
 
       - run: flutter test --update-goldens --tags golden
 
-      - name: Commit regenerated goldens (if any changed)
+      # Re-attest every tracked binary (the regenerated PNGs change their
+      # SHA-256) so the marker-scan gate in ci.yml accepts them.
+      - run: dart run tool/check_public_markers.dart --update-binary-allowlist
+
+      - name: Commit regenerated goldens + allowlist (if any changed)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test/goldens
+          git add test/goldens tool/binary_allowlist.txt
           if git diff --cached --quiet; then
             echo "No golden changes to commit."
           else
-            git commit -m "chore: regenerate alchemist goldens in CI [skip ci]"
+            # No [skip ci]: let CI re-run so the goldens + marker gates validate
+            # the freshly generated, CI-matched baselines.
+            git commit -m "chore: regenerate alchemist goldens in CI"
             git push
           fi
