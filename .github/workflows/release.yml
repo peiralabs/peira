@@ -41,6 +41,8 @@ jobs:
             v="v$pv"
           fi
           echo "RELEASE_VERSION=$v" >> "$GITHUB_ENV"
+          # Version-stamped asset name so each release's download is distinct.
+          echo "APPIMAGE_NAME=Peira-$v-x86_64.AppImage" >> "$GITHUB_ENV"
 
       # Manual runs create the tag here, as the Actions bot, so a release can
       # be cut even where tag pushes from personal tokens are restricted.
@@ -96,11 +98,11 @@ jobs:
 
       - run: flutter build linux --release
 
-      - run: bash tool/build_appimage.sh dist/Peira-x86_64.AppImage
+      - run: bash tool/build_appimage.sh "dist/$APPIMAGE_NAME"
 
       - name: Checksums
         working-directory: dist
-        run: sha256sum Peira-x86_64.AppImage > SHA256SUMS
+        run: sha256sum "$APPIMAGE_NAME" > SHA256SUMS
 
       - name: Sign
         working-directory: dist
@@ -109,7 +111,7 @@ jobs:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
-          for f in Peira-x86_64.AppImage SHA256SUMS; do
+          for f in "$APPIMAGE_NAME" SHA256SUMS; do
             gpg --batch --yes --pinentry-mode loopback \
               --passphrase "$GPG_PASSPHRASE" --detach-sign --armor "$f"
           done
@@ -121,8 +123,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           assets=(
-            dist/Peira-x86_64.AppImage
-            dist/Peira-x86_64.AppImage.asc
+            "dist/$APPIMAGE_NAME"
+            "dist/$APPIMAGE_NAME.asc"
             dist/SHA256SUMS
             dist/SHA256SUMS.asc
           )
