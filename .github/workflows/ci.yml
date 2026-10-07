@@ -30,12 +30,41 @@ jobs:
 
       - run: flutter analyze
 
-      # Golden-tagged tests (screenshots, app icon) are exact-pixel PNGs from
-      # the maintainer machine's fontconfig — inspection artifacts, not
-      # regression gates. A runner renders text differently, so every one of
-      # them would fail here; they stay a local pre-commit discipline.
+      # Behaviour tests only; the visual goldens run in the dedicated `goldens`
+      # job below (alchemist CI goldens are machine-independent, so they ARE a
+      # real regression gate now — see test/flutter_test_config.dart).
       - run: flutter test --exclude-tags golden
 
       # Fails closed on any private-marker regression (IPs, hostnames,
       # credentials, unattested binaries). See tool/check_public_markers.dart.
       - run: dart tool/check_public_markers.dart
+
+  goldens:
+    name: visual goldens
+    # Same pinned image + Flutter as `checks`: alchemist CI goldens are
+    # machine-independent, and the baselines are generated on this exact
+    # environment (locally on 3.44.6, or via the update-goldens workflow).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.6
+          cache: true
+
+      - run: flutter pub get
+
+      - run: flutter test --tags golden
+
+      # On a pixel diff, publish the failure images (expected / actual / masked
+      # diff that alchemist writes) so the change is reviewable from the PR.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-failures
+          path: '**/failures/**'
+          if-no-files-found: ignore
+          retention-days: 14
