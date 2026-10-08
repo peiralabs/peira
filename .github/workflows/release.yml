@@ -20,6 +20,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write      # OIDC token used by Sigstore to sign the attestation
+  attestations: write  # write the build-provenance attestation to the repo
 
 jobs:
   release:
@@ -115,6 +117,16 @@ jobs:
             gpg --batch --yes --pinentry-mode loopback \
               --passphrase "$GPG_PASSPHRASE" --detach-sign --armor "$f"
           done
+
+      - name: Attest build provenance
+        # Sigstore-backed, verifiable link from the AppImage + SHA256SUMS to this
+        # exact workflow run and commit — complements the GPG signatures above.
+        # Verify with: gh attestation verify <file> -R peiralabs/peira
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/${{ env.APPIMAGE_NAME }}
+            dist/SHA256SUMS
 
       # Idempotent publish: create the release, or upload (clobbering) if a
       # release for this tag already exists, so a re-run repairs a partial one.
