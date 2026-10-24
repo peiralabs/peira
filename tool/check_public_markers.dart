@@ -54,7 +54,8 @@ class _Check {
 
 final credentialChecks = [
   _Check('private key',
-      RegExp('-----BEGIN (?:RSA |OPENSSH |EC |DSA |ENCRYPTED )?PRIVATE KEY-----')),
+      RegExp('-----BEGIN (?:RSA |OPENSSH |EC |DSA |ENCRYPTED |PGP )?PRIVATE KEY'
+          '(?: BLOCK)?-----')),
   _Check('age secret key', RegExp('AGE-SECRET-KEY-1[A-Z0-9]{20,}')),
   _Check('GitHub token', RegExp('(?:gh[pousr]|github_pat)_[A-Za-z0-9_]{20,}')),
   _Check('OpenAI-style key', RegExp(r'\bsk-[A-Za-z0-9_-]{20,}')),
@@ -159,6 +160,13 @@ final labNameMarkers = [
   ['AS', '70', '04T'].join(),
 ].map((m) => m.toLowerCase()).toList();
 
+// An armored OpenPGP public key is base64 by nature and published on purpose
+// (docs/release-signing-key.asc). Only the PUBLIC block is skipped, and only
+// for the entropy check; a private block still trips the 'private key' check.
+final pgpPublicKeyBlock = RegExp(
+    '-----BEGIN PGP PUBLIC KEY BLOCK-----[\\s\\S]*?'
+    '-----END PGP PUBLIC KEY BLOCK-----');
+
 List<String> scanText(String text) {
   final findings = <String>[];
 
@@ -169,7 +177,8 @@ List<String> scanText(String text) {
   }
 
   final seen = <String>{};
-  for (final match in highEntropyToken.allMatches(text)) {
+  final entropyText = text.replaceAll(pgpPublicKeyBlock, '');
+  for (final match in highEntropyToken.allMatches(entropyText)) {
     final token = match.group(0)!;
     if (!looksHighEntropy(token) ||
         allowedEntropyTokens.contains(token) ||
@@ -354,6 +363,10 @@ String j(List<String> parts) => parts.join();
 final mustCatch = [
   ('github token', j(['token: gh', 'p_AbCdEfGhIjKlMnOpQrStUvWxYz012345'])),
   ('private key', j(['-----BEGIN OPEN', 'SSH PRIVATE KEY-----'])),
+  ('pgp private key', j(['-----BEGIN PGP PRI', 'VATE KEY BLOCK-----'])),
+  ('high-entropy token outside a public key block',
+      j(['-----BEGIN PGP PUBLIC KEY BLOCK-----\n-----END PGP PUBLIC KEY BLOCK-----\n',
+          'Uo2fuXWWlT1Uq8Rk3vZp', '9Lm2Xc7Ya4Bn6Ws1Ed5Rf'])),
   ('openai-style key', j(['key: sk-', 'Abc123Abc123Abc123Abc123'])),
   ('openrouter key', j(['key: rpa_', 'Abc123Abc123Abc123Abc123'])),
   ('age secret key', j(['AGE-SECRET-', 'KEY-1QQPZRY9X8GF2TVDW0S3JN54'])),
@@ -383,6 +396,9 @@ final mustCatch = [
 ];
 
 final mustIgnore = [
+  ('armored pgp public key',
+      '-----BEGIN PGP PUBLIC KEY BLOCK-----\nmDMEaN0Uo2fuXWWlT1Uq8Rk3vZp9Lm2Xc7Ya4Bn6Ws1Ed5Rf\n'
+      '-----END PGP PUBLIC KEY BLOCK-----'),
   ('documented dummy range', 'the monitoring host 10.0.0.5 and agent 10.0.0.7'),
   ('VLAN example subnet', 'addresses:\n  - 10.0.10.5/24'),
   ('generic default LAN', 'router at 192.168.1.1, host 192.168.1.100/24'),

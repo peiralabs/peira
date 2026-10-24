@@ -44,3 +44,7 @@ it.
   the same trust you'd give those apps in a browser tab.
 - The AppImage runs unsandboxed, like any AppImage. Verify downloads:
   `sha256sum -c SHA256SUMS && gpg --verify SHA256SUMS.asc SHA256SUMS`.
+  The release signing key is
+  [docs/release-signing-key.asc](docs/release-signing-key.asc), fingerprint
+  `659A D4F9 BD11 8838 ECBA  D6DB 587E C679 3F57 6180`. A release signed by
+  any other key is not ours.
