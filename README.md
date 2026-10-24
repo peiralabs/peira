@@ -17,6 +17,10 @@ to a neon-green terminal.
 |---|---|
 | ![Setup wizard](docs/screenshots/setup-wizard.png) | ![Container detail](docs/screenshots/container-detail.png) |
 
+| Datacenter Manager | Backup Server |
+|---|---|
+| ![PDM tab](docs/screenshots/pdm.png) | ![PBS tab](docs/screenshots/pbs.png) |
+
 ## Themes
 
 Eight built-in theme families, each re-skinning the entire shell — background,
