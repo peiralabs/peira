@@ -66,6 +66,23 @@ abstract class AppSettings with _$AppSettings {
     @Default('') String pdmTokenId,
     @Default('') String pdmTokenSecret,
     @Default('') String pdmFingerprint,
+    // Two fixed Proxmox Backup Server slots. Tokens provide read/verify
+    // access; [pbs1User]/[pbs2User] identify the password login used for an
+    // in-memory elevated ticket. Passwords are never stored.
+    @Default('') String pbs1Name,
+    @Default('') String pbs1Url,
+    @Default('') String pbs1TokenId,
+    @Default('') String pbs1TokenSecret,
+    @Default('') String pbs1Fingerprint,
+    @Default('') String pbs1User,
+    @Default('') String pbs1PveStorage,
+    @Default('') String pbs2Name,
+    @Default('') String pbs2Url,
+    @Default('') String pbs2TokenId,
+    @Default('') String pbs2TokenSecret,
+    @Default('') String pbs2Fingerprint,
+    @Default('') String pbs2User,
+    @Default('') String pbs2PveStorage,
     @Default('') String jellyseerrUrl,
     // Media servers (native status panels). Jellyfin uses an API key,
     // Plex an X-Plex-Token.
@@ -213,6 +230,15 @@ abstract class AppSettings with _$AppSettings {
   bool get pdmConfigured => pdmUrl.isNotEmpty;
   bool get pdmTokenConfigured =>
       pdmUrl.isNotEmpty && pdmTokenId.isNotEmpty && pdmTokenSecret.isNotEmpty;
+
+  bool get pbs1Configured =>
+      pbs1Url.isNotEmpty &&
+      pbs1TokenId.isNotEmpty &&
+      pbs1TokenSecret.isNotEmpty;
+  bool get pbs2Configured =>
+      pbs2Url.isNotEmpty &&
+      pbs2TokenId.isNotEmpty &&
+      pbs2TokenSecret.isNotEmpty;
 
   /// Stored webview logins keyed by service label. Malformed JSON (or an
   /// entry missing a password) is skipped, so a corrupt blob degrades to

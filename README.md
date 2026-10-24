@@ -1,7 +1,8 @@
 # Homelab control panel
 
 A Flutter desktop app that puts a whole homelab on one screen: native
-Proxmox VE management (nodes, containers, snapshots, live charts), a
+Proxmox VE management (nodes, containers, snapshots, live charts),
+Proxmox Datacenter Manager and Proxmox Backup Server tabs, a
 Prometheus-backed metrics tab, media-stack status panels, an AI chat for any
 OpenAI-compatible endpoint, an embedded terminal whose SSH targets are built
 from live Proxmox inventory, and themed embedded views for the web services
@@ -89,6 +90,15 @@ degrades gracefully:
   management actions — start/stop, snapshots, create/delete — need a token
   with write privileges. A standalone single node and a multi-node cluster
   both render correctly.
+- **Several Proxmox setups are named profiles.** Settings › Connection
+  profiles saves each Proxmox connection under a name and switches between
+  them in the app.
+- **PDM and PBS are optional tabs.** The PDM tab needs a Proxmox Datacenter
+  Manager token (`Auditor` to view; `Administrator` on `/resource` for power
+  actions and cross-cluster migrate). The PBS tab takes up to two Proxmox
+  Backup Servers, each with a read/verify token; deleting, pruning and
+  editing ask for the PBS user's password, which is held in memory only and
+  never stored. Roles and limits: [docs/pdm-and-pbs.md](docs/pdm-and-pbs.md).
 - **Self-signed certificates are trusted for the Proxmox host only.** That is
   a deliberate boundary with a settings toggle, not a global bypass. Other
   services presenting self-signed certs need OS-level trust or plain HTTP.

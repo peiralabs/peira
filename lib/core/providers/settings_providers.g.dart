@@ -101,3 +101,103 @@ abstract class _$SettingsController extends $AsyncNotifier<AppSettings> {
     return element.handleCreate(ref, build);
   }
 }
+
+@ProviderFor(profileStore)
+final profileStoreProvider = ProfileStoreProvider._();
+
+final class ProfileStoreProvider
+    extends $FunctionalProvider<ProfileStore, ProfileStore, ProfileStore>
+    with $Provider<ProfileStore> {
+  ProfileStoreProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'profileStoreProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$profileStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<ProfileStore> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ProfileStore create(Ref ref) {
+    return profileStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ProfileStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ProfileStore>(value),
+    );
+  }
+}
+
+String _$profileStoreHash() => r'4fa8f32c8c601eb6518988ec8d02df27420c532f';
+
+/// Saved connection profiles and the active one. Switching rewrites the live
+/// settings, so every settings-derived provider (API clients, data) rebuilds
+/// against the new cluster; per-cluster history caches are reset here.
+
+@ProviderFor(ProfilesController)
+final profilesControllerProvider = ProfilesControllerProvider._();
+
+/// Saved connection profiles and the active one. Switching rewrites the live
+/// settings, so every settings-derived provider (API clients, data) rebuilds
+/// against the new cluster; per-cluster history caches are reset here.
+final class ProfilesControllerProvider
+    extends $AsyncNotifierProvider<ProfilesController, ProfileState> {
+  /// Saved connection profiles and the active one. Switching rewrites the live
+  /// settings, so every settings-derived provider (API clients, data) rebuilds
+  /// against the new cluster; per-cluster history caches are reset here.
+  ProfilesControllerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'profilesControllerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$profilesControllerHash();
+
+  @$internal
+  @override
+  ProfilesController create() => ProfilesController();
+}
+
+String _$profilesControllerHash() =>
+    r'51116293efa58d340ca089153b1966bb85929d44';
+
+/// Saved connection profiles and the active one. Switching rewrites the live
+/// settings, so every settings-derived provider (API clients, data) rebuilds
+/// against the new cluster; per-cluster history caches are reset here.
+
+abstract class _$ProfilesController extends $AsyncNotifier<ProfileState> {
+  FutureOr<ProfileState> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<ProfileState>, ProfileState>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<ProfileState>, ProfileState>,
+              AsyncValue<ProfileState>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
