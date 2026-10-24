@@ -145,6 +145,6 @@ jobs:
           else
             gh release create "$RELEASE_VERSION" \
               --title "$RELEASE_VERSION" \
-              --notes 'See CHANGELOG.md. Verify: `sha256sum -c SHA256SUMS` and `gpg --verify SHA256SUMS.asc SHA256SUMS`.' \
+              --notes-file .github/release-notes.md \
               "${assets[@]}"
           fi
