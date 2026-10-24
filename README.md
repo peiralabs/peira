@@ -55,12 +55,27 @@ chmod +x Peira-v*-x86_64.AppImage
 ./Peira-v*-x86_64.AppImage
 ```
 
-Verify a release before running it:
+Verify a release before running it. Releases are signed with the Peira Labs
+release key, fingerprint
+`659A D4F9 BD11 8838 ECBA  D6DB 587E C679 3F57 6180`
+([docs/release-signing-key.asc](docs/release-signing-key.asc), also on
+keys.openpgp.org). Import it once and check that the fingerprint matches:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/peiralabs/peira/main/docs/release-signing-key.asc | gpg --import
+gpg --fingerprint 659AD4F9BD118838ECBAD6DB587EC6793F576180
+```
+
+Then, in the folder with the downloads:
 
 ```bash
 sha256sum -c SHA256SUMS
 gpg --verify SHA256SUMS.asc SHA256SUMS
 ```
+
+`Good signature from "Peira Labs <noreply@peira.dev>"` means the checksums
+are genuine. gpg also warns that the key is not certified with a trusted
+signature; that is expected unless you sign the key yourself.
 
 Updates are manual by design — an AppImage cannot replace itself in place.
 The public build's Settings › Updates checks the releases API when you ask
