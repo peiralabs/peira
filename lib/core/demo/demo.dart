@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/ollama_api.dart';
 import '../api/pbs_api.dart';
+import '../api/pdm_api.dart';
 import '../api/prometheus_api.dart';
 import '../api/proxmox_api.dart';
 import '../api/twin_api.dart';
@@ -24,6 +25,7 @@ import '../providers/media_providers.dart';
 import '../providers/metrics_providers.dart';
 import '../providers/ollama_providers.dart';
 import '../providers/pbs_providers.dart';
+import '../providers/pdm_providers.dart';
 import '../providers/proxmox_providers.dart';
 import '../providers/settings_providers.dart';
 import '../providers/tailscale_providers.dart';
@@ -130,7 +132,116 @@ const _demoSettings = AppSettings(
   pbs1TokenId: 'reader@pbs!demo',
   pbs1TokenSecret: 'demo',
   pbs1User: 'operator@pbs',
+  pdmUrl: 'https://10.0.0.6:8443',
+  pdmTokenId: 'user@pam!pdmtoken',
+  pdmTokenSecret: 'demo',
 );
+
+/// Two fake PDM remotes with a few guests each. Anything not overridden goes
+/// to [_OfflineAdapter], so no demo screen opens a socket.
+class _DemoPdmApi extends PdmApi {
+  _DemoPdmApi() : super(Dio()..httpClientAdapter = _OfflineAdapter());
+
+  @override
+  Future<List<PdmRemoteInfo>> remotes() async => const [
+    PdmRemoteInfo(id: 'main', type: 'pve', endpoints: ['10.0.0.5:8006']),
+    PdmRemoteInfo(id: 'edge', type: 'pve', endpoints: ['10.0.0.20:8006']),
+    PdmRemoteInfo(id: 'backup', type: 'pbs', endpoints: ['10.0.0.8:8007']),
+  ];
+
+  @override
+  Future<PdmClusterStatus> clusterStatus(String remote) async =>
+      PdmClusterStatus(
+        name: remote,
+        quorate: true,
+        nodesOnline: remote == 'main' ? 4 : 1,
+        nodesTotal: remote == 'main' ? 4 : 1,
+      );
+
+  @override
+  Future<PdmResources> resources(String remote) async {
+    final main = remote == 'main';
+    PdmGuest guest(String kind, int vmid, String name, String node,
+            String status, double cpu, int memGib, int maxMemGib) =>
+        PdmGuest(
+          remote: remote,
+          kind: kind,
+          vmid: vmid,
+          name: name,
+          node: node,
+          status: status,
+          template: false,
+          cpu: status == 'running' ? cpu : 0,
+          maxcpu: 4,
+          mem: status == 'running' ? memGib << 30 : 0,
+          maxmem: maxMemGib << 30,
+          disk: 12 << 30,
+          maxdisk: 64 << 30,
+          uptime: status == 'running' ? 302400 : 0,
+          tags: const [],
+        );
+    return PdmResources(
+      nodes: [
+        for (final (i, n) in (main
+                ? const ['node1', 'node2', 'node3', 'node4']
+                : const ['edge1'])
+            .indexed)
+          PdmNode(
+            remote: remote,
+            name: n,
+            status: 'online',
+            cpu: main ? const [.07, .03, .12, .05][i] : .09,
+            maxcpu: 8,
+            mem: (main ? const [9, 5, 6, 10][i] : 3) << 30,
+            maxmem: (main ? const [16, 8, 8, 16][i] : 8) << 30,
+            uptime: 1209600,
+          ),
+      ],
+      guests: main
+          ? [
+              guest('lxc', 101, 'dns', 'node1', 'running', .02, 1, 2),
+              guest('lxc', 102, 'reverse-proxy', 'node2', 'running', .04, 1, 2),
+              guest('qemu', 110, 'media-server', 'node4', 'running', .21, 6, 8),
+              guest('lxc', 120, 'monitoring', 'node3', 'running', .08, 2, 4),
+              guest('qemu', 130, 'test-vm', 'node3', 'stopped', 0, 0, 4),
+            ]
+          : [
+              guest('lxc', 201, 'edge-proxy', 'edge1', 'running', .03, 1, 2),
+              guest('lxc', 202, 'backup-agent', 'edge1', 'running', .01, 1, 1),
+            ],
+      storages: [
+        PdmStorage(
+          remote: remote,
+          storage: 'local-lvm',
+          node: main ? 'node1' : 'edge1',
+          shared: false,
+          status: 'available',
+          used: (main ? 180 : 40) << 30,
+          total: (main ? 420 : 230) << 30,
+        ),
+        if (main)
+          PdmStorage(
+            remote: remote,
+            storage: 'shared-nfs',
+            node: 'node1',
+            shared: true,
+            status: 'available',
+            used: 2 << 40,
+            total: 8 << 40,
+          ),
+      ],
+    );
+  }
+
+  @override
+  Future<List<PdmTask>> tasks({
+    int limit = 200,
+    bool errorsOnly = false,
+    bool runningOnly = false,
+  }) async => const [];
+}
+
+final _demoPdm = _DemoPdmApi();
 
 const _demoPbsOverview = PbsOverviewData(
   version: {'version': '4.2.8'},
@@ -583,4 +694,12 @@ final demoOverrides = [
   pbsGroupsProvider.overrideWith((ref, args) async => _demoPbsGroups),
   pbsSnapshotsProvider.overrideWith((ref, args) async => const []),
   pbsTasksProvider.overrideWith((ref, args) async => const []),
+  pdmApiProvider.overrideWith((ref) async => _demoPdm),
+  pdmPanelProvider.overrideWith(
+    (ref) async => PdmPanelState(
+      reachable: true,
+      status: await _demoPdm.status(),
+      tokenRejected: false,
+    ),
+  ),
 ];
