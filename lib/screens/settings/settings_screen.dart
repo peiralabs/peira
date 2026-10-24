@@ -12,6 +12,7 @@ import '../../core/webview/web_logins.dart';
 import '../../core/widgets/brass_icon_badge.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/screen_header.dart';
+import 'connection_profiles_panel.dart';
 
 /// Credentials and service endpoints. Everything entered here lands in
 /// flutter_secure_storage — nothing is written to plain files.
@@ -51,6 +52,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _pdmTokenId = TextEditingController();
   final _pdmTokenSecret = TextEditingController();
   final _pdmFingerprint = TextEditingController();
+  final _pbs1Name = TextEditingController();
+  final _pbs1Url = TextEditingController();
+  final _pbs1TokenId = TextEditingController();
+  final _pbs1TokenSecret = TextEditingController();
+  final _pbs1Fingerprint = TextEditingController();
+  final _pbs1User = TextEditingController();
+  final _pbs1PveStorage = TextEditingController();
+  final _pbs2Name = TextEditingController();
+  final _pbs2Url = TextEditingController();
+  final _pbs2TokenId = TextEditingController();
+  final _pbs2TokenSecret = TextEditingController();
+  final _pbs2Fingerprint = TextEditingController();
+  final _pbs2User = TextEditingController();
+  final _pbs2PveStorage = TextEditingController();
   final _jellyseerrUrl = TextEditingController();
   final _jellyfinUrl = TextEditingController();
   final _jellyfinApiKey = TextEditingController();
@@ -71,6 +86,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _trustSelfSigned = true;
   bool _dockerTlsVerify = true;
   bool _seeded = false;
+  String? _seededProfile;
 
   // Per-service stored logins for the embedded webviews (autofilled into each
   // service's own login form). Keyed by the service label.
@@ -112,6 +128,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _pdmTokenId,
       _pdmTokenSecret,
       _pdmFingerprint,
+      _pbs1Name,
+      _pbs1Url,
+      _pbs1TokenId,
+      _pbs1TokenSecret,
+      _pbs1Fingerprint,
+      _pbs1User,
+      _pbs1PveStorage,
+      _pbs2Name,
+      _pbs2Url,
+      _pbs2TokenId,
+      _pbs2TokenSecret,
+      _pbs2Fingerprint,
+      _pbs2User,
+      _pbs2PveStorage,
       _jellyseerrUrl,
       _jellyfinUrl,
       _jellyfinApiKey,
@@ -140,9 +170,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _themeMode = 'system';
   String _themeId = 'brass';
 
-  void _seedFrom(AppSettings settings) {
-    if (_seeded) return;
+  /// Fills the form from [settings] once per active profile: the screen
+  /// stays alive in the shell's tab stack, so a profile switch must re-seed or
+  /// Save would write the previous profile's values into the new one.
+  void _seedFrom(AppSettings settings, String? profileId) {
+    if (_seeded && profileId == _seededProfile) return;
     _seeded = true;
+    _seededProfile = profileId;
     _themeMode = settings.themeMode;
     _themeId = settings.themeId;
     _proxmoxUrl.text = settings.proxmoxUrl;
@@ -171,6 +205,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _pdmTokenId.text = settings.pdmTokenId;
     _pdmTokenSecret.text = settings.pdmTokenSecret;
     _pdmFingerprint.text = settings.pdmFingerprint;
+    _pbs1Name.text = settings.pbs1Name;
+    _pbs1Url.text = settings.pbs1Url;
+    _pbs1TokenId.text = settings.pbs1TokenId;
+    _pbs1TokenSecret.text = settings.pbs1TokenSecret;
+    _pbs1Fingerprint.text = settings.pbs1Fingerprint;
+    _pbs1User.text = settings.pbs1User;
+    _pbs1PveStorage.text = settings.pbs1PveStorage;
+    _pbs2Name.text = settings.pbs2Name;
+    _pbs2Url.text = settings.pbs2Url;
+    _pbs2TokenId.text = settings.pbs2TokenId;
+    _pbs2TokenSecret.text = settings.pbs2TokenSecret;
+    _pbs2Fingerprint.text = settings.pbs2Fingerprint;
+    _pbs2User.text = settings.pbs2User;
+    _pbs2PveStorage.text = settings.pbs2PveStorage;
     _jellyseerrUrl.text = settings.jellyseerrUrl;
     _jellyfinUrl.text = settings.jellyfinUrl;
     _jellyfinApiKey.text = settings.jellyfinApiKey;
@@ -235,6 +283,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       pdmTokenId: _pdmTokenId.text.trim(),
       pdmTokenSecret: _pdmTokenSecret.text.trim(),
       pdmFingerprint: _pdmFingerprint.text.trim(),
+      pbs1Name: _pbs1Name.text.trim(),
+      pbs1Url: _cleanUrl(_pbs1Url.text),
+      pbs1TokenId: _pbs1TokenId.text.trim(),
+      pbs1TokenSecret: _pbs1TokenSecret.text.trim(),
+      pbs1Fingerprint: _pbs1Fingerprint.text.trim(),
+      pbs1User: _pbs1User.text.trim(),
+      pbs1PveStorage: _pbs1PveStorage.text.trim(),
+      pbs2Name: _pbs2Name.text.trim(),
+      pbs2Url: _cleanUrl(_pbs2Url.text),
+      pbs2TokenId: _pbs2TokenId.text.trim(),
+      pbs2TokenSecret: _pbs2TokenSecret.text.trim(),
+      pbs2Fingerprint: _pbs2Fingerprint.text.trim(),
+      pbs2User: _pbs2User.text.trim(),
+      pbs2PveStorage: _pbs2PveStorage.text.trim(),
       jellyseerrUrl: _cleanUrl(_jellyseerrUrl.text),
       jellyfinUrl: _cleanUrl(_jellyfinUrl.text),
       jellyfinApiKey: _jellyfinApiKey.text.trim(),
@@ -294,12 +356,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsControllerProvider);
+    final profileId = ref.watch(profilesControllerProvider).value?.activeId;
 
+    // A profile switch invalidates the settings, and while they reload
+    // `when` still hands back the OUTGOING profile's values. Seeding from
+    // those under the new profile id would lock the form onto them (the seed
+    // runs once per profile), and Save would then overwrite the new profile
+    // with the old one's settings. Wait for the reload instead.
+    if (settings.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return settings.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Failed to load settings: $e')),
       data: (current) {
-        _seedFrom(current);
+        _seedFrom(current, profileId);
         return Form(
           key: _formKey,
           child: ListView(
@@ -320,6 +391,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 16),
               const SectionDivider(),
               const SizedBox(height: 8),
+              _section(context, 'Connection profiles'),
+              const ConnectionProfilesPanel(),
               _section(context, 'Appearance'),
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 8),
@@ -363,8 +436,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           setState(() => _themeId = pack.id);
                           // Apply immediately once configured; before first
                           // save the choice rides along with the Save button.
-                          final cur =
-                              ref.read(settingsControllerProvider).value;
+                          final cur = ref
+                              .read(settingsControllerProvider)
+                              .value;
                           if (cur != null) {
                             ref
                                 .read(settingsControllerProvider.notifier)
@@ -419,6 +493,62 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 _pdmFingerprint,
                 'PDM certificate fingerprint (SHA-256)',
                 hint: 'AA:BB:… — pins the self-signed cert; empty = system CAs',
+              ),
+              _section(context, 'Proxmox Backup Server'),
+              _textField(_pbs1Name, 'PBS 1 name', hint: 'Office PBS'),
+              _urlField(_pbs1Url, 'PBS 1 URL', hint: 'https://10.0.0.7:8007'),
+              _textField(
+                _pbs1TokenId,
+                'PBS 1 API token ID',
+                hint: 'user@pbs!tokenname',
+              ),
+              _textField(
+                _pbs1TokenSecret,
+                'PBS 1 API token secret',
+                obscure: true,
+              ),
+              _textField(
+                _pbs1Fingerprint,
+                'PBS 1 certificate fingerprint (SHA-256)',
+                hint: 'AA:BB:… — empty = system CAs',
+              ),
+              _textField(
+                _pbs1User,
+                'PBS 1 elevated username',
+                hint: 'user@pbs',
+              ),
+              _textField(
+                _pbs1PveStorage,
+                'PBS 1 PVE storage ID (optional)',
+                hint: 'pbs-office',
+              ),
+              const SizedBox(height: 8),
+              _textField(_pbs2Name, 'PBS 2 name', hint: 'NAS PBS'),
+              _urlField(_pbs2Url, 'PBS 2 URL', hint: 'https://10.0.0.8:8007'),
+              _textField(
+                _pbs2TokenId,
+                'PBS 2 API token ID',
+                hint: 'user@pbs!tokenname',
+              ),
+              _textField(
+                _pbs2TokenSecret,
+                'PBS 2 API token secret',
+                obscure: true,
+              ),
+              _textField(
+                _pbs2Fingerprint,
+                'PBS 2 certificate fingerprint (SHA-256)',
+                hint: 'AA:BB:… — empty = system CAs',
+              ),
+              _textField(
+                _pbs2User,
+                'PBS 2 elevated username',
+                hint: 'user@pbs',
+              ),
+              _textField(
+                _pbs2PveStorage,
+                'PBS 2 PVE storage ID (optional)',
+                hint: 'pbs-nas',
               ),
               _section(context, 'Grafana'),
               _urlField(_grafanaUrl, 'Grafana URL'),
@@ -552,7 +682,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'Sign in automatically (once per session). Off = fill only.',
                 ),
               ),
-              for (final service in WebLogins.services) ..._loginFields(service),
+              for (final service in WebLogins.services)
+                ..._loginFields(service),
               _section(context, 'Notifications'),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -674,18 +805,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return [
       Padding(
         padding: const EdgeInsets.only(top: 4, bottom: 6),
-        child: Text(
-          service,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
+        child: Text(service, style: Theme.of(context).textTheme.labelLarge),
       ),
       if (!passwordOnly)
         _textField(_webLoginUser[service]!, '$service username / email'),
-      _textField(
-        _webLoginPass[service]!,
-        '$service password',
-        obscure: true,
-      ),
+      _textField(_webLoginPass[service]!, '$service password', obscure: true),
     ];
   }
 

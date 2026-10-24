@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/ollama_api.dart';
+import '../api/pbs_api.dart';
 import '../api/prometheus_api.dart';
 import '../api/proxmox_api.dart';
 import '../api/twin_api.dart';
@@ -22,6 +23,7 @@ import '../providers/grafana_providers.dart';
 import '../providers/media_providers.dart';
 import '../providers/metrics_providers.dart';
 import '../providers/ollama_providers.dart';
+import '../providers/pbs_providers.dart';
 import '../providers/proxmox_providers.dart';
 import '../providers/settings_providers.dart';
 import '../providers/tailscale_providers.dart';
@@ -59,8 +61,11 @@ class DemoBanner extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.science_outlined,
-                size: 16, color: scheme.onTertiaryContainer),
+            Icon(
+              Icons.science_outlined,
+              size: 16,
+              color: scheme.onTertiaryContainer,
+            ),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -95,11 +100,17 @@ class _DemoSettingsRepository implements SettingsRepository {
 /// sockets.
 class _OfflineAdapter implements HttpClientAdapter {
   @override
-  Future<ResponseBody> fetch(RequestOptions options,
-          Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async =>
-      ResponseBody.fromString('{"data":null}', 200, headers: {
-        Headers.contentTypeHeader: [Headers.jsonContentType],
-      });
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(
+    '{"data":null}',
+    200,
+    headers: {
+      Headers.contentTypeHeader: [Headers.jsonContentType],
+    },
+  );
 
   @override
   void close({bool force = false}) {}
@@ -114,83 +125,143 @@ const _demoSettings = AppSettings(
   jellyfinUrl: 'http://10.0.0.9:8096',
   jellyfinApiKey: 'demo',
   sshTargets: 'node1=root@10.0.0.5\nnas=admin@10.0.0.9',
+  pbs1Name: 'Demo PBS',
+  pbs1Url: 'https://10.0.0.8:8007',
+  pbs1TokenId: 'reader@pbs!demo',
+  pbs1TokenSecret: 'demo',
+  pbs1User: 'operator@pbs',
 );
+
+const _demoPbsOverview = PbsOverviewData(
+  version: {'version': '4.2.8'},
+  datastores: [
+    PbsDatastoreUsage(
+      store: 'backup',
+      total: 24 << 40,
+      used: 9 << 40,
+      avail: 15 << 40,
+      history: [
+        {'used': 7 << 40},
+        {'used': 8 << 40},
+        {'used': 9 << 40},
+      ],
+      gcStatus: {'status': 'OK', 'backup-count': 42, 'group-count': 8},
+      estimatedFullDate: 1840309200,
+    ),
+  ],
+  jobs: [],
+);
+
+const _demoPbsGroups = [
+  PbsGroup(
+    type: 'vm',
+    id: '201',
+    lastBackup: 1792760400,
+    backupCount: 7,
+    owner: 'reader@pbs',
+    comment: 'Demo database server',
+    files: 4,
+  ),
+  PbsGroup(
+    type: 'ct',
+    id: '106',
+    lastBackup: 1792674000,
+    backupCount: 14,
+    owner: 'reader@pbs',
+    comment: 'Demo wiki',
+    files: 4,
+  ),
+];
 
 const _nodes = [
   ProxmoxNode(
-      node: 'node1',
-      status: 'online',
-      cpu: 0.07,
-      mem: 9 << 30,
-      maxmem: 16 << 30,
-      disk: 38 << 30,
-      maxdisk: 90 << 30),
+    node: 'node1',
+    status: 'online',
+    cpu: 0.07,
+    mem: 9 << 30,
+    maxmem: 16 << 30,
+    disk: 38 << 30,
+    maxdisk: 90 << 30,
+  ),
   ProxmoxNode(
-      node: 'node2',
-      status: 'online',
-      cpu: 0.03,
-      mem: 5 << 30,
-      maxmem: 8 << 30,
-      disk: 21 << 30,
-      maxdisk: 74 << 30),
+    node: 'node2',
+    status: 'online',
+    cpu: 0.03,
+    mem: 5 << 30,
+    maxmem: 8 << 30,
+    disk: 21 << 30,
+    maxdisk: 74 << 30,
+  ),
   ProxmoxNode(
-      node: 'node3',
-      status: 'online',
-      cpu: 0.12,
-      mem: 6 << 30,
-      maxmem: 8 << 30,
-      disk: 46 << 30,
-      maxdisk: 90 << 30),
+    node: 'node3',
+    status: 'online',
+    cpu: 0.12,
+    mem: 6 << 30,
+    maxmem: 8 << 30,
+    disk: 46 << 30,
+    maxdisk: 90 << 30,
+  ),
   ProxmoxNode(
-      node: 'node4',
-      status: 'online',
-      cpu: 0.05,
-      mem: 10 << 30,
-      maxmem: 16 << 30,
-      disk: 52 << 30,
-      maxdisk: 120 << 30),
+    node: 'node4',
+    status: 'online',
+    cpu: 0.05,
+    mem: 10 << 30,
+    maxmem: 16 << 30,
+    disk: 52 << 30,
+    maxdisk: 120 << 30,
+  ),
 ];
 
 const _cts = [
   ProxmoxContainer(
-      vmid: 100,
-      status: 'running',
-      name: 'ollama-box',
-      node: 'node1',
-      mem: 9 << 30,
-      maxmem: 14 << 30),
+    vmid: 100,
+    status: 'running',
+    name: 'ollama-box',
+    node: 'node1',
+    mem: 9 << 30,
+    maxmem: 14 << 30,
+  ),
   ProxmoxContainer(
-      vmid: 105,
-      status: 'running',
-      name: 'monitoring',
-      node: 'node2',
-      mem: 1 << 30,
-      maxmem: 2 << 30),
+    vmid: 105,
+    status: 'running',
+    name: 'monitoring',
+    node: 'node2',
+    mem: 1 << 30,
+    maxmem: 2 << 30,
+  ),
   ProxmoxContainer(
-      vmid: 106,
-      status: 'running',
-      name: 'wiki',
-      node: 'node3',
-      mem: 1 << 30,
-      maxmem: 2 << 30),
+    vmid: 106,
+    status: 'running',
+    name: 'wiki',
+    node: 'node3',
+    mem: 1 << 30,
+    maxmem: 2 << 30,
+  ),
   ProxmoxContainer(
-      vmid: 104,
-      status: 'running',
-      name: 'minecraft',
-      node: 'node4',
-      mem: 3 << 30,
-      maxmem: 4 << 30),
-  ProxmoxContainer(vmid: 108, status: 'stopped', name: 'valheim', node: 'node4'),
+    vmid: 104,
+    status: 'running',
+    name: 'minecraft',
+    node: 'node4',
+    mem: 3 << 30,
+    maxmem: 4 << 30,
+  ),
+  ProxmoxContainer(
+    vmid: 108,
+    status: 'stopped',
+    name: 'valheim',
+    node: 'node4',
+  ),
 ];
 
 const _vms = [
   ProxmoxVm(
-      vmid: 201,
-      status: 'running',
-      name: 'win11-desktop',
-      node: 'node2',
-      mem: 6 << 30,
-      maxmem: 8 << 30),
+    vmid: 201,
+    status: 'running',
+    name: 'win11-desktop',
+    node: 'node2',
+    mem: 6 << 30,
+    maxmem: 8 << 30,
+  ),
   ProxmoxVm(vmid: 202, status: 'stopped', name: 'ubuntu-server', node: 'node3'),
 ];
 
@@ -220,20 +291,23 @@ const _tailscale = TailscaleStatus(
 
 const _ollamaModels = [
   OllamaModel(
-      name: 'qwen2.5:14b',
-      sizeBytes: 9663676416,
-      parameterSize: '14B',
-      quantization: 'Q4_K_M'),
+    name: 'qwen2.5:14b',
+    sizeBytes: 9663676416,
+    parameterSize: '14B',
+    quantization: 'Q4_K_M',
+  ),
   OllamaModel(
-      name: 'llama3.1:8b',
-      sizeBytes: 5046586573,
-      parameterSize: '8B',
-      quantization: 'Q4_K_M'),
+    name: 'llama3.1:8b',
+    sizeBytes: 5046586573,
+    parameterSize: '8B',
+    quantization: 'Q4_K_M',
+  ),
   OllamaModel(
-      name: 'nomic-embed-text',
-      sizeBytes: 287309824,
-      parameterSize: '137M',
-      quantization: 'F16'),
+    name: 'nomic-embed-text',
+    sizeBytes: 287309824,
+    parameterSize: '137M',
+    quantization: 'F16',
+  ),
 ];
 
 final _alerts = [
@@ -243,7 +317,10 @@ final _alerts = [
     startsAt: DateTime.utc(2026, 7, 4, 8),
   ),
   GrafanaAlert(
-    labels: const {'alertname': 'Container Not Running', 'severity': 'critical'},
+    labels: const {
+      'alertname': 'Container Not Running',
+      'severity': 'critical',
+    },
     annotations: const {'summary': 'CT 108 valheim stopped'},
     startsAt: DateTime.utc(2026, 7, 4, 9),
   ),
@@ -254,7 +331,11 @@ const _jellyfin = MediaServerStatus(
   version: '10.10.3',
   sessions: [
     MediaSession(
-        user: 'alex', title: 'The Expanse S02E05', subtitle: 'The Expanse', progress: .41),
+      user: 'alex',
+      title: 'The Expanse S02E05',
+      subtitle: 'The Expanse',
+      progress: .41,
+    ),
   ],
   libraries: [
     MediaLibrary(name: 'Movies', count: 412),
@@ -270,34 +351,34 @@ const _jellyfin = MediaServerStatus(
 class _DemoClusterCpuHistory extends ClusterCpuHistory {
   @override
   List<double> build() => const [
-        4, 5, 6, 5, 7, 6, 8, 7, 6, 9, //
-        8, 7, 6, 8, 22, 34, 18, 10, 8, 7,
-      ];
+    4, 5, 6, 5, 7, 6, 8, 7, 6, 9, //
+    8, 7, 6, 8, 22, 34, 18, 10, 8, 7,
+  ];
 }
 
 class _DemoNodeCpuHistory extends NodeCpuHistory {
   @override
   Map<String, List<double>> build() => const {
-        'node1': [5, 6, 4, 7, 6, 8, 5, 7, 6, 7, 5, 7],
-        'node2': [2, 3, 2, 4, 3, 2, 3, 4, 3, 2, 3, 3],
-        'node3': [8, 10, 9, 12, 14, 11, 10, 13, 12, 11, 13, 12],
-        'node4': [4, 5, 3, 6, 5, 4, 5, 6, 4, 5, 4, 5],
-      };
+    'node1': [5, 6, 4, 7, 6, 8, 5, 7, 6, 7, 5, 7],
+    'node2': [2, 3, 2, 4, 3, 2, 3, 4, 3, 2, 3, 3],
+    'node3': [8, 10, 9, 12, 14, 11, 10, 13, 12, 11, 13, 12],
+    'node4': [4, 5, 3, 6, 5, 4, 5, 6, 4, 5, 4, 5],
+  };
 }
 
 List<(double, double)> _wave(double base, double amp, double phase) => [
-      for (var i = 0; i < 72; i++)
-        (
-          1752900000 + i * 60.0,
-          base + amp * math.sin(i / 9 + phase) + (i % 5) * amp * 0.06,
-        ),
-    ];
+  for (var i = 0; i < 72; i++)
+    (
+      1752900000 + i * 60.0,
+      base + amp * math.sin(i / 9 + phase) + (i % 5) * amp * 0.06,
+    ),
+];
 
 ClusterMetrics _metrics() {
   List<MetricSeries> panel(double base, double amp) => [
-        for (final (i, n) in ['node1', 'node2', 'node3', 'node4'].indexed)
-          MetricSeries(label: n, points: _wave(base + i * amp * 0.5, amp, i * 1.7)),
-      ];
+    for (final (i, n) in ['node1', 'node2', 'node3', 'node4'].indexed)
+      MetricSeries(label: n, points: _wave(base + i * amp * 0.5, amp, i * 1.7)),
+  ];
   return ClusterMetrics(
     cpu: panel(8, 6),
     memory: panel(45, 8),
@@ -312,30 +393,58 @@ const _insights = MetricsInsights(
   targetsTotal: 8,
   diskRunwayDays: {'node1': 412, 'node2': 388, 'node3': 74, 'node4': 520},
   topGuests: [
-    GuestLoad(id: 'lxc/104', name: 'minecraft', node: 'node4', cpuPct: 38, memPct: 71),
-    GuestLoad(id: 'lxc/100', name: 'ollama-box', node: 'node1', cpuPct: 22, memPct: 64),
-    GuestLoad(id: 'qemu/201', name: 'win11-desktop', node: 'node2', cpuPct: 12, memPct: 55),
-    GuestLoad(id: 'lxc/105', name: 'monitoring', node: 'node2', cpuPct: 6, memPct: 48),
-    GuestLoad(id: 'lxc/106', name: 'wiki', node: 'node3', cpuPct: 3, memPct: 39),
+    GuestLoad(
+      id: 'lxc/104',
+      name: 'minecraft',
+      node: 'node4',
+      cpuPct: 38,
+      memPct: 71,
+    ),
+    GuestLoad(
+      id: 'lxc/100',
+      name: 'ollama-box',
+      node: 'node1',
+      cpuPct: 22,
+      memPct: 64,
+    ),
+    GuestLoad(
+      id: 'qemu/201',
+      name: 'win11-desktop',
+      node: 'node2',
+      cpuPct: 12,
+      memPct: 55,
+    ),
+    GuestLoad(
+      id: 'lxc/105',
+      name: 'monitoring',
+      node: 'node2',
+      cpuPct: 6,
+      memPct: 48,
+    ),
+    GuestLoad(
+      id: 'lxc/106',
+      name: 'wiki',
+      node: 'node3',
+      cpuPct: 3,
+      memPct: 39,
+    ),
   ],
 );
 
 PowerMetrics _power() => PowerMetrics(
-      watts: 126,
-      loadPct: 12.6,
-      batteryPct: 100,
-      runtimeSeconds: 11425,
-      inputVolts: 118,
-      online: true,
-      onBattery: false,
-      lowBattery: false,
-      avgWatts24h: 121,
-      model: 'Demo UPS 1500',
-      power: [
-        MetricSeries(label: 'Demo UPS 1500', points: _wave(120, 10, 0)),
-      ],
-      rateUsdPerKwh: 0.30,
-    );
+  watts: 126,
+  loadPct: 12.6,
+  batteryPct: 100,
+  runtimeSeconds: 11425,
+  inputVolts: 118,
+  online: true,
+  onBattery: false,
+  lowBattery: false,
+  avgWatts24h: 121,
+  model: 'Demo UPS 1500',
+  power: [MetricSeries(label: 'Demo UPS 1500', points: _wave(120, 10, 0))],
+  rateUsdPerKwh: 0.30,
+);
 
 const _twin = TwinData(
   scenarios: [
@@ -344,7 +453,12 @@ const _twin = TwinData(
       fits: true,
       guests: 1,
       placements: [
-        TwinPlacement(vmid: 100, name: 'ollama-box', target: 'node4', demandGib: 3.2),
+        TwinPlacement(
+          vmid: 100,
+          name: 'ollama-box',
+          target: 'node4',
+          demandGib: 3.2,
+        ),
       ],
       strandedNames: [],
       recoveryMinutes: 11,
@@ -355,8 +469,18 @@ const _twin = TwinData(
       fits: true,
       guests: 2,
       placements: [
-        TwinPlacement(vmid: 105, name: 'monitoring', target: 'node1', demandGib: 0.5),
-        TwinPlacement(vmid: 201, name: 'win11-desktop', target: 'node1', demandGib: 6.0),
+        TwinPlacement(
+          vmid: 105,
+          name: 'monitoring',
+          target: 'node1',
+          demandGib: 0.5,
+        ),
+        TwinPlacement(
+          vmid: 201,
+          name: 'win11-desktop',
+          target: 'node1',
+          demandGib: 6.0,
+        ),
       ],
       strandedNames: [],
       recoveryMinutes: 2,
@@ -378,7 +502,12 @@ const _twin = TwinData(
       fits: false,
       guests: 2,
       placements: [
-        TwinPlacement(vmid: 108, name: 'valheim', target: 'node1', demandGib: 1.4),
+        TwinPlacement(
+          vmid: 108,
+          name: 'valheim',
+          target: 'node1',
+          demandGib: 1.4,
+        ),
       ],
       strandedNames: ['minecraft'],
       recoveryMinutes: null,
@@ -387,33 +516,37 @@ const _twin = TwinData(
   ],
   headroom: [
     TwinHeadroomNode(
-        node: 'node1',
-        totalGib: 15.1,
-        freeGib: 10.5,
-        vcpuRatio: 1.25,
-        localLvmFreeGib: 283.9,
-        largestFit: 'minecraft (1.6 GiB)'),
+      node: 'node1',
+      totalGib: 15.1,
+      freeGib: 10.5,
+      vcpuRatio: 1.25,
+      localLvmFreeGib: 283.9,
+      largestFit: 'minecraft (1.6 GiB)',
+    ),
     TwinHeadroomNode(
-        node: 'node2',
-        totalGib: 7.2,
-        freeGib: 4.3,
-        vcpuRatio: 0.75,
-        localLvmFreeGib: 81.4,
-        largestFit: 'minecraft (1.6 GiB)'),
+      node: 'node2',
+      totalGib: 7.2,
+      freeGib: 4.3,
+      vcpuRatio: 0.75,
+      localLvmFreeGib: 81.4,
+      largestFit: 'minecraft (1.6 GiB)',
+    ),
     TwinHeadroomNode(
-        node: 'node3',
-        totalGib: 7.2,
-        freeGib: 3.6,
-        vcpuRatio: 0.88,
-        localLvmFreeGib: 55.7,
-        largestFit: 'wiki (0.3 GiB)'),
+      node: 'node3',
+      totalGib: 7.2,
+      freeGib: 3.6,
+      vcpuRatio: 0.88,
+      localLvmFreeGib: 55.7,
+      largestFit: 'wiki (0.3 GiB)',
+    ),
     TwinHeadroomNode(
-        node: 'node4',
-        totalGib: 15.1,
-        freeGib: 7.2,
-        vcpuRatio: 1.0,
-        localLvmFreeGib: 305.4,
-        largestFit: 'ollama-box (3.2 GiB)'),
+      node: 'node4',
+      totalGib: 15.1,
+      freeGib: 7.2,
+      vcpuRatio: 1.0,
+      localLvmFreeGib: 305.4,
+      largestFit: 'ollama-box (3.2 GiB)',
+    ),
   ],
 );
 
@@ -423,10 +556,12 @@ const _twin = TwinData(
 final demoOverrides = [
   demoModeProvider.overrideWithValue(true),
   settingsRepositoryProvider.overrideWithValue(_DemoSettingsRepository()),
-  proxmoxApiProvider.overrideWith((ref) => ProxmoxApi(
-        Dio(BaseOptions(baseUrl: '${_demoSettings.proxmoxUrl}/api2/json'))
-          ..httpClientAdapter = _OfflineAdapter(),
-      )),
+  proxmoxApiProvider.overrideWith(
+    (ref) => ProxmoxApi(
+      Dio(BaseOptions(baseUrl: '${_demoSettings.proxmoxUrl}/api2/json'))
+        ..httpClientAdapter = _OfflineAdapter(),
+    ),
+  ),
   serviceReachableProvider.overrideWith((ref, url) async => true),
   nodesProvider.overrideWith((ref) async => _nodes),
   allContainersProvider.overrideWith((ref) async => _cts),
@@ -443,4 +578,9 @@ final demoOverrides = [
   metricsInsightsProvider.overrideWith((ref) async => _insights),
   powerMetricsProvider.overrideWith((ref) async => _power()),
   twinDataProvider.overrideWith((ref) async => _twin),
+  pbsOverviewProvider.overrideWith((ref, slot) async => _demoPbsOverview),
+  pbsNamespacesProvider.overrideWith((ref, args) async => const []),
+  pbsGroupsProvider.overrideWith((ref, args) async => _demoPbsGroups),
+  pbsSnapshotsProvider.overrideWith((ref, args) async => const []),
+  pbsTasksProvider.overrideWith((ref, args) async => const []),
 ];

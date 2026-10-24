@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/pdm_api.dart';
+import '../../core/navigation/app_tab.dart';
+import '../../core/providers/navigation_providers.dart';
 import '../../core/providers/pdm_providers.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -34,21 +36,21 @@ class PdmPanel extends ConsumerWidget {
     Future<void> open() async {
       final err = await openUrl(settings.pdmUrl);
       if (err != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(err)));
       }
     }
 
     final (health, healthText) = switch (state) {
       AsyncData(:final value) when !value.reachable => (
-          Health.crit,
-          'not answering'
-        ),
+        Health.crit,
+        'not answering',
+      ),
       AsyncData(:final value) when value.tokenRejected => (
-          Health.warn,
-          'token rejected'
-        ),
+        Health.warn,
+        'token rejected',
+      ),
       AsyncData() => (Health.ok, 'online'),
       AsyncError() => (Health.warn, 'error'),
       _ => (Health.offline, 'checking…'),
@@ -92,24 +94,27 @@ class PdmPanel extends ConsumerWidget {
                     style: TextStyle(fontSize: 12, color: brass.textMuted),
                   ),
                   const SizedBox(width: MolSpace.md),
-                  TextButton(
-                    onPressed: open,
-                    child: const Text('Open PDM'),
+                  FilledButton(
+                    onPressed: () => ref
+                        .read(selectedTabProvider.notifier)
+                        .select(AppTab.pdm.railIndex),
+                    child: const Text('Open PDM tab'),
                   ),
+                  const SizedBox(width: 6),
+                  TextButton(onPressed: open, child: const Text('Web UI')),
                 ],
               ),
               switch (state) {
                 AsyncData(:final value) => _body(context, value),
                 AsyncError(:final error) => Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      'PDM error: $error',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style:
-                          TextStyle(fontSize: 12, color: brass.textMuted),
-                    ),
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'PDM error: $error',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: brass.textMuted),
                   ),
+                ),
                 _ => const SizedBox.shrink(),
               },
             ],
@@ -122,12 +127,9 @@ class PdmPanel extends ConsumerWidget {
   Widget _body(BuildContext context, PdmPanelState state) {
     final brass = context.brass;
     Widget note(String text) => Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 12, color: brass.textMuted),
-          ),
-        );
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(text, style: TextStyle(fontSize: 12, color: brass.textMuted)),
+    );
     if (!state.reachable) {
       return note(
         'PDM is not answering — check the URL, and that the certificate '
@@ -136,22 +138,24 @@ class PdmPanel extends ConsumerWidget {
       );
     }
     if (state.tokenRejected) {
-      return note('PDM rejected the API token (401) — re-check the token '
-          'ID and secret in Settings.');
+      return note(
+        'PDM rejected the API token (401) — re-check the token '
+        'ID and secret in Settings.',
+      );
     }
     final remotes = state.status?.remotes;
     if (remotes == null) {
-      return note('Add a PDM API token in Settings to see remote status '
-          'here natively.');
+      return note(
+        'Add a PDM API token in Settings to see remote status '
+        'here natively.',
+      );
     }
     if (remotes.isEmpty) {
       return note('No remotes registered in PDM yet.');
     }
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: Column(
-        children: [for (final r in remotes) _RemoteRow(remote: r)],
-      ),
+      child: Column(children: [for (final r in remotes) _RemoteRow(remote: r)]),
     );
   }
 }
@@ -211,10 +215,7 @@ class _RemoteRow extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            detail,
-            style: TextStyle(fontSize: 12, color: brass.textMuted),
-          ),
+          Text(detail, style: TextStyle(fontSize: 12, color: brass.textMuted)),
         ],
       ),
     );
