@@ -24,8 +24,11 @@ import 'docker/docker_screen.dart';
 import 'library/library_screen.dart';
 import 'media/media_screen.dart';
 import 'metrics/metrics_hub_screen.dart';
+import 'pbs/pbs_screen.dart';
+import 'pdm/pdm_screen.dart';
 import 'proxmox/proxmox_screen.dart';
 import 'settings/keyring_locked_screen.dart';
+import 'settings/profile_actions.dart';
 import 'settings/settings_screen.dart';
 import 'setup/setup_wizard_screen.dart';
 import 'tailscale/tailscale_screen.dart';
@@ -49,29 +52,31 @@ class AppShell extends ConsumerWidget {
   /// The active tabs in canonical order — all of them on desktop, minus the
   /// desktop-only ones (Tailscale/Terminal) on iOS. Everything downstream
   /// (rail, page stack, palette, accents) is derived from this.
-  static final _tabs =
-      AppTab.values.where((t) => _desktop || !t.desktopOnly).toList();
+  static final _tabs = AppTab.values
+      .where((t) => _desktop || !t.desktopOnly)
+      .toList();
 
   static Widget _screenFor(AppTab t) => switch (t) {
-        AppTab.dashboard => const DashboardScreen(),
-        AppTab.proxmox => const ProxmoxScreen(),
-        AppTab.docker => const DockerScreen(),
-        // Domain hubs (left-top-top IA): each keys its web-view children's
-        // lazy activation off its own rail index.
-        AppTab.metrics =>
-          MetricsHubScreen(railIndex: AppTab.metrics.railIndex),
-        AppTab.ai => AiScreen(railIndex: AppTab.ai.railIndex),
-        AppTab.media => MediaScreen(railIndex: AppTab.media.railIndex),
-        AppTab.homeAssistant => WebViewScreen(
-            service: 'Home Assistant',
-            tabIndex: AppTab.homeAssistant.railIndex,
-          ),
-        AppTab.vault => VaultScreen(railIndex: AppTab.vault.railIndex),
-        AppTab.library => LibraryScreen(railIndex: AppTab.library.railIndex),
-        AppTab.tailscale => const TailscaleScreen(),
-        AppTab.terminal => TerminalScreen(tabIndex: AppTab.terminal.railIndex),
-        AppTab.settings => const SettingsScreen(),
-      };
+    AppTab.dashboard => const DashboardScreen(),
+    AppTab.proxmox => const ProxmoxScreen(),
+    AppTab.pdm => PdmScreen(railIndex: AppTab.pdm.railIndex),
+    AppTab.pbs => PbsScreen(railIndex: AppTab.pbs.railIndex),
+    AppTab.docker => const DockerScreen(),
+    // Domain hubs (left-top-top IA): each keys its web-view children's
+    // lazy activation off its own rail index.
+    AppTab.metrics => MetricsHubScreen(railIndex: AppTab.metrics.railIndex),
+    AppTab.ai => AiScreen(railIndex: AppTab.ai.railIndex),
+    AppTab.media => MediaScreen(railIndex: AppTab.media.railIndex),
+    AppTab.homeAssistant => WebViewScreen(
+      service: 'Home Assistant',
+      tabIndex: AppTab.homeAssistant.railIndex,
+    ),
+    AppTab.vault => VaultScreen(railIndex: AppTab.vault.railIndex),
+    AppTab.library => LibraryScreen(railIndex: AppTab.library.railIndex),
+    AppTab.tailscale => const TailscaleScreen(),
+    AppTab.terminal => TerminalScreen(tabIndex: AppTab.terminal.railIndex),
+    AppTab.settings => const SettingsScreen(),
+  };
 
   static final _screens = [for (final t in _tabs) _screenFor(t)];
 
@@ -149,6 +154,8 @@ class AppShell extends ConsumerWidget {
       // Hub sub-views as first-class palette targets ("plex" lands on
       // Media › Plex). A single-child hub already IS its child — skip it.
       for (final (hub, specs) in [
+        (AppTab.pdm, PdmScreen.specs),
+        (AppTab.pbs, PbsScreen.specs),
         (AppTab.metrics, MetricsHubScreen.specs),
         (AppTab.ai, AiScreen.specs),
         (AppTab.media, MediaScreen.specs),
@@ -221,12 +228,33 @@ class AppShell extends ConsumerWidget {
                                 if (s == null) return;
                                 await ref
                                     .read(settingsControllerProvider.notifier)
-                                    .save(s.copyWith(
-                                        railCollapsed: !s.railCollapsed));
+                                    .save(
+                                      s.copyWith(
+                                        railCollapsed: !s.railCollapsed,
+                                      ),
+                                    );
                               },
                               onReconnect: () => ref
                                   .read(reconnectRequestProvider.notifier)
                                   .request(),
+                              // The hostname stays until a second profile
+                              // exists; then the footer names the cluster.
+                              profileName: switch (ref
+                                  .watch(profilesControllerProvider)
+                                  .value) {
+                                final p? when p.profiles.length > 1 =>
+                                  p.active.name,
+                                _ => null,
+                              },
+                              onFooterMenu: (anchor) => showProfileMenu(
+                                anchor,
+                                ref,
+                                onReconnect: () => ref
+                                    .read(reconnectRequestProvider.notifier)
+                                    .request(),
+                                onManage: () =>
+                                    onSelect(_tabs.indexOf(AppTab.settings)),
+                              ),
                             ),
                             Expanded(child: body),
                           ],
@@ -254,10 +282,7 @@ class AppShell extends ConsumerWidget {
             onDestinationSelected: onSelect,
             destinations: [
               for (var i = 0; i < _tabs.length; i++)
-                NavigationDestination(
-                  icon: iconFor(i),
-                  label: _tabs[i].label,
-                ),
+                NavigationDestination(icon: iconFor(i), label: _tabs[i].label),
             ],
           ),
         ),
@@ -275,12 +300,11 @@ class _BevelFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bevel =
-        context.brass.isDark ? _BevelPalette.dark : _BevelPalette.light;
+    final bevel = context.brass.isDark
+        ? _BevelPalette.dark
+        : _BevelPalette.light;
     return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: bevel.outer),
-      ),
+      decoration: BoxDecoration(border: Border.all(color: bevel.outer)),
       position: DecorationPosition.foreground,
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -290,8 +314,7 @@ class _BevelFrame extends StatelessWidget {
         position: DecorationPosition.foreground,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            border:
-                Border(top: BorderSide(color: bevel.topHighlight)),
+            border: Border(top: BorderSide(color: bevel.topHighlight)),
           ),
           position: DecorationPosition.foreground,
           child: child,
@@ -342,8 +365,10 @@ class _TabFadeState extends State<_TabFade>
     duration: const Duration(milliseconds: 450),
     value: 1,
   );
-  late final Animation<double> _fade =
-      CurvedAnimation(parent: _c, curve: Curves.easeOut);
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeOut,
+  );
 
   @override
   void didUpdateWidget(_TabFade old) {
@@ -374,4 +399,3 @@ class _TabFadeState extends State<_TabFade>
     );
   }
 }
-

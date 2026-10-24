@@ -86,16 +86,18 @@ class _RailPalette {
       panelBottom: b.railBottom,
       edgeHairline: b.hairline,
       brandTitle: b.textHeading,
-      brandTitleShadow:
-          b.isDark ? const Color(0x80000000) : const Color(0x66FFFBEE),
+      brandTitleShadow: b.isDark
+          ? const Color(0x80000000)
+          : const Color(0x66FFFBEE),
       subtitle: b.textMuted,
       searchBorder: b.panelBorder,
       searchIcon: b.bronze,
       searchHint: b.textMuted,
       cmdKBorder: b.hairline,
       cmdKText: b.smallCaps,
-      nameplateInnerShadow:
-          b.isDark ? const Color(0x66000000) : const Color(0x2E46381F),
+      nameplateInnerShadow: b.isDark
+          ? const Color(0x66000000)
+          : const Color(0x2E46381F),
       labelSelected: b.textHeading,
       labelIdle: b.textBody,
       footerBorder: b.panelBorder,
@@ -123,6 +125,8 @@ class GlassNavRail extends StatelessWidget {
     this.collapsed = false,
     this.onToggleCollapse,
     this.onReconnect,
+    this.profileName,
+    this.onFooterMenu,
   });
 
   final List<NavDest> destinations;
@@ -144,8 +148,16 @@ class GlassNavRail extends StatelessWidget {
   final bool collapsed;
   final VoidCallback? onToggleCollapse;
 
-  /// Footer "laptop · connected" tap → reconnect splash.
+  /// Footer "laptop · connected" tap → reconnect splash. Used only when
+  /// [onFooterMenu] is null.
   final VoidCallback? onReconnect;
+
+  /// Active connection profile shown in the footer instead of the hostname
+  /// (null keeps `<hostname> · connected`).
+  final String? profileName;
+
+  /// Footer tap → profile menu, anchored on the footer's own context.
+  final ValueChanged<BuildContext>? onFooterMenu;
 
   static const collapsedWidth = 78.0;
   static const expandedWidth = 246.0;
@@ -228,7 +240,13 @@ class GlassNavRail extends StatelessWidget {
             ),
           ),
           if (pinned.isNotEmpty) ...pinned.map(item),
-          _ConnectedFooter(expanded: expanded, onTap: onReconnect),
+          _ConnectedFooter(
+            expanded: expanded,
+            label: profileName,
+            onTap:
+                onFooterMenu ??
+                (onReconnect == null ? null : (_) => onReconnect!()),
+          ),
           ?footer,
           const SizedBox(height: 8),
         ],
@@ -288,9 +306,10 @@ class _BrandRow extends StatelessWidget {
                       color: rail.brandTitle,
                       shadows: [
                         Shadow(
-                            offset: const Offset(0, 1),
-                            blurRadius: 1,
-                            color: rail.brandTitleShadow),
+                          offset: const Offset(0, 1),
+                          blurRadius: 1,
+                          color: rail.brandTitleShadow,
+                        ),
                       ],
                     ),
                   ),
@@ -356,9 +375,7 @@ class _BrassKnobState extends State<_BrassKnob> {
                 metal: context.brass.brassStops,
               ),
               child: Icon(
-                widget.collapsed
-                    ? PhBold.caretRight
-                    : PhBold.caretLeft,
+                widget.collapsed ? PhBold.caretRight : PhBold.caretLeft,
                 size: 13,
                 color: const Color(0xFF4A3512),
               ),
@@ -387,16 +404,19 @@ class _KnobPainter extends CustomPainter {
     final light = brighten
         ? Color.lerp(metal[1], const Color(0xFFFFFFFF), 0.2)!
         : metal[1];
-    final dark = brighten
-        ? metal[3]
-        : Color.lerp(metal[3], metal[0], 0.5)!;
+    final dark = brighten ? metal[3] : Color.lerp(metal[3], metal[0], 0.5)!;
     final engrave = Color.lerp(metal[4], const Color(0xFF000000), 0.35)!;
     final wedge = Paint();
     const step = 7 * math.pi / 180;
     for (var i = 0; i < 52; i++) {
       wedge.color = i.isEven ? light : dark;
       canvas.drawArc(
-          Rect.fromCircle(center: c, radius: r), i * step, step, true, wedge);
+        Rect.fromCircle(center: c, radius: r),
+        i * step,
+        step,
+        true,
+        wedge,
+      );
     }
     canvas.drawCircle(
       c,
@@ -532,8 +552,10 @@ class _SearchField extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
                     border: Border.all(color: rail.cmdKBorder),
@@ -627,10 +649,11 @@ class _NavItemState extends State<_NavItem> {
                         border: Border.all(color: kit.border),
                         boxShadow: [
                           BoxShadow(
-                              color: rail.nameplateInnerShadow,
-                              offset: const Offset(0, -2),
-                              blurRadius: 3,
-                              spreadRadius: -2),
+                            color: rail.nameplateInnerShadow,
+                            offset: const Offset(0, -2),
+                            blurRadius: 3,
+                            spreadRadius: -2,
+                          ),
                         ],
                       ),
                       foregroundDecoration: BoxDecoration(
@@ -661,9 +684,7 @@ class _NavItemState extends State<_NavItem> {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(3),
                         gradient: kit.bar,
-                        boxShadow: [
-                          BoxShadow(color: kit.glow, blurRadius: 9),
-                        ],
+                        boxShadow: [BoxShadow(color: kit.glow, blurRadius: 9)],
                       ),
                     ),
                   ),
@@ -682,8 +703,9 @@ class _NavItemState extends State<_NavItem> {
                             color: selected
                                 ? rail.labelSelected
                                 : rail.labelIdle,
-                            fontWeight:
-                                selected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                           ),
                         ),
                       ),
@@ -700,23 +722,25 @@ class _NavItemState extends State<_NavItem> {
 
 /// Footer: emerald cabochon + `<hostname> · connected`; tap → reconnect.
 class _ConnectedFooter extends StatelessWidget {
-  const _ConnectedFooter({required this.expanded, this.onTap});
+  const _ConnectedFooter({required this.expanded, this.label, this.onTap});
 
   final bool expanded;
-  final VoidCallback? onTap;
+  final String? label;
+  final ValueChanged<BuildContext>? onTap;
 
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
     final rail = _RailPalette.of(context);
-    final host = Platform.localHostname;
+    // Goldens must not depend on (or reveal) the machine that rendered them.
+    final host = kUnderTest ? 'laptop' : Platform.localHostname;
     return Padding(
       padding: const EdgeInsets.only(top: 6),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           key: const ValueKey('rail-reconnect'),
-          onTap: onTap,
+          onTap: onTap == null ? null : () => onTap!(context),
           behavior: HitTestBehavior.opaque,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 11),
@@ -741,12 +765,11 @@ class _ConnectedFooter extends StatelessWidget {
                   const SizedBox(width: 10),
                   Flexible(
                     child: Text(
-                      '$host · connected',
+                      '${label ?? host} · connected',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       softWrap: false,
-                      style: TextStyle(
-                          fontSize: 14, color: rail.footerText),
+                      style: TextStyle(fontSize: 14, color: rail.footerText),
                     ),
                   ),
                 ],

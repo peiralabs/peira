@@ -17,6 +17,8 @@ import 'package:peira/app.dart';
 import 'package:peira/core/api/ask_api.dart';
 import 'package:peira/core/api/loki_api.dart';
 import 'package:peira/core/api/ollama_api.dart';
+import 'package:peira/core/api/pbs_api.dart';
+import 'package:peira/core/api/pdm_api.dart';
 import 'package:peira/core/api/prometheus_api.dart';
 import 'package:peira/core/api/proxmox_api.dart';
 import 'package:peira/core/api/twin_api.dart';
@@ -37,6 +39,8 @@ import 'package:peira/core/providers/loki_providers.dart';
 import 'package:peira/core/providers/media_providers.dart';
 import 'package:peira/core/providers/metrics_providers.dart';
 import 'package:peira/core/providers/ollama_providers.dart';
+import 'package:peira/core/providers/pbs_providers.dart';
+import 'package:peira/core/providers/pdm_providers.dart';
 import 'package:peira/core/providers/proxmox_providers.dart';
 import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/providers/tailscale_providers.dart';
@@ -121,6 +125,86 @@ class _FakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _ScreenshotPdmApi extends PdmApi {
+  _ScreenshotPdmApi() : super(Dio());
+
+  static const _remotes = [
+    PdmRemoteInfo(id: 'office', type: 'pve', endpoints: ['192.0.2.10:8006']),
+    PdmRemoteInfo(id: 'home', type: 'pve', endpoints: ['198.51.100.20:8006']),
+  ];
+
+  @override
+  Future<List<PdmRemoteInfo>> remotes() async => _remotes;
+
+  @override
+  Future<PdmClusterStatus> clusterStatus(String remote) async =>
+      PdmClusterStatus(
+        name: '$remote-cluster',
+        quorate: true,
+        nodesOnline: remote == 'office' ? 2 : 1,
+        nodesTotal: remote == 'office' ? 2 : 1,
+      );
+
+  @override
+  Future<PdmResources> resources(String remote) async {
+    final office = remote == 'office';
+    final node = office ? 'office-node-a' : 'home-node-a';
+    return PdmResources(
+      nodes: [
+        PdmNode(
+          remote: remote,
+          name: node,
+          status: 'online',
+          cpu: office ? .18 : .09,
+          maxcpu: office ? 16 : 8,
+          mem: office ? 28 << 30 : 9 << 30,
+          maxmem: office ? 64 << 30 : 32 << 30,
+          uptime: office ? 864000 : 432000,
+        ),
+      ],
+      guests: [
+        PdmGuest(
+          remote: remote,
+          kind: 'qemu',
+          vmid: office ? 101 : 201,
+          name: office ? 'application-server' : 'media-server',
+          node: node,
+          status: 'running',
+          template: false,
+          cpu: .12,
+          maxcpu: 4,
+          mem: 4 << 30,
+          maxmem: 8 << 30,
+          disk: 24 << 30,
+          maxdisk: 64 << 30,
+          uptime: 216000,
+          tags: const ['managed'],
+        ),
+      ],
+      storages: [
+        PdmStorage(
+          remote: remote,
+          storage: 'local-lvm',
+          node: node,
+          shared: false,
+          status: 'available',
+          used: office ? 180 << 30 : 40 << 30,
+          total: office ? 420 << 30 : 370 << 30,
+        ),
+        PdmStorage(
+          remote: remote,
+          storage: 'shared-storage',
+          node: node,
+          shared: true,
+          status: 'available',
+          used: office ? 2 << 40 : 700 << 30,
+          total: office ? 8 << 40 : 2 << 40,
+        ),
+      ],
+    );
+  }
+}
+
 const _tailscale = TailscaleStatus(
   backendState: 'Running',
   self: TailscaleDevice(
@@ -157,6 +241,33 @@ const _configured = AppSettings(
   hermesApiUrl: 'http://hermes.example:8642',
   hermesApiKey: 'test-hermes-key',
   wikiUrl: 'http://wiki.example:3000',
+  pbs1Name: 'Office PBS',
+  pbs1Url: 'https://pbs.example:8007',
+  pbs1TokenId: 'reader@pbs!app',
+  pbs1TokenSecret: 'secret',
+  pbs1User: 'operator@pbs',
+);
+
+const _pbsOverview = PbsOverviewData(
+  version: {'version': '4.2.8'},
+  datastores: [
+    PbsDatastoreUsage(
+      store: 'backup',
+      total: 26388279066624,
+      used: 9895604649984,
+      avail: 16492674416640,
+      history: [
+        {'used': 7696581394432},
+        {'used': 8246337208320},
+        {'used': 8796093022208},
+        {'used': 9345848836096},
+        {'used': 9895604649984},
+      ],
+      gcStatus: {'status': 'OK', 'backup-count': 42, 'group-count': 8},
+      estimatedFullDate: 1840309200,
+    ),
+  ],
+  jobs: [],
 );
 
 const _ollamaModels = [
@@ -262,7 +373,12 @@ const _vms = [
     mem: 6 << 30,
     maxmem: 8 << 30,
   ),
-  ProxmoxVm(vmid: 202, status: 'stopped', name: 'ubuntu-server', node: 'node3'),
+  ProxmoxVm(
+    vmid: 202,
+    status: 'stopped',
+    name: 'ubuntu-server',
+    node: 'node3',
+  ),
 ];
 
 /// Believable per-node series for the Metrics golden: gentle waves with
@@ -276,7 +392,12 @@ ClusterMetrics _fakeMetrics() {
       ),
   ];
   List<MetricSeries> panel(double base, double amp) => [
-    for (final (i, n) in ['node1', 'node2', 'node3', 'node4'].indexed)
+    for (final (i, n) in [
+      'node1',
+      'node2',
+      'node3',
+      'node4',
+    ].indexed)
       MetricSeries(label: n, points: wave(base + i * amp * 0.5, amp, i * 1.7)),
   ];
   return ClusterMetrics(
@@ -291,7 +412,12 @@ ClusterMetrics _fakeMetrics() {
 MetricsInsights _fakeInsights() => const MetricsInsights(
   targetsUp: 8,
   targetsTotal: 8,
-  diskRunwayDays: {'node1': 412, 'node2': 388, 'node3': 74, 'node4': 520},
+  diskRunwayDays: {
+    'node1': 412,
+    'node2': 388,
+    'node3': 74,
+    'node4': 520,
+  },
   topGuests: [
     GuestLoad(
       id: 'lxc/104',
@@ -963,6 +1089,52 @@ void main() {
       await tester.pump(const Duration(seconds: 5));
     }
     await tester.pump(const Duration(milliseconds: 300));
+  });
+
+  screenshotBoth('PDM tab', 'pdm_tab', (tester, brightness, pumpWidget) async {
+    await pumpWidget(
+      ProviderScope(
+        overrides: [
+          serviceReachableProvider.overrideWith((ref, url) async => true),
+          settingsRepositoryProvider.overrideWithValue(
+            _FakeSettingsRepository(_withMode(_configured, brightness)),
+          ),
+          nodesProvider.overrideWith((ref) async => _nodes),
+          allContainersProvider.overrideWith((ref) async => _cts),
+          allVmsProvider.overrideWith((ref) async => _vms),
+          recentTasksProvider.overrideWith((ref) async => const []),
+          tailscaleStatusProvider.overrideWith((ref) async => _tailscale),
+          pdmApiProvider.overrideWith((ref) async => _ScreenshotPdmApi()),
+        ],
+        child: const HomeLabApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PDM'));
+    await tester.pumpAndSettle();
+  });
+
+  screenshotBoth('PBS tab', 'pbs_tab', (tester, brightness, pumpWidget) async {
+    await pumpWidget(
+      ProviderScope(
+        overrides: [
+          serviceReachableProvider.overrideWith((ref, url) async => true),
+          settingsRepositoryProvider.overrideWithValue(
+            _FakeSettingsRepository(_withMode(_configured, brightness)),
+          ),
+          nodesProvider.overrideWith((ref) async => _nodes),
+          allContainersProvider.overrideWith((ref) async => _cts),
+          allVmsProvider.overrideWith((ref) async => _vms),
+          recentTasksProvider.overrideWith((ref) async => const []),
+          tailscaleStatusProvider.overrideWith((ref) async => _tailscale),
+          pbsOverviewProvider.overrideWith((ref, slot) async => _pbsOverview),
+        ],
+        child: const HomeLabApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PBS'));
+    await tester.pumpAndSettle();
   });
 
   // Closure (not a declaration) so the overrides-list type is inferred —

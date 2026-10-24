@@ -4,7 +4,57 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/).
 
-## [1.1.0] — unreleased
+## [1.2.0] — 2026-10-24
+
+### Added
+
+- **PDM tab** (Proxmox Datacenter Manager): every managed cluster in one
+  view. Overview of quorum, nodes, CPU, memory and storage; one guest list
+  across clusters with start, shutdown, stop and reboot; cross-cluster
+  migrate with VMID, storage and bridge mapping; tasks from every remote.
+- **PBS tab** (Proxmox Backup Server), with two server slots: datastore
+  usage and garbage collection, backup groups and snapshots, prune, verify
+  and sync jobs, and task logs. A stored read/verify token covers browsing
+  and verifying. Deleting, pruning, protecting and editing need an unlock
+  with the PBS user's password, held in memory for at most 30 minutes and
+  never stored. Whole VMs and containers can be restored to an unused VMID
+  through the Proxmox VE connection, and single files downloaded from
+  container and host archives.
+- Named connection profiles: save several Proxmox setups (for example two
+  clusters) and switch between them in Settings.
+- `docs/pdm-and-pbs.md`: what both tabs do and the roles their tokens need.
+- The VM create form validates its inputs; the VM console opens in the app;
+  power actions show progress (#18).
+- Visual goldens render the same on every machine and gate CI (#15).
+- Released AppImages carry build-provenance attestations (#20).
+
+### Changed
+
+- Webview masks follow the selected theme family (#17).
+- The Proxmox container and VM code paths share one implementation (#16),
+  as does the Hermes and Ask chat screen (#13); more helpers de-duplicated
+  (#12).
+- Wayland runner cleanups; release assets carry the version in their name
+  (#10).
+- CI pins `subosito/flutter-action` to a commit SHA (#19).
+
+### Fixed
+
+- **Check for updates** queried a repository that does not exist, so it
+  could never report a new release. It now checks `peiralabs/peira`; the
+  security link in the issue template pointed at the same wrong repository.
+- Saved web logins work on Seerr, whose password box is not always a
+  `type=password` input, and survive the page resetting the form during
+  load. The login submits once, and only when both fields hold their values.
+
+### Security
+
+- SSH targets built from Proxmox inventory or saved shortcuts can no longer
+  be read as ssh options (#11).
+- Links opened in the system browser are restricted to http and https
+  (#14).
+
+## [1.1.0] — 2026-10-06
 
 ### Added
 
