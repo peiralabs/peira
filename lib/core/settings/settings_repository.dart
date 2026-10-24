@@ -33,7 +33,40 @@ class SettingsRepository {
   /// code; see [KeyringLockedException].
   static const _keyringLockedCode = 'KeyringLocked';
 
-  Never _translate(PlatformException e) {
+  /// Settings that describe the operator, not a cluster: they stay put when
+  /// the active connection profile changes (see `ProfileStore`). Every other
+  /// key is per-profile.
+  static final Set<String> globalKeys = {
+    _keys.themeMode,
+    _keys.themeId,
+    _keys.railCollapsed,
+    _keys.notifyAlerts,
+    _keys.webAutoLogin,
+    _keys.pdmUrl,
+    _keys.pdmTokenId,
+    _keys.pdmTokenSecret,
+    _keys.pdmFingerprint,
+    _keys.pbs1Name,
+    _keys.pbs1Url,
+    _keys.pbs1TokenId,
+    _keys.pbs1TokenSecret,
+    _keys.pbs1Fingerprint,
+    _keys.pbs1User,
+    _keys.pbs1PveStorage,
+    _keys.pbs2Name,
+    _keys.pbs2Url,
+    _keys.pbs2TokenId,
+    _keys.pbs2TokenSecret,
+    _keys.pbs2Fingerprint,
+    _keys.pbs2User,
+    _keys.pbs2PveStorage,
+  };
+
+  /// Translates a platform error the same way [load]/[save] do, for other
+  /// readers of the same secret store.
+  static Never translate(PlatformException e) => _translate(e);
+
+  static Never _translate(PlatformException e) {
     if (e.code == _keyringLockedCode) {
       throw KeyringLockedException(e.message);
     }
@@ -68,6 +101,20 @@ class SettingsRepository {
     pdmTokenId: 'pdm_token_id',
     pdmTokenSecret: 'pdm_token_secret',
     pdmFingerprint: 'pdm_fingerprint',
+    pbs1Name: 'pbs1_name',
+    pbs1Url: 'pbs1_url',
+    pbs1TokenId: 'pbs1_token_id',
+    pbs1TokenSecret: 'pbs1_token_secret',
+    pbs1Fingerprint: 'pbs1_fingerprint',
+    pbs1User: 'pbs1_user',
+    pbs1PveStorage: 'pbs1_pve_storage',
+    pbs2Name: 'pbs2_name',
+    pbs2Url: 'pbs2_url',
+    pbs2TokenId: 'pbs2_token_id',
+    pbs2TokenSecret: 'pbs2_token_secret',
+    pbs2Fingerprint: 'pbs2_fingerprint',
+    pbs2User: 'pbs2_user',
+    pbs2PveStorage: 'pbs2_pve_storage',
     jellyseerrUrl: 'jellyseerr_url',
     jellyfinUrl: 'jellyfin_url',
     jellyfinApiKey: 'jellyfin_api_key',
@@ -101,6 +148,11 @@ class SettingsRepository {
     } on PlatformException catch (e) {
       _translate(e);
     }
+    return fromMap(values);
+  }
+
+  /// Inverse of [toMap]: missing keys fall back to the [AppSettings] defaults.
+  static AppSettings fromMap(Map<String, String> values) {
     return AppSettings(
       proxmoxUrl: values[_keys.proxmoxUrl] ?? '',
       proxmoxTokenId: values[_keys.proxmoxTokenId] ?? '',
@@ -129,6 +181,20 @@ class SettingsRepository {
       pdmTokenId: values[_keys.pdmTokenId] ?? '',
       pdmTokenSecret: values[_keys.pdmTokenSecret] ?? '',
       pdmFingerprint: values[_keys.pdmFingerprint] ?? '',
+      pbs1Name: values[_keys.pbs1Name] ?? '',
+      pbs1Url: values[_keys.pbs1Url] ?? '',
+      pbs1TokenId: values[_keys.pbs1TokenId] ?? '',
+      pbs1TokenSecret: values[_keys.pbs1TokenSecret] ?? '',
+      pbs1Fingerprint: values[_keys.pbs1Fingerprint] ?? '',
+      pbs1User: values[_keys.pbs1User] ?? '',
+      pbs1PveStorage: values[_keys.pbs1PveStorage] ?? '',
+      pbs2Name: values[_keys.pbs2Name] ?? '',
+      pbs2Url: values[_keys.pbs2Url] ?? '',
+      pbs2TokenId: values[_keys.pbs2TokenId] ?? '',
+      pbs2TokenSecret: values[_keys.pbs2TokenSecret] ?? '',
+      pbs2Fingerprint: values[_keys.pbs2Fingerprint] ?? '',
+      pbs2User: values[_keys.pbs2User] ?? '',
+      pbs2PveStorage: values[_keys.pbs2PveStorage] ?? '',
       jellyseerrUrl: values[_keys.jellyseerrUrl] ?? '',
       jellyfinUrl: values[_keys.jellyfinUrl] ?? '',
       jellyfinApiKey: values[_keys.jellyfinApiKey] ?? '',
@@ -165,107 +231,80 @@ class SettingsRepository {
     }
   }
 
-  Future<void> _write(AppSettings settings) async {
-    await Future.wait([
-      _storage.write(key: _keys.proxmoxUrl, value: settings.proxmoxUrl),
-      _storage.write(key: _keys.proxmoxTokenId, value: settings.proxmoxTokenId),
-      _storage.write(
-        key: _keys.proxmoxTokenSecret,
-        value: settings.proxmoxTokenSecret,
-      ),
-      _storage.write(key: _keys.dockerUrl, value: settings.dockerUrl),
-      _storage.write(
-        key: _keys.dockerTlsVerify,
-        value: settings.dockerTlsVerify.toString(),
-      ),
-      _storage.write(key: _keys.grafanaUrl, value: settings.grafanaUrl),
-      _storage.write(key: _keys.grafanaApiKey, value: settings.grafanaApiKey),
-      _storage.write(key: _keys.prometheusUrl, value: settings.prometheusUrl),
-      _storage.write(key: _keys.hermesUrl, value: settings.hermesUrl),
-      _storage.write(key: _keys.wikiUrl, value: settings.wikiUrl),
-      _storage.write(key: _keys.ollamaUrl, value: settings.ollamaUrl),
-      _storage.write(key: _keys.ollamaApiUrl, value: settings.ollamaApiUrl),
-      _storage.write(key: _keys.hermesApiUrl, value: settings.hermesApiUrl),
-      _storage.write(key: _keys.hermesApiKey, value: settings.hermesApiKey),
-      _storage.write(key: _keys.aiChatModel, value: settings.aiChatModel),
-      _storage.write(key: _keys.askUrl, value: settings.askUrl),
-      _storage.write(
-        key: _keys.homeAssistantUrl,
-        value: settings.homeAssistantUrl,
-      ),
-      _storage.write(key: _keys.searxngUrl, value: settings.searxngUrl),
-      _storage.write(key: _keys.karakeepUrl, value: settings.karakeepUrl),
-      _storage.write(key: _keys.paperlessUrl, value: settings.paperlessUrl),
-      _storage.write(key: _keys.immichUrl, value: settings.immichUrl),
-      _storage.write(
-        key: _keys.changedetectionUrl,
-        value: settings.changedetectionUrl,
-      ),
-      _storage.write(key: _keys.lokiUrl, value: settings.lokiUrl),
-      _storage.write(key: _keys.pdmUrl, value: settings.pdmUrl),
-      _storage.write(key: _keys.pdmTokenId, value: settings.pdmTokenId),
-      _storage.write(
-        key: _keys.pdmTokenSecret,
-        value: settings.pdmTokenSecret,
-      ),
-      _storage.write(
-        key: _keys.pdmFingerprint,
-        value: settings.pdmFingerprint,
-      ),
-      _storage.write(key: _keys.jellyseerrUrl, value: settings.jellyseerrUrl),
-      _storage.write(key: _keys.jellyfinUrl, value: settings.jellyfinUrl),
-      _storage.write(
-        key: _keys.jellyfinApiKey,
-        value: settings.jellyfinApiKey,
-      ),
-      _storage.write(key: _keys.plexUrl, value: settings.plexUrl),
-      _storage.write(key: _keys.plexToken, value: settings.plexToken),
-      _storage.write(key: _keys.radarrUrl, value: settings.radarrUrl),
-      _storage.write(key: _keys.radarrApiKey, value: settings.radarrApiKey),
-      _storage.write(key: _keys.sonarrUrl, value: settings.sonarrUrl),
-      _storage.write(key: _keys.sonarrApiKey, value: settings.sonarrApiKey),
-      _storage.write(key: _keys.prowlarrUrl, value: settings.prowlarrUrl),
-      _storage.write(
-        key: _keys.prowlarrApiKey,
-        value: settings.prowlarrApiKey,
-      ),
-      _storage.write(
-        key: _keys.qbittorrentUrl,
-        value: settings.qbittorrentUrl,
-      ),
-      _storage.write(
-        key: _keys.qbittorrentUser,
-        value: settings.qbittorrentUser,
-      ),
-      _storage.write(
-        key: _keys.qbittorrentPass,
-        value: settings.qbittorrentPass,
-      ),
-      _storage.write(key: _keys.themeMode, value: settings.themeMode),
-      _storage.write(key: _keys.themeId, value: settings.themeId),
-      _storage.write(
-        key: _keys.railCollapsed,
-        value: settings.railCollapsed ? 'true' : 'false',
-      ),
-      _storage.write(key: _keys.sshTargets, value: settings.sshTargets),
-      _storage.write(key: _keys.sshUsername, value: settings.sshUsername),
-      _storage.write(
-        key: _keys.electricityRateUsdPerKwh,
-        value: settings.electricityRateUsdPerKwh.toString(),
-      ),
-      _storage.write(
-        key: _keys.trustSelfSigned,
-        value: settings.trustSelfSigned.toString(),
-      ),
-      _storage.write(key: _keys.webLoginsJson, value: settings.webLoginsJson),
-      _storage.write(
-        key: _keys.webAutoLogin,
-        value: settings.webAutoLogin.toString(),
-      ),
-      _storage.write(
-        key: _keys.notifyAlerts,
-        value: settings.notifyAlerts.toString(),
-      ),
-    ]);
-  }
+  /// Every stored key → its serialised value. The single source of truth for
+  /// the on-disk shape; [load] reads the same keys back.
+  static Map<String, String> toMap(AppSettings settings) => {
+    _keys.proxmoxUrl: settings.proxmoxUrl,
+    _keys.proxmoxTokenId: settings.proxmoxTokenId,
+    _keys.proxmoxTokenSecret: settings.proxmoxTokenSecret,
+    _keys.dockerUrl: settings.dockerUrl,
+    _keys.dockerTlsVerify: settings.dockerTlsVerify.toString(),
+    _keys.grafanaUrl: settings.grafanaUrl,
+    _keys.grafanaApiKey: settings.grafanaApiKey,
+    _keys.prometheusUrl: settings.prometheusUrl,
+    _keys.hermesUrl: settings.hermesUrl,
+    _keys.wikiUrl: settings.wikiUrl,
+    _keys.ollamaUrl: settings.ollamaUrl,
+    _keys.ollamaApiUrl: settings.ollamaApiUrl,
+    _keys.hermesApiUrl: settings.hermesApiUrl,
+    _keys.hermesApiKey: settings.hermesApiKey,
+    _keys.aiChatModel: settings.aiChatModel,
+    _keys.askUrl: settings.askUrl,
+    _keys.homeAssistantUrl: settings.homeAssistantUrl,
+    _keys.searxngUrl: settings.searxngUrl,
+    _keys.karakeepUrl: settings.karakeepUrl,
+    _keys.paperlessUrl: settings.paperlessUrl,
+    _keys.immichUrl: settings.immichUrl,
+    _keys.changedetectionUrl: settings.changedetectionUrl,
+    _keys.lokiUrl: settings.lokiUrl,
+    _keys.pdmUrl: settings.pdmUrl,
+    _keys.pdmTokenId: settings.pdmTokenId,
+    _keys.pdmTokenSecret: settings.pdmTokenSecret,
+    _keys.pdmFingerprint: settings.pdmFingerprint,
+    _keys.pbs1Name: settings.pbs1Name,
+    _keys.pbs1Url: settings.pbs1Url,
+    _keys.pbs1TokenId: settings.pbs1TokenId,
+    _keys.pbs1TokenSecret: settings.pbs1TokenSecret,
+    _keys.pbs1Fingerprint: settings.pbs1Fingerprint,
+    _keys.pbs1User: settings.pbs1User,
+    _keys.pbs1PveStorage: settings.pbs1PveStorage,
+    _keys.pbs2Name: settings.pbs2Name,
+    _keys.pbs2Url: settings.pbs2Url,
+    _keys.pbs2TokenId: settings.pbs2TokenId,
+    _keys.pbs2TokenSecret: settings.pbs2TokenSecret,
+    _keys.pbs2Fingerprint: settings.pbs2Fingerprint,
+    _keys.pbs2User: settings.pbs2User,
+    _keys.pbs2PveStorage: settings.pbs2PveStorage,
+    _keys.jellyseerrUrl: settings.jellyseerrUrl,
+    _keys.jellyfinUrl: settings.jellyfinUrl,
+    _keys.jellyfinApiKey: settings.jellyfinApiKey,
+    _keys.plexUrl: settings.plexUrl,
+    _keys.plexToken: settings.plexToken,
+    _keys.radarrUrl: settings.radarrUrl,
+    _keys.radarrApiKey: settings.radarrApiKey,
+    _keys.sonarrUrl: settings.sonarrUrl,
+    _keys.sonarrApiKey: settings.sonarrApiKey,
+    _keys.prowlarrUrl: settings.prowlarrUrl,
+    _keys.prowlarrApiKey: settings.prowlarrApiKey,
+    _keys.qbittorrentUrl: settings.qbittorrentUrl,
+    _keys.qbittorrentUser: settings.qbittorrentUser,
+    _keys.qbittorrentPass: settings.qbittorrentPass,
+    _keys.themeMode: settings.themeMode,
+    _keys.themeId: settings.themeId,
+    _keys.railCollapsed: settings.railCollapsed ? 'true' : 'false',
+    _keys.sshTargets: settings.sshTargets,
+    _keys.sshUsername: settings.sshUsername,
+    _keys.electricityRateUsdPerKwh: settings.electricityRateUsdPerKwh
+        .toString(),
+    _keys.trustSelfSigned: settings.trustSelfSigned.toString(),
+    _keys.webLoginsJson: settings.webLoginsJson,
+    _keys.webAutoLogin: settings.webAutoLogin.toString(),
+    _keys.notifyAlerts: settings.notifyAlerts.toString(),
+  };
+
+  Future<void> _write(AppSettings settings) => _writeAll(toMap(settings));
+
+  Future<void> _writeAll(Map<String, String> values) => Future.wait([
+    for (final e in values.entries) _storage.write(key: e.key, value: e.value),
+  ]);
 }

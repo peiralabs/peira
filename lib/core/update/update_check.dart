@@ -1,13 +1,13 @@
 import 'package:dio/dio.dart';
 
-/// GitHub repository the public build checks for releases. The pre-push
-/// rename pass owns this value; the personal build never calls the check.
-const kReleaseRepo = 'peiralabs/homelab-app';
+/// GitHub repository the public build checks for releases; the personal build
+/// never calls the check.
+const kReleaseRepo = 'peiralabs/peira';
 
 /// Version baked into this build. `test/update_check_test.dart` asserts it
 /// matches pubspec.yaml, and the release workflow refuses a tag that doesn't
 /// match pubspec — so all three move together or CI goes red.
-const kAppVersion = '1.1.0';
+const kAppVersion = '1.2.0';
 
 /// Outcome of an update check. Check-only by design: an AppImage cannot
 /// replace itself in place, so "update" means pointing the operator at the

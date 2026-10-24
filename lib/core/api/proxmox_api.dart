@@ -379,6 +379,38 @@ class ProxmoxApi {
     Map<String, dynamic> params,
   ) => _postForm('/nodes/$node/${kind.pathSegment}', params);
 
+  /// Restores a PBS VM archive without overwriting an existing VMID.
+  Future<String> restoreVm(
+    String node, {
+    required int vmid,
+    required String archive,
+    required String storage,
+    required bool unique,
+    required bool start,
+  }) => _postForm('/nodes/$node/qemu', {
+    'vmid': vmid,
+    'archive': archive,
+    'storage': storage,
+    'unique': unique ? 1 : 0,
+    'start': start ? 1 : 0,
+  });
+
+  /// Restores a PBS container archive. Privileged/unprivileged comes from
+  /// the backup's own config; overriding it breaks file ownership.
+  Future<String> restoreCt(
+    String node, {
+    required int vmid,
+    required String ostemplate,
+    required String storage,
+    required bool start,
+  }) => _postForm('/nodes/$node/lxc', {
+    'vmid': vmid,
+    'ostemplate': ostemplate,
+    'storage': storage,
+    'restore': 1,
+    'start': start ? 1 : 0,
+  });
+
   Future<String> deleteGuest(
     GuestKind kind,
     String node,

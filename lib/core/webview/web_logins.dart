@@ -14,8 +14,8 @@ import '../models/app_settings.dart';
 ///
 /// Safety properties (this string is injected on every page load AND re-run
 /// into live pages when the theme flips, so it must be idempotent):
-///   * Fills only empty fields, so it never clobbers something the operator
-///     is typing.
+///   * Fills only empty fields, and backs off once the password box holds
+///     anything but the saved password, so it never clobbers typing.
 ///   * SPA login forms render after load, so it watches the DOM briefly with
 ///     a MutationObserver and gives up after a few seconds.
 ///   * Auto-submit is capped at ONE attempt per browser session per URL via
@@ -95,37 +95,69 @@ class WebLogins {
     return null;
   }
 
-  function usernameField() {
+  // A password box is not always type=password: Seerr renders a type=text
+  // input masked with CSS, so match on the name/autocomplete hints too.
+  var PASSWORD_SELECTOR =
+    'input[type="password"], input[autocomplete="current-password"], input[name*="pass" i]';
+
+  function passwordField() {
+    return firstVisible(deepQueryAll(PASSWORD_SELECTOR));
+  }
+
+  function usernameField(pw) {
     // Prefer explicit username/email inputs; otherwise the first visible plain
     // text input (document + shadow DOM order).
-    var explicit = firstVisible(deepQueryAll(
-      'input[autocomplete="username"], input[type="email"], input[name*="user" i], input[name*="email" i]'));
+    function notPw(list) {
+      return list.filter(function (el) { return el !== pw; });
+    }
+    var explicit = firstVisible(notPw(deepQueryAll(
+      'input[autocomplete="username"], input[type="email"], input[name*="user" i], input[name*="email" i]')));
     if (explicit) return explicit;
-    return firstVisible(deepQueryAll('input[type="text"], input:not([type])'));
+    return firstVisible(notPw(deepQueryAll('input[type="text"], input:not([type])')));
+  }
+
+  // Fills our saved values into whatever is still empty. Returns null when
+  // there is no password box yet, 'operator' when someone typed a different
+  // password (never touch it), otherwise the fields.
+  function fillFields() {
+    var pw = passwordField();
+    if (!pw) return null;
+    if (pw.value && pw.value !== PASS) return 'operator';
+    var user = USER ? usernameField(pw) : null;
+    if (user && !user.value) setValue(user, USER);
+    if (!pw.value) setValue(pw, PASS);
+    return { pw: pw, user: user };
   }
 
   function fill() {
-    var pw = firstVisible(deepQueryAll('input[type="password"]'));
-    if (!pw) return false;
-    if (pw.value) return true; // operator already typing — leave it be
-    if (USER) {
-      var user = usernameField();
-      if (user && !user.value) setValue(user, USER);
-    }
-    setValue(pw, PASS);
+    var r = fillFields();
+    if (!r) return false;
+    if (r === 'operator') return true;
+    // Server-rendered SPAs (Seerr/Next.js) show the form before their
+    // framework starts; its first render resets the fields to its own empty
+    // state. Re-check for a few seconds and put our values back.
+    [400, 1000, 2000, 3500].forEach(function (ms) { setTimeout(fillFields, ms); });
 
     if (AUTOSUBMIT) {
       try {
         if (sessionStorage.getItem(KEY)) return true; // already tried once
         sessionStorage.setItem(KEY, '1');
       } catch (e) { /* private mode — skip the guard, still cap below */ }
-      var btn = firstVisible(deepQueryAll(
-        'button[type="submit"], input[type="submit"], mwc-button, ha-progress-button, form button'));
-      var form = pw.form;
+      // Submit once, after the framework has had time to start, and only if
+      // both fields still hold our values (an empty submit only earns an
+      // error and burns the one attempt).
       setTimeout(function () {
-        if (btn) { btn.click(); }
-        else if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); }
-      }, 150);
+        var s = fillFields();
+        if (!s || s === 'operator') return;
+        if (USER && s.user && !s.user.value) return;
+        var btn = firstVisible(deepQueryAll(
+          'button[type="submit"], input[type="submit"], mwc-button, ha-progress-button, form button'));
+        var form = s.pw.form;
+        setTimeout(function () {
+          if (btn) { btn.click(); }
+          else if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); }
+        }, 150);
+      }, 1200);
     }
     return true;
   }

@@ -8,8 +8,8 @@ import '../theme/phosphor.dart';
 /// [index] is what [SelectedTab] stores and what indexes the shell's page
 /// stack.
 ///
-/// Eleven destinations (left-top-top IA, 2026-08-07; Home Assistant added
-/// 2026-08-12; Library added 2026-08-18): four of them — [ai], [media],
+/// Thirteen destinations (left-top-top IA, 2026-08-07; Home Assistant added
+/// 2026-08-12; Library added 2026-08-18): five of them — [pdm], [ai], [media],
 /// [vault], [library] — are domain hubs whose sub-views live in a garnet
 /// sub-tab strip ([HubScaffold]), and [metrics] hosts its own hub (native
 /// Metrics / Logs / Watches), so one domain never spends more than one rail
@@ -22,6 +22,10 @@ import '../theme/phosphor.dart';
 enum AppTab {
   dashboard('Dashboard', Ph.squaresFour, 'Control'),
   proxmox('Proxmox', Ph.hardDrives, 'Control'),
+  // Proxmox Datacenter Manager: every cluster in one view, with power actions and cross-cluster migrate.
+  pdm('PDM', Ph.treeStructure, 'Control'),
+  // Proxmox Backup Server: datastore health, backup inventory, jobs, and tasks.
+  pbs('PBS', Ph.database, 'Control'),
   // Native Docker Engine control (containers + images) over a LAN TCP socket.
   docker('Docker', Ph.cube, 'Control'),
   metrics('Metrics', Ph.chartLineUp, 'Control'),
@@ -42,8 +46,7 @@ enum AppTab {
   terminal('Terminal', Ph.terminalWindow, 'System', desktopOnly: true),
   settings('Settings', Ph.gearSix, 'System');
 
-  const AppTab(this.label, this.icon, this.section,
-      {this.desktopOnly = false});
+  const AppTab(this.label, this.icon, this.section, {this.desktopOnly = false});
 
   final String label;
   final IconData icon;

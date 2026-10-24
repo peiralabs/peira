@@ -21,7 +21,9 @@ class _FakeAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
-    final body = routes[options.uri.path];
+    final body =
+        routes['${options.method} ${options.uri.path}'] ??
+        routes[options.uri.path];
     if (body == null) {
       return ResponseBody.fromString('{"data":null}', 501);
     }
@@ -78,14 +80,21 @@ void main() {
           '{"data":"UPID:node4:lxc-snapshot"}',
       '/api2/json/nodes/node4/qemu/204/snapshot':
           '{"data":"UPID:node4:qemu-snapshot"}',
-      '/api2/json/nodes/node4/lxc/104/clone': '{"data":"UPID:node4:lxc-clone"}',
+      '/api2/json/nodes/node4/lxc/104/clone':
+          '{"data":"UPID:node4:lxc-clone"}',
       '/api2/json/nodes/node4/qemu/204/clone':
           '{"data":"UPID:node4:qemu-clone"}',
-      '/api2/json/nodes/node4/lxc/104': '{"data":"UPID:node4:lxc-delete"}',
-      '/api2/json/nodes/node4/qemu/204': '{"data":"UPID:node4:qemu-delete"}',
+      '/api2/json/nodes/node4/lxc/104':
+          '{"data":"UPID:node4:lxc-delete"}',
+      '/api2/json/nodes/node4/qemu/204':
+          '{"data":"UPID:node4:qemu-delete"}',
       '/api2/json/nodes/node4/storage/pbs-local/content':
           '{"data":[{"volid":"pbs-local:backup/vm/104/2026-08-28T10:00:00Z","vmid":104,"ctime":1787911200,"size":4096}]}',
       '/api2/json/nodes/node4/vzdump': '{"data":"UPID:node4:vzdump"}',
+      'POST /api2/json/nodes/node4/qemu':
+          '{"data":"UPID:node4:restore-vm"}',
+      'POST /api2/json/nodes/node4/lxc':
+          '{"data":"UPID:node4:restore-ct"}',
     });
     final dio = Dio(
       BaseOptions(
@@ -101,7 +110,12 @@ void main() {
 
   test('getNodes parses and sorts, sends the PVEAPIToken header', () async {
     final nodes = await api.getNodes();
-    expect(nodes.map((n) => n.node), ['node1', 'node2', 'node3', 'node4']);
+    expect(nodes.map((n) => n.node), [
+      'node1',
+      'node2',
+      'node3',
+      'node4',
+    ]);
     expect(
       adapter.requests.single.headers['Authorization'],
       'PVEAPIToken=user@pve!token=secret-uuid',
@@ -302,6 +316,49 @@ void main() {
       'storage': 'pbs-local',
       'mode': 'suspend',
       'compress': '0',
+    });
+  });
+
+  test('restoreVm posts the non-destructive restore form', () async {
+    final upid = await api.restoreVm(
+      'node4',
+      vmid: 305,
+      archive: 'pbs:backup/vm/204/2026-08-28T10:00:00Z',
+      storage: 'local-lvm',
+      unique: true,
+      start: false,
+    );
+
+    expect(upid, 'UPID:node4:restore-vm');
+    final request = adapter.requests.single;
+    expect(request.contentType, Headers.formUrlEncodedContentType);
+    expect(request.data, {
+      'vmid': 305,
+      'archive': 'pbs:backup/vm/204/2026-08-28T10:00:00Z',
+      'storage': 'local-lvm',
+      'unique': 1,
+      'start': 0,
+    });
+  });
+
+  test('restoreCt posts restore and leaves privilege to the backup config', () async {
+    final upid = await api.restoreCt(
+      'node4',
+      vmid: 105,
+      ostemplate: 'pbs:backup/ct/104/2026-08-28T10:00:00Z',
+      storage: 'local-lvm',
+      start: true,
+    );
+
+    expect(upid, 'UPID:node4:restore-ct');
+    final request = adapter.requests.single;
+    expect(request.contentType, Headers.formUrlEncodedContentType);
+    expect(request.data, {
+      'vmid': 105,
+      'ostemplate': 'pbs:backup/ct/104/2026-08-28T10:00:00Z',
+      'storage': 'local-lvm',
+      'restore': 1,
+      'start': 1,
     });
   });
 

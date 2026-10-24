@@ -11,6 +11,7 @@ import '../../core/theme/phosphor.dart';
 import '../../core/util/open_url.dart';
 import '../../core/widgets/brass_panel.dart';
 import '../../core/widgets/screen_header.dart';
+import '../settings/profile_actions.dart';
 import 'setup_probe.dart';
 
 /// First-run setup: the app used to gate on a blank Settings screen with a
@@ -33,7 +34,8 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
   bool _testing = false;
   ProbeResult? _result;
 
-  static const _pveumCommands = 'pveum user add app@pve\n'
+  static const _pveumCommands =
+      'pveum user add app@pve\n'
       'pveum acl modify / --users app@pve --roles PVEAuditor\n'
       'pveum user token add app@pve homelab --privsep 0';
 
@@ -77,12 +79,16 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
     // fields are overwritten.
     final base =
         ref.read(settingsControllerProvider).value ?? const AppSettings();
-    await ref.read(settingsControllerProvider.notifier).save(base.copyWith(
-          proxmoxUrl: _url.text.trim(),
-          proxmoxTokenId: _tokenId.text.trim(),
-          proxmoxTokenSecret: _secret.text.trim(),
-          trustSelfSigned: _trust,
-        ));
+    await ref
+        .read(settingsControllerProvider.notifier)
+        .save(
+          base.copyWith(
+            proxmoxUrl: _url.text.trim(),
+            proxmoxTokenId: _tokenId.text.trim(),
+            proxmoxTokenSecret: _secret.text.trim(),
+            trustSelfSigned: _trust,
+          ),
+        );
     // The shell watches settings; once configured it swaps this screen for
     // the dashboard on its own.
   }
@@ -119,23 +125,27 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                     const SizedBox(height: MolSpace.md),
                     _field(_tokenId, 'API token ID', 'app@pve!homelab'),
                     const SizedBox(height: MolSpace.md),
-                    _field(_secret, 'API token secret',
-                        'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-                        obscure: true),
+                    _field(
+                      _secret,
+                      'API token secret',
+                      'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+                      obscure: true,
+                    ),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _trust,
                       onChanged: (v) => setState(() => _trust = v),
-                      title: Text("Trust this host's certificate",
-                          style: TextStyle(color: brass.textBody)),
+                      title: Text(
+                        "Trust this host's certificate",
+                        style: TextStyle(color: brass.textBody),
+                      ),
                       subtitle: Text(
                         'Proxmox ships self-signed; this accepts that '
                         'certificate for the Proxmox host only. Services you '
                         'add later (Prometheus, media, wiki) are not covered '
                         'by this exception — give them real certificates or '
                         'plain HTTP.',
-                        style:
-                            TextStyle(color: brass.textMuted, fontSize: 12),
+                        style: TextStyle(color: brass.textMuted, fontSize: 12),
                       ),
                     ),
                     const SizedBox(height: MolSpace.md),
@@ -150,7 +160,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                                   width: 14,
                                   height: 14,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2))
+                                    strokeWidth: 2,
+                                  ),
+                                )
                               : const Icon(Ph.lightning, size: 16),
                           label: const Text('Test connection'),
                         ),
@@ -159,6 +171,19 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                           icon: const Icon(Ph.house, size: 16),
                           label: const Text('Save & open dashboard'),
                         ),
+                        // "New from setup" on a second profile can be backed
+                        // out; a first launch has nowhere to go back to.
+                        if (ref.watch(setupReturnProvider) case final back?)
+                          TextButton.icon(
+                            key: const ValueKey('setup-cancel-profile'),
+                            onPressed: _testing
+                                ? null
+                                : () => cancelNewProfile(ref),
+                            icon: const Icon(Ph.caretLeft, size: 16),
+                            label: Text(
+                              'Cancel, back to ${back.returnTo.name}',
+                            ),
+                          ),
                       ],
                     ),
                     if (_result != null) ...[
@@ -167,7 +192,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                     ],
                     const SizedBox(height: MolSpace.lg),
                     const _TokenHelp(
-                        commands: _pveumCommands, docsUrl: _docsUrl),
+                      commands: _pveumCommands,
+                      docsUrl: _docsUrl,
+                    ),
                     const SizedBox(height: MolSpace.lg),
                     const _LaterList(),
                   ],
@@ -180,19 +207,22 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
     );
   }
 
-  Widget _field(TextEditingController controller, String label, String hint,
-          {bool obscure = false}) =>
-      TextField(
-        controller: controller,
-        obscureText: obscure,
-        onChanged: (_) => setState(() {}),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          border: const OutlineInputBorder(),
-          isDense: true,
-        ),
-      );
+  Widget _field(
+    TextEditingController controller,
+    String label,
+    String hint, {
+    bool obscure = false,
+  }) => TextField(
+    controller: controller,
+    obscureText: obscure,
+    onChanged: (_) => setState(() {}),
+    decoration: InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: const OutlineInputBorder(),
+      isDense: true,
+    ),
+  );
 }
 
 class _ResultPanel extends StatelessWidget {
@@ -205,11 +235,11 @@ class _ResultPanel extends StatelessWidget {
     final brass = context.brass;
     final (color, icon, text) = switch (result) {
       ProbeSuccess(:final version, :final nodes) => (
-          brass.moss,
-          Ph.checkCircle,
-          'Proxmox $version — found ${nodes.length} '
-              'node${nodes.length == 1 ? '' : 's'}: ${nodes.join(', ')}',
-        ),
+        brass.moss,
+        Ph.checkCircle,
+        'Proxmox $version — found ${nodes.length} '
+            'node${nodes.length == 1 ? '' : 's'}: ${nodes.join(', ')}',
+      ),
       ProbeFailure(:final message) => (brass.madder, Ph.warning, message),
     };
     return Container(
@@ -245,11 +275,14 @@ class _TokenHelp extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('NEED A TOKEN?',
-            style: TextStyle(
-                fontSize: 11,
-                letterSpacing: 11 * 0.18,
-                color: brass.smallCaps)),
+        Text(
+          'NEED A TOKEN?',
+          style: TextStyle(
+            fontSize: 11,
+            letterSpacing: 11 * 0.18,
+            color: brass.smallCaps,
+          ),
+        ),
         const SizedBox(height: MolSpace.sm),
         Text(
           'Run this on the Proxmox host — read-only to start; swap '
@@ -272,10 +305,11 @@ class _TokenHelp extends StatelessWidget {
                 child: Text(
                   commands,
                   style: TextStyle(
-                      fontFamily: 'JetBrains Mono',
-                      fontSize: 12.5,
-                      height: 1.6,
-                      color: brass.textBody),
+                    fontFamily: 'JetBrains Mono',
+                    fontSize: 12.5,
+                    height: 1.6,
+                    color: brass.textBody,
+                  ),
                 ),
               ),
               IconButton(
@@ -293,10 +327,11 @@ class _TokenHelp extends StatelessWidget {
           child: Text(
             'Proxmox docs: User Management › API tokens',
             style: TextStyle(
-                color: brass.verdigris,
-                fontSize: 12,
-                decoration: TextDecoration.underline,
-                decorationColor: brass.verdigris),
+              color: brass.verdigris,
+              fontSize: 12,
+              decoration: TextDecoration.underline,
+              decorationColor: brass.verdigris,
+            ),
           ),
         ),
       ],
@@ -317,15 +352,21 @@ class _LaterList extends StatelessWidget {
           ? 'any OpenAI-compatible endpoint (Ollama, LiteLLM, vLLM…)'
           : 'Ollama + Hermes',
     ),
-    (Ph.monitorPlay, 'Media',
-        'Jellyfin, Plex, Radarr, Sonarr, qBittorrent, Prowlarr'),
+    (
+      Ph.monitorPlay,
+      'Media',
+      'Jellyfin, Plex, Radarr, Sonarr, qBittorrent, Prowlarr',
+    ),
     (
       Ph.bookOpenText,
       kPublicBuild ? 'Wiki' : 'Vault',
       kPublicBuild ? 'Wiki.js' : 'Wiki.js + Ask',
     ),
-    (Ph.terminalWindow, 'Terminal & Tailscale',
-        'work now on desktop — nothing to configure'),
+    (
+      Ph.terminalWindow,
+      'Terminal & Tailscale',
+      'work now on desktop — nothing to configure',
+    ),
   ];
 
   @override
@@ -334,11 +375,14 @@ class _LaterList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('LIGHTS UP LATER, FROM SETTINGS',
-            style: TextStyle(
-                fontSize: 11,
-                letterSpacing: 11 * 0.18,
-                color: brass.smallCaps)),
+        Text(
+          'LIGHTS UP LATER, FROM SETTINGS',
+          style: TextStyle(
+            fontSize: 11,
+            letterSpacing: 11 * 0.18,
+            color: brass.smallCaps,
+          ),
+        ),
         const SizedBox(height: MolSpace.sm),
         for (final (icon, tab, needs) in _rows)
           Padding(
@@ -350,14 +394,18 @@ class _LaterList extends StatelessWidget {
                 const SizedBox(width: MolSpace.sm),
                 Expanded(
                   child: Text.rich(
-                    TextSpan(children: [
-                      TextSpan(
+                    TextSpan(
+                      children: [
+                        TextSpan(
                           text: '$tab — ',
-                          style: TextStyle(color: brass.textBody)),
-                      TextSpan(
+                          style: TextStyle(color: brass.textBody),
+                        ),
+                        TextSpan(
                           text: needs,
-                          style: TextStyle(color: brass.textMuted)),
-                    ]),
+                          style: TextStyle(color: brass.textMuted),
+                        ),
+                      ],
+                    ),
                     style: const TextStyle(fontSize: 12.5),
                   ),
                 ),

@@ -9,10 +9,10 @@ import 'package:peira/core/webview/web_logins.dart';
 void main() {
   group('AppSettings.webLogins', () {
     test('round-trips a stored login through the JSON blob', () {
-      final s = const AppSettings().withWebLogin(
-        'Karakeep',
-        (username: 'user', password: 'p@ss"w`ord'),
-      );
+      final s = const AppSettings().withWebLogin('Karakeep', (
+        username: 'user',
+        password: 'p@ss"w`ord',
+      ));
       expect(s.webLoginsJson, isNotEmpty);
       final login = s.webLoginFor('Karakeep');
       expect(login?.username, 'user');
@@ -20,10 +20,10 @@ void main() {
     });
 
     test('blank credentials remove the entry', () {
-      var s = const AppSettings().withWebLogin(
-        'Immich',
-        (username: 'a', password: 'b'),
-      );
+      var s = const AppSettings().withWebLogin('Immich', (
+        username: 'a',
+        password: 'b',
+      ));
       expect(s.webLoginFor('Immich'), isNotNull);
       s = s.withWebLogin('Immich', (username: '', password: ''));
       expect(s.webLoginFor('Immich'), isNull);
@@ -79,6 +79,32 @@ void main() {
       // HA nests its login inputs in shadow roots — the script must recurse.
       expect(script, contains('shadowRoot'));
       expect(script, contains('deepQueryAll'));
+    });
+
+    test('finds password boxes that are not type=password (Seerr)', () {
+      final script = WebLogins.scriptFor(
+        'Jellyseerr',
+        login: (username: 'u', password: 'p'),
+        autoSubmit: false,
+      )!;
+      expect(script, contains('input[name*="pass" i]'));
+      expect(script, contains('current-password'));
+      expect(
+        script,
+        contains('el !== pw'),
+        reason: 'the username search must skip the password box',
+      );
+    });
+
+    test('survives a framework reset and submits only when filled', () {
+      final script = WebLogins.scriptFor(
+        'Jellyseerr',
+        login: (username: 'u', password: 'p'),
+        autoSubmit: true,
+      )!;
+      expect(script, contains('[400, 1000, 2000, 3500]'));
+      expect(script, contains("pw.value !== PASS) return 'operator'"));
+      expect(script, contains('if (USER && s.user && !s.user.value) return;'));
     });
 
     test('auto-submit path is session-capped', () {
