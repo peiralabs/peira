@@ -58,8 +58,8 @@ chmod +x Peira-v*-x86_64.AppImage
 Verify a release before running it. Releases are signed with the Peira Labs
 release key, fingerprint
 `659A D4F9 BD11 8838 ECBA  D6DB 587E C679 3F57 6180`
-([docs/release-signing-key.asc](docs/release-signing-key.asc), also on
-keys.openpgp.org). Import it once and check that the fingerprint matches:
+([docs/release-signing-key.asc](docs/release-signing-key.asc)). Import it
+once and check that the fingerprint matches:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/peiralabs/peira/main/docs/release-signing-key.asc | gpg --import
