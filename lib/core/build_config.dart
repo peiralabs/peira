@@ -17,3 +17,6 @@ const bool kPublicBuild = bool.fromEnvironment('PEIRA_PUBLIC', defaultValue: tru
 /// **HomeLab** identity. Display string only — it does not affect the Linux
 /// APPLICATION_ID, the Dart package name, or the keyring schema.
 const String kAppName = kPublicBuild ? 'Peira' : 'HomeLab';
+
+/// The engraved wordmark on the masthead, boot splash and About sheet.
+const String kWordmark = kPublicBuild ? 'PEIRA' : 'HOMELAB';

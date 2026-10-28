@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peira/app.dart';
+import 'package:peira/core/build_config.dart';
 import 'package:peira/core/demo/demo.dart';
 
 void main() {
@@ -29,6 +30,10 @@ void main() {
     );
     // Fake inventory rendered on the dashboard.
     expect(find.text('node1'), findsWidgets);
+    // The masthead wordmark follows the build: PEIRA publicly, HOMELAB
+    // personally.
+    expect(find.text(kWordmark), findsWidgets);
+    expect(find.text(kPublicBuild ? 'HOMELAB' : 'PEIRA'), findsNothing);
     // Every tab is listed, though the demo settings leave most service
     // URLs empty (unconfigured tabs are hidden outside demo mode).
     for (final label in ['Metrics', 'Home Assistant', 'Library', 'Media']) {
