@@ -22,17 +22,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Without libxi-dev webview_cef's CMake fails; without libsecret-1-dev
-      # flutter_secure_storage fails to link. The nss/asound/cups runtime libs
-      # are needed at LINK time too — ld resolves libcef.so's transitive
-      # closure (proven on a clean ubuntu-24.04 container; runner images
-      # happen to preinstall some of these, a clean base does not).
+      # Without libsecret-1-dev flutter_secure_storage fails to link;
+      # libxi-dev supplies the X client libraries the AppImage bundles.
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libxi-dev libsecret-1-dev \
-            libnss3 libasound2t64 libcups2t64
+            libgtk-3-dev liblzma-dev libxi-dev libsecret-1-dev
 
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
@@ -42,24 +38,6 @@ jobs:
           cache: true
 
       - run: flutter pub get
-
-      # webview_cef downloads a ~330 MB CEF tarball at CMake configure time.
-      # Cache the extracted tree keyed on the CEF version string from the
-      # package itself (its version.txt check then skips the download) — the
-      # pub package version alone would go stale if a patch release moved CEF.
-      - name: Compute CEF cache key
-        id: cef
-        run: |
-          f=$(find ~/.pub-cache -path '*webview_cef*/third/download.cmake' | head -1)
-          [ -n "$f" ] || { echo "webview_cef download.cmake not found" >&2; exit 1; }
-          echo "version=$(grep -oP 'set\(CEF_VERSION "\K[^"]+' "$f")" >> "$GITHUB_OUTPUT"
-          echo "dir=$(dirname "$f")/cef" >> "$GITHUB_OUTPUT"
-
-      - name: Cache CEF
-        uses: actions/cache@v5
-        with:
-          path: ${{ steps.cef.outputs.dir }}
-          key: cef-linux64-${{ steps.cef.outputs.version }}
 
       - name: Compute artifact name
         id: name

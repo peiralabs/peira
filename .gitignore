@@ -48,3 +48,6 @@ test/blog_shots/
 
 # AppImage build output (tool/build_appimage.sh)
 /dist/
+
+# Wrangler account cache (written by wrangler, never committed)
+/.cloudflare/

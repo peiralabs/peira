@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Every service tab is native.** Home Assistant, Immich, Paperless-ngx,
+  Karakeep, Seerr (Jellyseerr / Overseerr), Open WebUI, Wiki.js, SearXNG and
+  changedetection.io now run through each service's own API instead of an
+  embedded browser: browse, search, edit, request, approve, upload and
+  manage from the app. Every tab keeps an **Open in browser** button for
+  whatever the API cannot do, and shows exactly which URL or key is missing
+  until it is set. Settings has a key field for each service.
+- **Unconfigured tabs are hidden.** The sidebar lists a service tab once
+  one of its services has a URL; Settings › Show tabs for services not set
+  up lists them all.
+- **Setup file.** Fill in `setup/setup.example.json` once and import it
+  (Settings › Import setup file, or drop it at
+  `~/.config/homelab/seed.json` for the next launch, after which it is
+  deleted). See `docs/setup-file.md`.
+
+### Removed
+
+- The embedded browser (CEF via `webview_cef`, and `webview_flutter` on
+  iOS). The AppImage is about 300 MB smaller, needs no X11 or XWayland and
+  no unprivileged user namespaces. Settings › Web logins went with it;
+  stored web logins are deleted from the keychain on first launch.
+
 ## [1.2.0] — 2026-10-24
 
 ### Added

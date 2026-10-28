@@ -52,7 +52,7 @@ resolve_lib() {
 #                    app cannot read ANY stored token (the Secret Service
 #                    daemon itself stays a system requirement, see manifest)
 #   libXi/libXrandr/libXcomposite/libXdamage/libXfixes/libXrender
-#                    X client libraries CEF links (libXrender via libXrandr);
+#                    X client libraries GTK 3's X11 backend links;
 #                    absent on lean installs
 # Everything else external is a declared system dependency in the manifest.
 BUNDLE_LIBS=(

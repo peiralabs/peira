@@ -12,7 +12,6 @@ import 'package:peira/core/providers/proxmox_providers.dart';
 import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/providers/tailscale_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
-import 'package:peira/core/webview/webview_factory.dart';
 import 'package:peira/core/widgets/ai_status_strip.dart';
 import 'package:peira/screens/setup/setup_probe.dart';
 import 'package:peira/screens/setup/setup_wizard_screen.dart';
@@ -27,13 +26,6 @@ class _FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> save(AppSettings settings) async => _settings = settings;
-}
-
-class _FakeWebViewFactory implements WebViewFactory {
-  @override
-  Widget build(String url,
-          {String? maskScript, bool controls = false, String? controlsLabel}) =>
-      Center(child: Text('webview: $url'));
 }
 
 /// Serves canned bodies (or errors) per path for the probe's real Dio.
@@ -131,7 +123,6 @@ void main() {
           tailscaleStatusProvider
               .overrideWith((ref) async => throw Exception('no tailscale')),
           serviceReachableProvider.overrideWith((ref, url) async => false),
-          webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
         ],
         child: const HomeLabApp(),
       );
@@ -222,7 +213,6 @@ void main() {
         tailscaleStatusProvider
             .overrideWith((ref) async => throw Exception('no tailscale')),
         serviceReachableProvider.overrideWith((ref, url) async => false),
-        webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
       ],
       child: const HomeLabApp(),
     ));

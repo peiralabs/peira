@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/navigation/app_tab.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/hub_scaffold.dart';
-import '../webview/webview_screen.dart';
+import '../immich/immich_screen.dart';
+import '../seerr/seerr_screen.dart';
 import 'media_server_tab.dart';
 import 'prowlarr_tab.dart';
 import 'qbittorrent_tab.dart';
@@ -12,15 +13,15 @@ import 'sonarr_tab.dart';
 
 /// The Media hub: the media servers first (Jellyfin and Plex status — the
 /// reason the rest of the stack exists), then Radarr, Sonarr, qBittorrent,
-/// and Prowlarr, plus Jellyseerr (Discover) as an embedded web view. Runs on
+/// and Prowlarr, plus Seerr (Discover) and Immich (Photos). Runs on
 /// the shared [HubScaffold] since the 2026-08-07 IA restructure (the garnet
 /// strip was born here). No NAS assumption anywhere: every service is just a
 /// configured URL, wherever it runs.
 class MediaScreen extends StatelessWidget {
   const MediaScreen({super.key, required this.railIndex});
 
-  /// This tab's index in the shell's rail — the Discover web view uses it
-  /// to activate lazily only once the Media tab is opened.
+  /// This tab's index in the shell's rail. Every sub-view is native now,
+  /// so nothing activates lazily; kept for the shell's uniform hub API.
   final int railIndex;
 
   /// Strip entries, index-aligned with [build]'s children; the shell's
@@ -73,14 +74,13 @@ class MediaScreen extends StatelessWidget {
           HubTab(
             icon: specs[6].icon,
             label: specs[6].label,
-            child: WebViewScreen(service: 'Jellyseerr', tabIndex: railIndex),
+            child: const SeerrScreen(),
           ),
-          // Immich — the photo library is media too; the full frontend rides
-          // an embedded webview like Discover.
+          // Immich — the photo library is media too (native over its API).
           HubTab(
             icon: specs[7].icon,
             label: specs[7].label,
-            child: WebViewScreen(service: 'Immich', tabIndex: railIndex),
+            child: const ImmichScreen(),
           ),
         ],
       );

@@ -1,14 +1,8 @@
-import 'dart:convert';
-
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../build_config.dart';
 
 part 'app_settings.freezed.dart';
-
-/// Stored login for one embedded webview service — autofilled into the
-/// service's own login form so the operator isn't re-typing it every session.
-typedef WebLogin = ({String username, String password});
 
 /// All service endpoints and credentials, persisted via
 /// flutter_secure_storage — never in plain files or source.
@@ -42,19 +36,36 @@ abstract class AppSettings with _$AppSettings {
     // Ask-Your-Homelab RAG endpoint (native Ask tab). Defaults to the Wiki
     // host on the ask-homelab service port.
     @Default('') String askUrl,
-    // Home Assistant web UI (embedded webview tab). The full HA frontend
-    // does device control/add/remove, automations, and settings, so the tab
-    // needs only the URL — HA's own login persists in the webview.
+    // Home Assistant (native tab; the token below unlocks it).
     @Default('') String homeAssistantUrl,
-    // Embedded service webviews (2026-08-18 service expansion): SearXNG
-    // (AI hub › Search), Karakeep + Paperless (Library hub), immich (Media ›
-    // Photos), changedetection.io (Metrics hub › Watches). Each needs only a
-    // URL — the service's own login persists in the webview.
+    // Service URLs (2026-08-18 service expansion): SearXNG (AI hub ›
+    // Search), Karakeep + Paperless (Library hub), immich (Media › Photos),
+    // changedetection.io (Metrics hub › Watches). Each tab is native over the
+    // service's API; the credentials follow.
     @Default('') String searxngUrl,
     @Default('') String karakeepUrl,
     @Default('') String paperlessUrl,
     @Default('') String immichUrl,
     @Default('') String changedetectionUrl,
+    // API credentials that turn those services' tabs native (2026-10-27).
+    // Each tab keeps an "open in browser" action for whatever the API
+    // cannot do; without its credential a tab shows a setup prompt.
+    // Home Assistant: long-lived access token (Bearer).
+    @Default('') String homeAssistantToken,
+    // Paperless-ngx: per-user API token (`Authorization: Token …`).
+    @Default('') String paperlessToken,
+    // Immich: API key (`x-api-key`).
+    @Default('') String immichApiKey,
+    // Karakeep: API key (Bearer).
+    @Default('') String karakeepApiKey,
+    // Seerr / Jellyseerr: API key (`X-Api-Key`).
+    @Default('') String jellyseerrApiKey,
+    // Open WebUI: API key (Bearer), from Settings › Account.
+    @Default('') String openWebuiApiKey,
+    // changedetection.io: API key (`x-api-key`), Settings › API.
+    @Default('') String changedetectionApiKey,
+    // Wiki.js: API key (Bearer) for its GraphQL API, Administration › API.
+    @Default('') String wikiApiKey,
     // Loki log store for the native Logs sub-tab (read-only query API).
     @Default('') String lokiUrl,
     // Proxmox Datacenter Manager. The URL alone lights the Proxmox-tab panel
@@ -124,23 +135,13 @@ abstract class AppSettings with _$AppSettings {
     // in settings so the estimate is operator-tunable (tariffs vary) rather
     // than hardcoded.
     @Default(0.30) double electricityRateUsdPerKwh,
-    // Stored logins for the embedded service webviews (Jellyseerr, Karakeep,
-    // Paperless, Immich, Open WebUI, changedetection.io…), so their own login
-    // forms are autofilled instead of re-typed each session. One JSON blob in
-    // the keychain — `{"Karakeep":{"u":"…","p":"…"}, …}` — keyed by the
-    // service label the webview screen already dispatches on. Passwords never
-    // leave secure storage except as an autofill script injected into that
-    // service's page; parse it through [webLogins], write it via
-    // [withWebLogin]. changedetection.io stores a password with an empty
-    // username (single-field login).
-    @Default('') String webLoginsJson,
-    // Auto-submit the login form after autofilling (once per browser session,
-    // to avoid lockout loops). Off = fill only, operator clicks sign-in.
-    @Default(true) bool webAutoLogin,
     // Desktop notifications (Linux `notify-send`) for newly-firing Grafana
     // alerts, so the app is useful running in the background. iOS has no
     // equivalent path and ignores this.
     @Default(true) bool notifyAlerts,
+    // Rail tabs whose services have no settings are hidden; this shows them
+    // anyway (each then renders its "not set up" prompt).
+    @Default(false) bool showUnconfiguredTabs,
   }) = _AppSettings;
 
   /// The Proxmox tab and dashboard need these three to function.
@@ -240,43 +241,23 @@ abstract class AppSettings with _$AppSettings {
       pbs2TokenId.isNotEmpty &&
       pbs2TokenSecret.isNotEmpty;
 
-  /// Stored webview logins keyed by service label. Malformed JSON (or an
-  /// entry missing a password) is skipped, so a corrupt blob degrades to
-  /// "no autofill" rather than throwing.
-  Map<String, WebLogin> get webLogins {
-    if (webLoginsJson.isEmpty) return const {};
-    try {
-      final decoded = jsonDecode(webLoginsJson);
-      if (decoded is! Map) return const {};
-      final out = <String, WebLogin>{};
-      decoded.forEach((service, value) {
-        if (service is! String || value is! Map) return;
-        final p = value['p'];
-        if (p is! String || p.isEmpty) return;
-        final u = value['u'];
-        out[service] = (username: u is String ? u : '', password: p);
-      });
-      return out;
-    } on FormatException {
-      return const {};
-    }
-  }
+  /// A native service tab is usable once it has a URL and its API credential.
+  bool get homeAssistantConfigured =>
+      homeAssistantUrl.isNotEmpty && homeAssistantToken.isNotEmpty;
+  bool get paperlessConfigured =>
+      paperlessUrl.isNotEmpty && paperlessToken.isNotEmpty;
+  bool get immichConfigured => immichUrl.isNotEmpty && immichApiKey.isNotEmpty;
+  bool get karakeepConfigured =>
+      karakeepUrl.isNotEmpty && karakeepApiKey.isNotEmpty;
+  bool get jellyseerrConfigured =>
+      jellyseerrUrl.isNotEmpty && jellyseerrApiKey.isNotEmpty;
+  bool get openWebuiConfigured =>
+      ollamaUrl.isNotEmpty && openWebuiApiKey.isNotEmpty;
+  bool get changedetectionConfigured =>
+      changedetectionUrl.isNotEmpty && changedetectionApiKey.isNotEmpty;
+  bool get wikiConfigured => wikiUrl.isNotEmpty && wikiApiKey.isNotEmpty;
 
-  /// The login for [service], or null when none is stored.
-  WebLogin? webLoginFor(String service) => webLogins[service];
-
-  /// Returns a copy with [service]'s login set (or removed when both fields
-  /// are blank), re-encoding the JSON blob. Used by the settings screen.
-  AppSettings withWebLogin(String service, WebLogin login) {
-    final map = {
-      for (final e in webLogins.entries)
-        e.key: {'u': e.value.username, 'p': e.value.password},
-    };
-    if (login.username.trim().isEmpty && login.password.isEmpty) {
-      map.remove(service);
-    } else {
-      map[service] = {'u': login.username.trim(), 'p': login.password};
-    }
-    return copyWith(webLoginsJson: map.isEmpty ? '' : jsonEncode(map));
-  }
+  /// SearXNG's JSON API needs no credential, only `json` enabled in the
+  /// instance's `search.formats`.
+  bool get searxngConfigured => searxngUrl.isNotEmpty;
 }

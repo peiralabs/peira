@@ -40,8 +40,9 @@ it.
   you gave it — a compromised endpoint sees those credentials by design.
   Scope your Proxmox token (`PVEAuditor` unless you want management
   actions).
-- Embedded webviews render remote web apps inside CEF (Chromium). They get
-  the same trust you'd give those apps in a browser tab.
+- Service tabs call each service's API with the key you saved for it; the
+  key reaches only that service. "Open in browser" hands the service's own
+  URL to your system browser.
 - The AppImage runs unsandboxed, like any AppImage. Verify downloads:
   `sha256sum -c SHA256SUMS && gpg --verify SHA256SUMS.asc SHA256SUMS`.
   The release signing key is

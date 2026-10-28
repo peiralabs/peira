@@ -5,17 +5,17 @@ import '../../core/navigation/app_tab.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/hub_scaffold.dart';
 import '../ask/ask_screen.dart';
-import '../webview/webview_screen.dart';
+import '../wikijs/wikijs_screen.dart';
 
-/// The Vault hub: read the vault (Wiki.js web view) and ask it (the
+/// The Vault hub: read the vault (native Wiki.js) and ask it (the
 /// ask-homelab RAG chat). Ask depends on a private backend, so the public
 /// build has only the Wiki child — [HubScaffold] then hides the strip and
 /// the tab label reads plain "Wiki" (see [AppTab.vault]).
 class VaultScreen extends StatelessWidget {
   const VaultScreen({super.key, required this.railIndex});
 
-  /// This hub's index in the shell's rail — the Wiki web view uses it to
-  /// activate lazily only once the hub is opened.
+  /// This hub's index in the shell's rail. Kept for the shell's uniform hub
+  /// API; every sub-view is native, so nothing activates lazily.
   final int railIndex;
 
   /// Strip entries, index-aligned with [build]'s children; the shell's
@@ -32,7 +32,7 @@ class VaultScreen extends StatelessWidget {
           HubTab(
             icon: specs[0].icon,
             label: specs[0].label,
-            child: WebViewScreen(service: 'Wiki', tabIndex: railIndex),
+            child: const WikiJsScreen(),
           ),
           if (!kPublicBuild)
             HubTab(

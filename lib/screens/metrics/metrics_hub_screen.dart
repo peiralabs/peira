@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/navigation/app_tab.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/hub_scaffold.dart';
-import '../webview/webview_screen.dart';
+import '../changedetection/changedetection_screen.dart';
 import 'logs_screen.dart';
 import 'metrics_screen.dart';
 
@@ -14,8 +14,8 @@ import 'metrics_screen.dart';
 class MetricsHubScreen extends StatelessWidget {
   const MetricsHubScreen({super.key, required this.railIndex});
 
-  /// This hub's index in the shell's rail — the Watches web view uses it to
-  /// activate lazily only once the hub is opened.
+  /// This hub's index in the shell's rail. Kept for the shell's uniform hub
+  /// API; every sub-view is native, so nothing activates lazily.
   final int railIndex;
 
   /// Strip entries, index-aligned with [build]'s children; the shell's
@@ -45,10 +45,7 @@ class MetricsHubScreen extends StatelessWidget {
           HubTab(
             icon: specs[2].icon,
             label: specs[2].label,
-            child: WebViewScreen(
-              service: 'changedetection.io',
-              tabIndex: railIndex,
-            ),
+            child: const ChangedetectionScreen(),
           ),
         ],
       );

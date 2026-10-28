@@ -29,7 +29,7 @@ final serviceReachableProvider = FutureProvider.autoDispose
       }
     });
 
-/// Slim glass header shown above the AI web views (Ollama, Hermes): the live
+/// Slim glass header shown above the Open WebUI tab (personal build): the live
 /// model chain — Haiku primary, hosted + local fallbacks, embeddings — plus a
 /// breathing reachability light for the tab's own service.
 class AiStatusStrip extends ConsumerWidget {

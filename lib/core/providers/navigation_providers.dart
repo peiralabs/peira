@@ -11,7 +11,7 @@ part 'navigation_providers.g.dart';
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 @Riverpod(keepAlive: true)
 class SelectedTab extends _$SelectedTab {
   @override

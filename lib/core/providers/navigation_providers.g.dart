@@ -13,7 +13,7 @@ part of 'navigation_providers.dart';
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 
 @ProviderFor(SelectedTab)
 final selectedTabProvider = SelectedTabProvider._();
@@ -23,14 +23,14 @@ final selectedTabProvider = SelectedTabProvider._();
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 final class SelectedTabProvider extends $NotifierProvider<SelectedTab, int?> {
   /// Currently selected AppShell tab. Null until something picks one, letting
   /// the shell decide the initial tab (Dashboard normally, Settings on first
   /// launch). Dashboard tiles set this to jump to other tabs.
   ///
   /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-  /// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+  /// straight into one tab while debugging it.
   SelectedTabProvider._()
     : super(
         from: null,
@@ -65,7 +65,7 @@ String _$selectedTabHash() => r'd1d7674671b915657f747ed0a08be31c47a81588';
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 
 abstract class _$SelectedTab extends $Notifier<int?> {
   int? build();

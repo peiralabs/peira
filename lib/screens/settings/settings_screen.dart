@@ -4,11 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/build_config.dart';
 import '../../core/models/app_settings.dart';
 import '../../core/providers/settings_providers.dart';
+import '../../core/settings/settings_seed.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/update/update_check.dart';
 import '../../core/util/open_url.dart';
-import '../../core/webview/web_logins.dart';
 import '../../core/widgets/brass_icon_badge.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/screen_header.dart';
@@ -48,6 +48,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _immichUrl = TextEditingController();
   final _changedetectionUrl = TextEditingController();
   final _lokiUrl = TextEditingController();
+  final _homeAssistantToken = TextEditingController();
+  final _openWebuiApiKey = TextEditingController();
+  final _karakeepApiKey = TextEditingController();
+  final _paperlessToken = TextEditingController();
+  final _immichApiKey = TextEditingController();
+  final _changedetectionApiKey = TextEditingController();
+  final _jellyseerrApiKey = TextEditingController();
+  final _wikiApiKey = TextEditingController();
   final _pdmUrl = TextEditingController();
   final _pdmTokenId = TextEditingController();
   final _pdmTokenSecret = TextEditingController();
@@ -88,15 +96,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _seeded = false;
   String? _seededProfile;
 
-  // Per-service stored logins for the embedded webviews (autofilled into each
-  // service's own login form). Keyed by the service label.
-  final _webLoginUser = {
-    for (final s in WebLogins.services) s: TextEditingController(),
-  };
-  final _webLoginPass = {
-    for (final s in WebLogins.services) s: TextEditingController(),
-  };
-  bool _webAutoLogin = true;
+  bool _showUnconfiguredTabs = false;
   bool _notifyAlerts = true;
 
   @override
@@ -124,6 +124,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _immichUrl,
       _changedetectionUrl,
       _lokiUrl,
+      _homeAssistantToken,
+      _openWebuiApiKey,
+      _karakeepApiKey,
+      _paperlessToken,
+      _immichApiKey,
+      _changedetectionApiKey,
+      _jellyseerrApiKey,
+      _wikiApiKey,
       _pdmUrl,
       _pdmTokenId,
       _pdmTokenSecret,
@@ -159,8 +167,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _sshTargets,
       _sshUsername,
       _electricityRate,
-      ..._webLoginUser.values,
-      ..._webLoginPass.values,
     ]) {
       c.dispose();
     }
@@ -201,6 +207,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _immichUrl.text = settings.immichUrl;
     _changedetectionUrl.text = settings.changedetectionUrl;
     _lokiUrl.text = settings.lokiUrl;
+    _homeAssistantToken.text = settings.homeAssistantToken;
+    _openWebuiApiKey.text = settings.openWebuiApiKey;
+    _karakeepApiKey.text = settings.karakeepApiKey;
+    _paperlessToken.text = settings.paperlessToken;
+    _immichApiKey.text = settings.immichApiKey;
+    _changedetectionApiKey.text = settings.changedetectionApiKey;
+    _jellyseerrApiKey.text = settings.jellyseerrApiKey;
+    _wikiApiKey.text = settings.wikiApiKey;
     _pdmUrl.text = settings.pdmUrl;
     _pdmTokenId.text = settings.pdmTokenId;
     _pdmTokenSecret.text = settings.pdmTokenSecret;
@@ -238,13 +252,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _electricityRate.text = settings.electricityRateUsdPerKwh.toString();
     _trustSelfSigned = settings.trustSelfSigned;
     _dockerTlsVerify = settings.dockerTlsVerify;
-    _webAutoLogin = settings.webAutoLogin;
+    _showUnconfiguredTabs = settings.showUnconfiguredTabs;
     _notifyAlerts = settings.notifyAlerts;
-    for (final service in WebLogins.services) {
-      final login = settings.webLoginFor(service);
-      _webLoginUser[service]!.text = login?.username ?? '';
-      _webLoginPass[service]!.text = login?.password ?? '';
-    }
   }
 
   Future<void> _save() async {
@@ -279,6 +288,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       immichUrl: _cleanUrl(_immichUrl.text),
       changedetectionUrl: _cleanUrl(_changedetectionUrl.text),
       lokiUrl: _cleanUrl(_lokiUrl.text),
+      homeAssistantToken: _homeAssistantToken.text.trim(),
+      openWebuiApiKey: _openWebuiApiKey.text.trim(),
+      karakeepApiKey: _karakeepApiKey.text.trim(),
+      paperlessToken: _paperlessToken.text.trim(),
+      immichApiKey: _immichApiKey.text.trim(),
+      changedetectionApiKey: _changedetectionApiKey.text.trim(),
+      jellyseerrApiKey: _jellyseerrApiKey.text.trim(),
+      wikiApiKey: _wikiApiKey.text.trim(),
       pdmUrl: _cleanUrl(_pdmUrl.text),
       pdmTokenId: _pdmTokenId.text.trim(),
       pdmTokenSecret: _pdmTokenSecret.text.trim(),
@@ -316,18 +333,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       electricityRateUsdPerKwh:
           double.tryParse(_electricityRate.text.trim()) ?? 0.30,
       trustSelfSigned: _trustSelfSigned,
-      webAutoLogin: _webAutoLogin,
       notifyAlerts: _notifyAlerts,
+      showUnconfiguredTabs: _showUnconfiguredTabs,
     );
-    // Fold the per-service webview logins into the JSON blob.
-    var withLogins = settings;
-    for (final service in WebLogins.services) {
-      withLogins = withLogins.withWebLogin(service, (
-        username: _webLoginUser[service]!.text.trim(),
-        password: _webLoginPass[service]!.text,
-      ));
-    }
-    await ref.read(settingsControllerProvider.notifier).save(withLogins);
+    await ref.read(settingsControllerProvider.notifier).save(settings);
     if (mounted) {
       ScaffoldMessenger.of(
         context,
@@ -447,6 +456,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         },
                       ),
                   ],
+                ),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Show tabs for services not set up'),
+                subtitle: const Text(
+                  'Off: the sidebar lists only services with a URL here.',
+                ),
+                value: _showUnconfiguredTabs,
+                onChanged: (v) => setState(() => _showUnconfiguredTabs = v),
+              ),
+              _section(context, 'Setup file'),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Fill in the setup template once and import it to set up '
+                  'every service at once. Keys it sets replace what is '
+                  'here; blank keys are left alone. On desktop, a file at '
+                  '~/.config/homelab/seed.json is imported at launch '
+                  'and then deleted.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _importSetupFile,
+                  icon: const Icon(Icons.file_upload_outlined),
+                  label: const Text('Import setup file…'),
                 ),
               ),
               _section(context, 'Proxmox'),
@@ -604,7 +642,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // Wiki.js v2 specifically and no-ops on any other wiki's DOM
               // (web_masks.dart) — the label sets that expectation.
               _urlField(_wikiUrl, 'Wiki.js URL'),
+              _textField(
+                _wikiApiKey,
+                'Wiki.js API key (Administration › API Access)',
+                obscure: true,
+              ),
               _urlField(_ollamaUrl, 'Ollama / Open WebUI URL'),
+              _textField(
+                _openWebuiApiKey,
+                'Open WebUI API key (Settings › Account)',
+                obscure: true,
+              ),
               _urlField(
                 _ollamaApiUrl,
                 'Ollama daemon URL (defaults to the Open WebUI host :11434)',
@@ -636,6 +684,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Home Assistant URL',
                 hint: 'http://10.0.0.20:8123',
               ),
+              _textField(
+                _homeAssistantToken,
+                'Home Assistant long-lived access token',
+                obscure: true,
+              ),
               _urlField(
                 _searxngUrl,
                 'SearXNG URL',
@@ -646,15 +699,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Karakeep URL',
                 hint: 'http://10.0.0.22:3000',
               ),
+              _textField(_karakeepApiKey, 'Karakeep API key', obscure: true),
               _urlField(
                 _paperlessUrl,
                 'Paperless-ngx URL',
                 hint: 'http://10.0.0.23:8020',
               ),
+              _textField(
+                _paperlessToken,
+                'Paperless-ngx API token',
+                obscure: true,
+              ),
               _urlField(
                 _changedetectionUrl,
                 'changedetection.io URL',
                 hint: 'http://10.0.0.24:5000',
+              ),
+              _textField(
+                _changedetectionApiKey,
+                'changedetection.io API key (Settings › API)',
+                obscure: true,
               ),
               _urlField(
                 _lokiUrl,
@@ -662,28 +726,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 hint: 'http://10.0.0.25:3100',
               ),
               _urlField(_jellyseerrUrl, 'Jellyseerr URL'),
-              _section(context, 'Web logins'),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Stored credentials are autofilled into each embedded '
-                  "service's own login form, so you don't re-type them every "
-                  'session. Kept in the system keychain, injected only into '
-                  "that service's page.",
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              _textField(
+                _jellyseerrApiKey,
+                'Jellyseerr / Seerr API key (Settings › General)',
+                obscure: true,
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: _webAutoLogin,
-                onChanged: (v) => setState(() => _webAutoLogin = v),
-                title: const Text('Auto-submit after filling'),
-                subtitle: const Text(
-                  'Sign in automatically (once per session). Off = fill only.',
-                ),
-              ),
-              for (final service in WebLogins.services)
-                ..._loginFields(service),
               _section(context, 'Notifications'),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
@@ -712,6 +759,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Immich URL',
                 hint: 'http://10.0.0.10:2283',
               ),
+              _textField(_immichApiKey, 'Immich API key', obscure: true),
               _urlField(
                 _radarrUrl,
                 'Radarr URL',
@@ -798,19 +846,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  /// Username + password inputs for one embedded service's stored login.
-  /// changedetection.io has a single shared password (no username).
-  List<Widget> _loginFields(String service) {
-    final passwordOnly = service == 'changedetection.io';
-    return [
-      Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 6),
-        child: Text(service, style: Theme.of(context).textTheme.labelLarge),
+  /// Pastes a setup file (setup/setup.example.json filled in), merges it
+  /// over the saved settings and saves straight away, then reloads the form.
+  Future<void> _importSetupFile() async {
+    final input = TextEditingController();
+    final text = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Import setup file'),
+        content: SizedBox(
+          width: 560,
+          child: TextField(
+            controller: input,
+            maxLines: 14,
+            style: const TextStyle(fontFamily: 'JetBrains Mono', fontSize: 12),
+            decoration: const InputDecoration(
+              hintText: '{ "proxmox_url": "https://…", … }',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, input.text),
+            child: const Text('Import'),
+          ),
+        ],
       ),
-      if (!passwordOnly)
-        _textField(_webLoginUser[service]!, '$service username / email'),
-      _textField(_webLoginPass[service]!, '$service password', obscure: true),
-    ];
+    );
+    input.dispose();
+    if (text == null || text.trim().isEmpty || !mounted) return;
+    final current = ref.read(settingsControllerProvider).value;
+    if (current == null) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final SetupImport result;
+    try {
+      result = SettingsSeed.apply(current, text);
+    } on FormatException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Not a setup file: ${e.message}')),
+      );
+      return;
+    }
+    await ref.read(settingsControllerProvider.notifier).save(result.settings);
+    if (!mounted) return;
+    // The next build re-seeds the form from the saved settings.
+    setState(() => _seeded = false);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          result.unknownKeys.isEmpty
+              ? 'Setup file imported.'
+              : 'Imported. Unknown keys skipped: '
+                    '${result.unknownKeys.join(', ')}',
+        ),
+      ),
+    );
   }
 
   Widget _section(BuildContext context, String title) => Padding(

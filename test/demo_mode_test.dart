@@ -29,6 +29,11 @@ void main() {
     );
     // Fake inventory rendered on the dashboard.
     expect(find.text('node1'), findsWidgets);
+    // Every tab is listed, though the demo settings leave most service
+    // URLs empty (unconfigured tabs are hidden outside demo mode).
+    for (final label in ['Metrics', 'Home Assistant', 'Library', 'Media']) {
+      expect(find.text(label), findsWidgets, reason: label);
+    }
   });
 
   test('isDemoRequested triggers on the flag, not by default', () {
