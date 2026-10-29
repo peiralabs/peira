@@ -72,14 +72,19 @@ class _CloseIntent extends Intent {
 /// (↑/↓ to move, ↵ to run, esc to close), and execute in place. Presented as a
 /// floating glass overlay.
 class CommandPalette extends ConsumerStatefulWidget {
-  const CommandPalette({super.key, required this.destinations});
+  const CommandPalette({super.key, required this.destinations, this.onGuide});
 
   final List<PaletteDest> destinations;
 
+  /// Opens the in-app guide from the caller's context (the palette's own
+  /// context is gone by the time a command runs).
+  final VoidCallback? onGuide;
+
   static Future<void> show(
     BuildContext context,
-    List<PaletteDest> destinations,
-  ) {
+    List<PaletteDest> destinations, {
+    VoidCallback? onGuide,
+  }) {
     // Black scrim over the dark glass; a sepia ink wash over parchment.
     return showDialog<void>(
       context: context,
@@ -88,7 +93,8 @@ class CommandPalette extends ConsumerStatefulWidget {
           // Eased 0x59→0x42: the heavier umber wash greyed the parchment.
           : const Color(0x424A3A1C),
       barrierLabel: 'Command palette',
-      builder: (_) => CommandPalette(destinations: destinations),
+      builder: (_) =>
+          CommandPalette(destinations: destinations, onGuide: onGuide),
     );
   }
 
@@ -204,6 +210,21 @@ class _CommandPaletteState extends ConsumerState<CommandPalette> {
         },
       ),
     );
+
+    final guide = widget.onGuide;
+    if (guide != null) {
+      cmds.add(
+        _Command(
+          title: 'Guide',
+          subtitle: 'How to set up and use the app',
+          icon: Icons.menu_book_outlined,
+          accent: brass.copper,
+          group: 'Actions',
+          keywords: const ['help', 'tutorial', 'setup', 'walkthrough', 'docs'],
+          onRun: guide,
+        ),
+      );
+    }
 
     return cmds;
   }

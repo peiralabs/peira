@@ -201,3 +201,115 @@ abstract class _$HubSubTab extends $Notifier<int> {
     return element.handleCreate(ref, () => build(_$args));
   }
 }
+
+/// Whether the guide may open by itself. Off under `flutter test`, where
+/// most widget tests boot a configured shell and a surprise dialog would
+/// cover it; the guide's own test overrides it.
+
+@ProviderFor(guideAutoOpen)
+final guideAutoOpenProvider = GuideAutoOpenProvider._();
+
+/// Whether the guide may open by itself. Off under `flutter test`, where
+/// most widget tests boot a configured shell and a surprise dialog would
+/// cover it; the guide's own test overrides it.
+
+final class GuideAutoOpenProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Whether the guide may open by itself. Off under `flutter test`, where
+  /// most widget tests boot a configured shell and a surprise dialog would
+  /// cover it; the guide's own test overrides it.
+  GuideAutoOpenProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'guideAutoOpenProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$guideAutoOpenHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return guideAutoOpen(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$guideAutoOpenHash() => r'f5df1a6b3a1a2cd45d64bf6acf4a13c1173020d6';
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+
+@ProviderFor(GuideShown)
+final guideShownProvider = GuideShownProvider._();
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+final class GuideShownProvider extends $NotifierProvider<GuideShown, bool> {
+  /// Set once the guide has opened by itself this session, so a rebuild of
+  /// the shell does not open it again.
+  GuideShownProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'guideShownProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$guideShownHash();
+
+  @$internal
+  @override
+  GuideShown create() => GuideShown();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$guideShownHash() => r'99d6433e8415c31bf4a2c280233b825f3d7e6ba8';
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+
+abstract class _$GuideShown extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

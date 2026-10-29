@@ -12,6 +12,7 @@ import '../../core/util/open_url.dart';
 import '../../core/widgets/brass_icon_badge.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/screen_header.dart';
+import '../guide/guide_screen.dart';
 import 'connection_profiles_panel.dart';
 
 /// Credentials and service endpoints. Everything entered here lands in
@@ -400,6 +401,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 16),
               const SectionDivider(),
               const SizedBox(height: 8),
+              _section(context, 'Guide'),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () => showGuide(context),
+                  icon: const Icon(Icons.menu_book_outlined),
+                  label: const Text('Open the guide'),
+                ),
+              ),
               _section(context, 'Connection profiles'),
               const ConnectionProfilesPanel(),
               _section(context, 'Appearance'),

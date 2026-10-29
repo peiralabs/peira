@@ -126,6 +126,7 @@ void main() {
       sshUsername: 'admin',
       electricityRateUsdPerKwh: 0.42,
       showUnconfiguredTabs: true,
+      guideDismissed: true,
     );
 
     final repo = SettingsRepository(_MemoryStorage());

@@ -42,6 +42,7 @@ class SettingsRepository {
     _keys.railCollapsed,
     _keys.notifyAlerts,
     _keys.showUnconfiguredTabs,
+    _keys.guideDismissed,
     _keys.pdmUrl,
     _keys.pdmTokenId,
     _keys.pdmTokenSecret,
@@ -146,6 +147,7 @@ class SettingsRepository {
     electricityRateUsdPerKwh: 'electricity_rate_usd_per_kwh',
     notifyAlerts: 'notify_alerts',
     showUnconfiguredTabs: 'show_unconfigured_tabs',
+    guideDismissed: 'guide_dismissed',
   );
 
   /// Keys of features that were removed. Web-view logins (2026-10-28, when
@@ -248,6 +250,7 @@ class SettingsRepository {
           double.tryParse(values[_keys.electricityRateUsdPerKwh] ?? '') ?? 0.30,
       notifyAlerts: values[_keys.notifyAlerts] != 'false',
       showUnconfiguredTabs: values[_keys.showUnconfiguredTabs] == 'true',
+      guideDismissed: values[_keys.guideDismissed] == 'true',
     );
   }
 
@@ -335,6 +338,7 @@ class SettingsRepository {
     _keys.trustSelfSigned: settings.trustSelfSigned.toString(),
     _keys.notifyAlerts: settings.notifyAlerts.toString(),
     _keys.showUnconfiguredTabs: settings.showUnconfiguredTabs.toString(),
+    _keys.guideDismissed: settings.guideDismissed.toString(),
   };
 
   Future<void> _write(AppSettings settings) => _writeAll(toMap(settings));

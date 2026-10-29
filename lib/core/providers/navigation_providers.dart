@@ -36,3 +36,20 @@ class HubSubTab extends _$HubSubTab {
 
   void select(int index) => state = index;
 }
+
+/// Whether the guide may open by itself. Off under `flutter test`, where
+/// most widget tests boot a configured shell and a surprise dialog would
+/// cover it; the guide's own test overrides it.
+@Riverpod(keepAlive: true)
+bool guideAutoOpen(Ref ref) =>
+    !Platform.environment.containsKey('FLUTTER_TEST');
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+@Riverpod(keepAlive: true)
+class GuideShown extends _$GuideShown {
+  @override
+  bool build() => false;
+
+  void mark() => state = true;
+}

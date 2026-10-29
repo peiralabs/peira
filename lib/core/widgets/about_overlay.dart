@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../screens/guide/guide_screen.dart';
 import '../theme/app_theme.dart';
 import '../theme/phosphor.dart';
 import '../update/update_check.dart';
@@ -11,6 +13,8 @@ import 'brass_ornament.dart';
 /// gilded card with corner brackets, full astrolabe, wordmark, and the
 /// engraved plate line.
 Future<void> showAboutHomeLab(BuildContext context) {
+  // The guide opens from the caller's context once the sheet has closed.
+  final host = context;
   // The barrier is a route property, fixed at show time; the card itself
   // re-resolves in pageBuilder on theme flips.
   final barrier = context.brass.isDark ? _Palette.dark : _Palette.light;
@@ -108,11 +112,11 @@ Future<void> showAboutHomeLab(BuildContext context) {
                         cursor: SystemMouseCursors.click,
                         child: GestureDetector(
                           onTap: () => launchUrl(
-                            Uri.parse('https://buildahomelab.dev'),
+                            Uri.parse('https://peiralabs.com'),
                             mode: LaunchMode.externalApplication,
                           ),
                           child: Text(
-                            'BUILDAHOMELAB.DEV',
+                            'PEIRALABS.COM',
                             style: TextStyle(
                               fontFamily: 'JetBrains Mono',
                               fontSize: 13,
@@ -122,6 +126,14 @@ Future<void> showAboutHomeLab(BuildContext context) {
                         ),
                       ),
                       const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          if (host.mounted) showGuide(host);
+                        },
+                        icon: const Icon(Icons.menu_book_outlined, size: 16),
+                        label: const Text('Open the guide'),
+                      ),
                       Text(
                         'v$kAppVersion · Brass Edition',
                         style: TextStyle(

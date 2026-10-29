@@ -71,5 +71,6 @@
   "electricity_rate_usd_per_kwh": 0.3,
   "trust_self_signed": true,
   "notify_alerts": true,
-  "show_unconfigured_tabs": false
+  "show_unconfigured_tabs": false,
+  "guide_dismissed": false
 }

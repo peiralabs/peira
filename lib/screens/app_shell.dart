@@ -21,6 +21,7 @@ import '../core/widgets/masthead.dart';
 import 'ai/ai_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'docker/docker_screen.dart';
+import 'guide/guide_screen.dart';
 import 'home_assistant/home_assistant_screen.dart';
 import 'library/library_screen.dart';
 import 'media/media_screen.dart';
@@ -99,6 +100,20 @@ class AppShell extends ConsumerWidget {
       return const AmbientBackground(child: SetupWizardScreen());
     }
     final selectedIndex = ref.watch(selectedTabProvider) ?? 0;
+
+    // The guide opens by itself once a connection exists, until the
+    // operator ticks "Don't show this again"; never over demo data.
+    if (settings != null &&
+        !settings.guideDismissed &&
+        !ref.watch(demoModeProvider) &&
+        ref.watch(guideAutoOpenProvider) &&
+        !ref.watch(guideShownProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted || ref.read(guideShownProvider)) return;
+        ref.read(guideShownProvider.notifier).mark();
+        showGuide(context);
+      });
+    }
 
     // The rail lists only tabs whose services are set up (plus whichever tab
     // is open, so a deep link into an unconfigured tab still highlights).
@@ -190,7 +205,11 @@ class AppShell extends ConsumerWidget {
               subIndex: s,
             ),
     ];
-    void openPalette() => CommandPalette.show(context, paletteDests);
+    void openPalette() => CommandPalette.show(
+      context,
+      paletteDests,
+      onGuide: () => showGuide(context),
+    );
 
     void onSelect(int i) => ref.read(selectedTabProvider.notifier).select(i);
     void onRailSelect(int r) => onSelect(rail[r]);

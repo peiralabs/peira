@@ -142,6 +142,9 @@ abstract class AppSettings with _$AppSettings {
     // Rail tabs whose services have no settings are hidden; this shows them
     // anyway (each then renders its "not set up" prompt).
     @Default(false) bool showUnconfiguredTabs,
+    // The in-app guide opens by itself until the operator ticks "Don't
+    // show this again" in it.
+    @Default(false) bool guideDismissed,
   }) = _AppSettings;
 
   /// The Proxmox tab and dashboard need these three to function.
