@@ -484,7 +484,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   'Fill in the setup template once and import it to set up '
                   'every service at once. Keys it sets replace what is '
                   'here; blank keys are left alone. On desktop, a file at '
-                  '~/.config/homelab/seed.json is imported at launch '
+                  '~/.config/peira/seed.json is imported at launch '
                   'and then deleted.',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),

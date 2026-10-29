@@ -37,7 +37,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
   static const _pveumCommands =
       'pveum user add app@pve\n'
       'pveum acl modify / --users app@pve --roles PVEAuditor\n'
-      'pveum user token add app@pve homelab --privsep 0';
+      'pveum user token add app@pve $kTokenName --privsep 0';
 
   static const _docsUrl =
       'https://pve.proxmox.com/wiki/User_Management#pveum_tokens';
@@ -123,7 +123,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                     const SizedBox(height: MolSpace.lg),
                     _field(_url, 'Proxmox URL', 'https://10.0.0.5:8006'),
                     const SizedBox(height: MolSpace.md),
-                    _field(_tokenId, 'API token ID', 'app@pve!homelab'),
+                    _field(_tokenId, 'API token ID', 'app@pve!$kTokenName'),
                     const SizedBox(height: MolSpace.md),
                     _field(
                       _secret,
@@ -287,7 +287,7 @@ class _TokenHelp extends StatelessWidget {
         Text(
           'Run this on the Proxmox host — read-only to start; swap '
           'PVEAuditor for PVEAdmin later if you want start/stop/create '
-          'from the app. The token ID is then app@pve!homelab.',
+          'from the app. The token ID is then app@pve!$kTokenName.',
           style: TextStyle(color: brass.textMuted, fontSize: 12.5),
         ),
         const SizedBox(height: MolSpace.sm),
@@ -344,24 +344,31 @@ class _LaterList extends StatelessWidget {
   const _LaterList();
 
   static const _rows = [
-    (Ph.chartLineUp, 'Metrics', 'Prometheus with node_exporter'),
+    (
+      Ph.chartLineUp,
+      'Metrics',
+      'Prometheus, Loki logs, changedetection.io watches',
+    ),
     (
       Ph.brain,
       'AI',
       kPublicBuild
-          ? 'any OpenAI-compatible endpoint (Ollama, LiteLLM, vLLM…)'
-          : 'Ollama + Hermes',
+          ? 'any OpenAI-compatible endpoint, Open WebUI, SearXNG'
+          : 'Ollama + Hermes, Open WebUI, SearXNG',
     ),
     (
       Ph.monitorPlay,
       'Media',
-      'Jellyfin, Plex, Radarr, Sonarr, qBittorrent, Prowlarr',
+      'Jellyfin, Plex, Radarr, Sonarr, qBittorrent, Prowlarr, Seerr, '
+          'Immich',
     ),
+    (Ph.house, 'Home Assistant', 'entities, services, logbook'),
     (
       Ph.bookOpenText,
       kPublicBuild ? 'Wiki' : 'Vault',
       kPublicBuild ? 'Wiki.js' : 'Wiki.js + Ask',
     ),
+    (Ph.books, 'Library', 'Karakeep and Paperless-ngx'),
     (
       Ph.terminalWindow,
       'Terminal & Tailscale',

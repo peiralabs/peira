@@ -2,8 +2,12 @@
 @Tags(['golden'])
 library;
 
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:alchemist/alchemist.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peira/core/theme/app_theme.dart';
 import 'package:peira/core/widgets/astrolabe.dart';
@@ -50,4 +54,50 @@ void main() {
     256,
     12,
   );
+
+  // The launcher icon files themselves (assets/icon/homelab-*.png, shipped in
+  // the AppImage) on a transparent background. Opt-in, so a normal test run
+  // never rewrites a shipped asset:
+  //   UPDATE_ICON_ASSETS=1 flutter test test/render_app_icon_test.dart
+  final writeAssets = Platform.environment['UPDATE_ICON_ASSETS'] == '1';
+  for (final (size, inset) in const [(512.0, 24.0), (256.0, 12.0)]) {
+    testWidgets(
+      'write assets/icon/homelab-${size.toInt()}.png',
+      (tester) async {
+        final key = GlobalKey();
+        tester.view.physicalSize = Size(size, size);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          Theme(
+            data: AppTheme.dark(),
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Center(
+                child: RepaintBoundary(
+                  key: key,
+                  child: SizedBox(
+                    width: size,
+                    height: size,
+                    child: Center(child: Astrolabe(size: size - inset * 2)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final boundary =
+            key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        await tester.runAsync(() async {
+          final image = await boundary.toImage();
+          final png = await image.toByteData(format: ui.ImageByteFormat.png);
+          await File(
+            'assets/icon/homelab-${size.toInt()}.png',
+          ).writeAsBytes(png!.buffer.asUint8List());
+        });
+      },
+      skip: !writeAssets,
+    );
+  }
 }

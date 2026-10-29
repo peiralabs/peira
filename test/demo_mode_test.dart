@@ -41,6 +41,42 @@ void main() {
     }
   });
 
+  testWidgets('every native service tab shows canned data in demo mode', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1500, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(overrides: demoOverrides, child: const HomeLabApp()),
+    );
+    await tester.pumpAndSettle();
+
+    Future<void> open(String rail, [String? sub]) async {
+      await tester.tap(find.text(rail).first);
+      await tester.pumpAndSettle();
+      if (sub != null) {
+        await tester.tap(find.text(sub).first);
+        await tester.pumpAndSettle();
+      }
+    }
+
+    await open('Home Assistant');
+    expect(find.text('Kitchen'), findsOneWidget);
+    await open(kPublicBuild ? 'Wiki' : 'Vault');
+    expect(find.text('Home lab handbook'), findsWidgets);
+    await open('Metrics', 'Watches');
+    expect(find.text('Proxmox VE releases'), findsOneWidget);
+    await open('Library', 'Bookmarks');
+    expect(find.text('ZFS on Proxmox: a practical guide'), findsOneWidget);
+    await open('Library', 'Documents');
+    expect(find.text('UPS warranty'), findsOneWidget);
+    await open('Media', 'Discover');
+    expect(find.text('The Long Weekend'), findsWidgets);
+    // Nothing asks for a key: the demo settings carry one for every tab.
+    expect(find.textContaining('needs its'), findsNothing);
+  });
+
   test('isDemoRequested triggers on the flag, not by default', () {
     expect(isDemoRequested(['--demo']), isTrue);
     expect(isDemoRequested([]), isFalse);

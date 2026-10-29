@@ -20,7 +20,7 @@ adheres to [Semantic Versioning](https://semver.org/).
   up lists them all.
 - **Setup file.** Fill in `setup/setup.example.json` once and import it
   (Settings › Import setup file, or drop it at
-  `~/.config/homelab/seed.json` for the next launch, after which it is
+  `~/.config/peira/seed.json` for the next launch, after which it is
   deleted). See `docs/setup-file.md`.
 
 ### Removed

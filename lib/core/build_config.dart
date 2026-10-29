@@ -18,5 +18,8 @@ const bool kPublicBuild = bool.fromEnvironment('PEIRA_PUBLIC', defaultValue: tru
 /// APPLICATION_ID, the Dart package name, or the keyring schema.
 const String kAppName = kPublicBuild ? 'Peira' : 'HomeLab';
 
+/// The API token name the setup wizard suggests (`app@pve!<name>`).
+const String kTokenName = kPublicBuild ? 'peira' : 'homelab';
+
 /// The engraved wordmark on the masthead, boot splash and About sheet.
 const String kWordmark = kPublicBuild ? 'PEIRA' : 'HOMELAB';

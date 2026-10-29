@@ -13,7 +13,7 @@ void main() {
   setUp(() => tmp = Directory.systemTemp.createTempSync('seed_test'));
   tearDown(() => tmp.deleteSync(recursive: true));
 
-  File seedFile() => File('${tmp.path}/homelab/seed.json');
+  File seedFile() => File('${tmp.path}/peira/seed.json');
 
   void writeSeed(Object json) {
     seedFile()

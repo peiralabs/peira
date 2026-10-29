@@ -1,5 +1,5 @@
 {
-  "_comment": "HomeLab setup file. Fill in what you run, leave the rest blank, save it as ~/.config/homelab/seed.json (desktop: imported at next launch, then deleted) or paste it into Settings > Import setup file. Blank values never overwrite a configured field. Keys starting with _ are ignored. Reference: docs/setup-file.md",
+  "_comment": "Setup file. Fill in what you run, leave the rest blank, save it as ~/.config/peira/seed.json (desktop: imported at next launch, then deleted) or paste it into Settings > Import setup file. Blank values never overwrite a configured field. Keys starting with _ are ignored. Reference: docs/setup-file.md",
   "proxmox_url": "",
   "proxmox_token_id": "",
   "proxmox_token_secret": "",

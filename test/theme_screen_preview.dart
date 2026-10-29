@@ -4,6 +4,8 @@
 //   THEME_PACK=terminal THEME_MODE=light flutter test test/theme_screen_preview.dart
 // THEME_MODE is 'dark' (default) or 'light'. Writes
 // $THEME_PREVIEW_DIR/screen-<id>.png (dark) or screen-<id>-light.png (default /tmp).
+// For README shots of one tab: PREVIEW_TAB=<AppTab name, e.g. homeAssistant>,
+// optional PREVIEW_SUB=<hub strip index>, and PREVIEW_OUT=<file name>.
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -12,6 +14,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peira/core/demo/demo.dart';
+import 'package:peira/core/navigation/app_tab.dart';
+import 'package:peira/core/providers/navigation_providers.dart';
 import 'package:peira/core/theme/app_theme.dart';
 import 'package:peira/screens/app_shell.dart';
 
@@ -21,6 +25,9 @@ void main() {
   final outDir = Platform.environment['THEME_PREVIEW_DIR'] ?? '/tmp';
   final id = Platform.environment['THEME_PACK'] ?? 'brass';
   final mode = Platform.environment['THEME_MODE'] ?? 'dark';
+  final tabName = Platform.environment['PREVIEW_TAB'];
+  final sub = int.tryParse(Platform.environment['PREVIEW_SUB'] ?? '');
+  final outName = Platform.environment['PREVIEW_OUT'];
   final pack = ThemePack.byId(id);
 
   setUpAll(loadRealFonts);
@@ -51,6 +58,17 @@ void main() {
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 120));
     }
+    if (tabName != null) {
+      final tab = AppTab.values.byName(tabName);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AppShell)),
+      );
+      container.read(selectedTabProvider.notifier).select(tab.railIndex);
+      if (sub != null) container.read(hubSubTabProvider(tab).notifier).select(sub);
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+    }
     final boundary =
         key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     await tester.runAsync(() async {
@@ -58,7 +76,7 @@ void main() {
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       final suffix = mode == 'light' ? '-light' : '';
       await File(
-        '$outDir/screen-$id$suffix.png',
+        '$outDir/${outName ?? 'screen-$id$suffix.png'}',
       ).writeAsBytes(bytes!.buffer.asUint8List());
     });
   });

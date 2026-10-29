@@ -11,7 +11,7 @@ typedef SetupImport = ({AppSettings settings, List<String> unknownKeys});
 /// Setup files: a JSON object whose keys are the settings' storage keys
 /// (`docs/setup-file.md`, template `setup/setup.example.json`). Used two ways:
 ///
-/// * dropped at `$XDG_CONFIG_HOME/homelab/seed.json` on desktop, it is
+/// * dropped at `$XDG_CONFIG_HOME/peira/seed.json` on desktop, it is
 ///   imported at launch and then deleted, so credentials never linger in a
 ///   plain file;
 /// * pasted into Settings › Import setup file, on any platform.
@@ -56,7 +56,7 @@ class SettingsSeed {
         configDir ??
         Platform.environment['XDG_CONFIG_HOME'] ??
         '${Platform.environment['HOME']}/.config';
-    final file = File('$dir/homelab/seed.json');
+    final file = File('$dir/peira/seed.json');
     if (!file.existsSync()) return null;
     try {
       return apply(current, file.readAsStringSync());
