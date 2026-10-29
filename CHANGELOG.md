@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-29
+
 ### Added
 
 - **Instrument kits.** Each theme family draws the shared instruments in its
@@ -18,6 +20,9 @@ adheres to [Semantic Versioning](https://semver.org/).
 - Every switch shows a green (on) or red (off) lamp.
 - The terminal follows the theme: a CRT housing, and an ANSI colour scheme
   per family (green and amber phosphor, Nord, Catppuccin Mocha, macOS).
+- Metrics charts mark warning and critical zones (CPU, memory, disk,
+  temperatures) and zoom the temperature and power scales to the range
+  that matters.
 
 ### Changed
 
@@ -26,10 +31,17 @@ adheres to [Semantic Versioning](https://semver.org/).
   the selected theme family.
 - Settings-style switches, progress bars and status lights use the theme's
   instruments instead of the stock Material widgets.
+- Chart lines use each family's own inks, so the graphs match the theme;
+  Brass keeps to period inks.
+- The sidebar's section icons and titles take each family's colours.
 
 ### Fixed
 
 - A counter replay arriving mid-count dropped the flip in flight.
+- Charts were hard to read in Ember and most light modes.
+- Percentage charts could show an axis above 100 %.
+- A readout wider than its dial (such as 17/17) overflowed it; readouts now
+  scale down to fit.
 
 ## [2.0.0] — 2026-10-29
 

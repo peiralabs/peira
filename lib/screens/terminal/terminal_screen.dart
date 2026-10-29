@@ -85,8 +85,8 @@ TerminalTheme _ansi({
 );
 
 /// The shell's colours in each family's idiom: Brass keeps its own; Terminal
-/// is green-phosphor monochrome, Ember amber phosphor, Obsidian night-ops
-/// amber on black, Nord and Catppuccin their official ANSI schemes, Aqua the
+/// is green-phosphor monochrome, Ember amber phosphor, Obsidian steel-white
+/// on true black, Nord and Catppuccin their official ANSI schemes, Aqua the
 /// macOS system colours, Graphite a muted neutral set. Always a dark,
 /// self-luminous screen, in light mode too.
 TerminalTheme terminalThemeFor(BuildContext context) {
@@ -120,8 +120,8 @@ TerminalTheme terminalThemeFor(BuildContext context) {
     case InstrumentKit.obsidian:
       return _ansi(
         bg: const Color(0xFF000000),
-        fg: const Color(0xFFE8B04A),
-        cursor: const Color(0xFFFFB020),
+        fg: const Color(0xFFCDD0D6),
+        cursor: const Color(0xFFD8DCE2),
         c: const [
           Color(0xFF151515), Color(0xFFD9534A), Color(0xFF7FB86A), Color(0xFFFFB020),
           Color(0xFF6C8EBF), Color(0xFFB07FB8), Color(0xFF6FB3B3), Color(0xFFB8BCC2),

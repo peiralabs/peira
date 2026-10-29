@@ -168,7 +168,9 @@ class TraceWindow extends StatelessWidget {
     painter: _TracePainter(
       context.kit,
       context.brass,
-      data,
+      // One sample is a steady signal: draw it as a flat trace rather than
+      // an empty screen (the history fills in over the next refreshes).
+      data.length == 1 ? [data.first, data.first] : data,
       color,
       style,
       maxValue,
@@ -205,7 +207,11 @@ class _TracePainter extends CustomPainter {
   final double? maxValue;
   final double radius;
 
-  late final TraceLook look = TraceLook.of(kit, brass, style, color);
+  /// Set by [ScopeFrame]: the chart look instead of the trace look.
+  TraceLook? chartLook;
+
+  late final TraceLook look =
+      chartLook ?? TraceLook.of(kit, brass, style, color);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -236,8 +242,38 @@ class _TracePainter extends CustomPainter {
   ) {
     final b = brass;
     final l = look;
-    // Ground: a CRT face, chart paper, an LCD panel... per the family.
-    canvas.drawRect(rect, Paint()..shader = l.ground.createShader(rect));
+    // Ground: a CRT face, chart paper, an LCD panel... per the family. A
+    // screen's radial ground is stretched to the window's width, and its
+    // backlight glows softly behind the trace: a lamp behind the glass.
+    final g = l.ground;
+    if (g is RadialGradient) {
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            colors: g.colors,
+            stops: g.stops,
+            radius: 0.75,
+            transform: const _StretchToWidth(),
+          ).createShader(rect),
+      );
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              l.trace.withValues(alpha: 0.16),
+              l.trace.withValues(alpha: 0.06),
+              l.trace.withValues(alpha: 0),
+            ],
+            stops: const [0, 0.5, 1],
+            radius: 0.62,
+            transform: const _StretchToWidth(),
+          ).createShader(rect),
+      );
+    } else {
+      canvas.drawRect(rect, Paint()..shader = g.createShader(rect));
+    }
 
     // Graticule / chart ruling: 10 columns, 4 rows, minor lines between
     // (dotted on the families whose screens use dot grids).
@@ -407,7 +443,7 @@ class _TracePainter extends CustomPainter {
     canvas.drawPath(
       lip,
       Paint()
-        ..color = ink.withValues(alpha: b.isDark ? 0.7 : 0.35)
+        ..color = ink.withValues(alpha: (b.isDark ? 0.7 : 0.35) * l.lip)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
     canvas.restore();
@@ -456,6 +492,7 @@ class TraceLook {
     this.vignette = 0.12,
     this.gloss = 0.1,
     this.nib = const Color(0xFF8C2F28),
+    this.lip = 1,
   });
 
   final Gradient ground;
@@ -475,6 +512,87 @@ class TraceLook {
 
   /// The recorder pen's ink drop.
   final Color nib;
+
+  /// Strength of the window lip's shadow (1 = full).
+  final double lip;
+
+  /// The look behind a chart that draws its own lines and labels (Metrics,
+  /// PBS, Home Assistant): the family's screen in dark mode, a light paper or
+  /// panel of the same family in light mode (the chart's text and series
+  /// colours are tuned to the mode), and only a breath of glass so dense
+  /// multi-line charts stay legible.
+  static TraceLook forChart(InstrumentKit kit, Brass b) {
+    LinearGradient panel(Color top, Color bottom) => LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [top, bottom],
+    );
+    TraceLook light(Color top, Color bottom, Color grid) => TraceLook(
+      ground: panel(top, bottom),
+      gridMajor: grid.withValues(alpha: 0.38),
+      gridMinor: grid.withValues(alpha: 0.16),
+      trace: b.textBody,
+      dotted: kit == InstrumentKit.nord || kit == InstrumentKit.catppuccin,
+      vignette: 0.04,
+      gloss: 0.03,
+      lip: 0.35,
+    );
+    if (!b.isDark) {
+      return switch (kit) {
+        InstrumentKit.brass => light(const Color(0xFFF2EBD8),
+            const Color(0xFFEDE4CE), const Color(0xFFB0563E)),
+        InstrumentKit.graphite => light(const Color(0xFFF4F5F2),
+            const Color(0xFFEAECE8), const Color(0xFF8A949C)),
+        InstrumentKit.terminal => light(const Color(0xFFF0F7F1),
+            const Color(0xFFE6F0E8), const Color(0xFF2E9E57)),
+        InstrumentKit.nord => light(const Color(0xFFF4F7FA),
+            const Color(0xFFE9EEF4), const Color(0xFF5E81AC)),
+        InstrumentKit.ember => light(const Color(0xFFFAF3EC),
+            const Color(0xFFF2E7DC), const Color(0xFFB0563E)),
+        InstrumentKit.obsidian => light(const Color(0xFFF7F7F8),
+            const Color(0xFFEDEDEF), const Color(0xFF6E7076)),
+        InstrumentKit.aqua => light(const Color(0xFFFFFFFF),
+            const Color(0xFFF2F5F9), const Color(0xFF9DB3CC)),
+        InstrumentKit.catppuccin => light(const Color(0xFFEFF1F5),
+            const Color(0xFFE6E9EF), const Color(0xFF8C8FA1)),
+      };
+    }
+    final dark = kit == InstrumentKit.graphite
+        // Graphite's trace look is plotter paper in both modes; in dark mode
+        // a chart drawn for dark backgrounds needs dark lab glass instead.
+        ? const TraceLook(
+            ground: RadialGradient(
+              radius: 0.9,
+              colors: [Color(0xFF22272C), Color(0xFF131619)],
+            ),
+            gridMajor: Color(0x4D8A949C),
+            gridMinor: Color(0x1F8A949C),
+            trace: Color(0xFFD5DADF),
+          )
+        : kit == InstrumentKit.ember
+        // Ember's own screen is amber on brown; behind red-family series it
+        // drowned them, so charts get a near-neutral warm black.
+        ? const TraceLook(
+            ground: RadialGradient(
+              radius: 0.9,
+              colors: [Color(0xFF15100D), Color(0xFF0A0807)],
+            ),
+            gridMajor: Color(0x24E8D8C8),
+            gridMinor: Color(0x10E8D8C8),
+            trace: Color(0xFFFFC27A),
+          )
+        : TraceLook.of(kit, b, TraceStyle.scope, b.sparkGreen);
+    return TraceLook(
+      ground: dark.ground,
+      gridMajor: dark.gridMajor,
+      gridMinor: dark.gridMinor,
+      trace: dark.trace,
+      dotted: dark.dotted,
+      vignette: 0.16,
+      gloss: 0.03,
+      lip: 0.5,
+    );
+  }
 
   static const _paper = Color(0xFFF2EBD8);
   static const _paperShade = Color(0xFFE2D8BF);
@@ -566,15 +684,16 @@ class TraceLook {
           nib: const Color(0xFFFF8A3D),
         );
       case InstrumentKit.obsidian:
+        // Matte black glass, steel ruling, a silver trace.
         return TraceLook(
-          ground: crt(const Color(0xFF04140A), const Color(0xFF000502)),
-          gridMajor: const Color(0x244DFF88),
-          gridMinor: const Color(0x0F4DFF88),
-          trace: const Color(0xFF8CFFB0),
+          ground: crt(const Color(0xFF0E0F11), const Color(0xFF000000)),
+          gridMajor: const Color(0x2EAEB4BE),
+          gridMinor: const Color(0x12AEB4BE),
+          trace: const Color(0xFFD8DCE2),
           glow: true,
-          vignette: 0.55,
-          gloss: 0.04,
-          nib: const Color(0xFFFFB020),
+          vignette: 0.5,
+          gloss: 0.05,
+          nib: const Color(0xFFD8DCE2),
         );
       case InstrumentKit.aqua:
         return TraceLook(
@@ -638,11 +757,12 @@ class ScopeFrame extends StatelessWidget {
     final b = context.brass;
     final style = b.isDark ? TraceStyle.scope : TraceStyle.paper;
     final tint = color ?? b.sparkGreen;
+    final look = TraceLook.forChart(context.kit, b);
     return CustomPaint(
       painter: _TracePainter(context.kit, b, const [], tint, style, null,
-          radius, front: false),
+          radius, front: false)..chartLook = look,
       foregroundPainter: _TracePainter(context.kit, b, const [], tint, style,
-          null, radius, back: false),
+          null, radius, back: false)..chartLook = look,
       child: Padding(padding: padding, child: child),
     );
   }
@@ -1222,4 +1342,20 @@ class _CrtPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_CrtPainter old) => false;
+}
+
+/// Stretches a radial gradient into an ellipse spanning the shader's full
+/// width (a RadialGradient is otherwise a circle sized to the shorter side).
+class _StretchToWidth extends GradientTransform {
+  const _StretchToWidth();
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) {
+    final k = bounds.height == 0 ? 1.0 : bounds.width / bounds.height;
+    final c = bounds.center;
+    return Matrix4.identity()
+      ..translateByDouble(c.dx, c.dy, 0, 1)
+      ..scaleByDouble(k, 1, 1, 1)
+      ..translateByDouble(-c.dx, -c.dy, 0, 1);
+  }
 }

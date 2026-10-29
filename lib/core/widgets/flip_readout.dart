@@ -43,7 +43,7 @@ class FlipReadout extends StatelessWidget {
   Widget build(BuildContext context) {
     final look = ReadoutLook.of(context, fontSize);
     return Container(
-      padding: EdgeInsets.all(fontSize * 0.14),
+      padding: look.pad ?? EdgeInsets.all(fontSize * 0.14),
       decoration: look.window,
       child: Row(
         mainAxisSize: MainAxisSize.min,

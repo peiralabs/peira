@@ -65,10 +65,18 @@ class InstrumentGauge extends ConsumerWidget {
           ),
           child: Align(
             alignment: kitReadoutAlignment(kit),
-            child: FlipReadout(
-              text: display,
-              fontSize: 21 * size / 130 * kitReadoutScale(kit),
-              epoch: epoch,
+            // Long values (17/17, 100%) shrink to fit inside the dial's
+            // track rather than spilling over it.
+            child: SizedBox(
+              width: size * 0.56,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: FlipReadout(
+                  text: display,
+                  fontSize: 21 * size / 130 * kitReadoutScale(kit),
+                  epoch: epoch,
+                ),
+              ),
             ),
           ),
         ),
@@ -101,10 +109,16 @@ class InstrumentGauge extends ConsumerWidget {
                 child: child,
               ),
               child: Center(
-                child: FlipReadout(
-                  text: display,
-                  fontSize: 21 * size / 130,
-                  epoch: epoch,
+                child: SizedBox(
+                  width: size * 0.58,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: FlipReadout(
+                      text: display,
+                      fontSize: 21 * size / 130,
+                      epoch: epoch,
+                    ),
+                  ),
                 ),
               ),
             ),

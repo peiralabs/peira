@@ -79,9 +79,10 @@ class _MeterPainter extends CustomPainter {
             off: const Color(0x1A39FF6A), glow: true,
             tint: const Color(0xFF39FF6A));
       case InstrumentKit.obsidian:
+        // Steel cells: the metric's own (low-chroma) colour, a faint glow.
         _cells(canvas, size, 14, gap: 2, radius: 0.5,
-            off: const Color(0xFF161616), glow: true,
-            tint: const Color(0xFFFFB020), dim: 0.8);
+            off: b.isDark ? const Color(0xFF17181A) : const Color(0xFFD9DBDF),
+            glow: b.isDark, dim: 0.9);
       case InstrumentKit.catppuccin:
         _cells(canvas, size, 8, gap: 3, radius: size.height / 2,
             off: b.isDark ? const Color(0xFF45475A) : const Color(0xFFCCD0DA));
@@ -609,10 +610,10 @@ class KitDialPainter extends CustomPainter {
     );
   }
 
-  /// Night-vision graticule: green crosshair and rings, the reading as a
-  /// ring of amber tick segments.
+  /// Steel graticule on matte black: a fine steel crosshair and rings, the
+  /// reading as a ring of tick segments in the metric's colour.
   void _nightVision(Canvas canvas) {
-    const g = Color(0xFF4DFF88);
+    const g = Color(0xFFAEB4BE);
     canvas.drawCircle(_c, 62, Paint()..color = const Color(0xFF020A04));
     _ring(canvas, 62, const Color(0xFF2C2C30), 2);
     for (final r in [18.0, 36.0]) {
@@ -635,55 +636,105 @@ class KitDialPainter extends CustomPainter {
     }
   }
 
-  /// Aqua glass dial: a glossy face, a thick gel arc, and a glass dome.
+  /// Aqua glass dial: a glossy face under a highlight dome, a thin silver
+  /// bezel, a recessed groove, and the reading as a tube of coloured gel
+  /// with a specular streak along its top and a soft shadow beneath.
   void _glass(Canvas canvas) {
     final dark = b.isDark;
+    final faceRect = Rect.fromCircle(center: _c, radius: 60);
+    // Face: lit from above, like glass over a pale (or graphite) dial.
     canvas.drawCircle(
       _c,
-      62,
+      60,
       Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+        ..shader = RadialGradient(
+          center: const Alignment(0, -0.45),
+          radius: 1.05,
           colors: dark
-              ? const [Color(0xFF4A4A4E), Color(0xFF1C1C1E)]
-              : const [Color(0xFFFFFFFF), Color(0xFFDCE3EC)],
-        ).createShader(Rect.fromCircle(center: _c, radius: 62)),
+              ? const [Color(0xFF55565C), Color(0xFF2A2A2E), Color(0xFF161618)]
+              : const [Color(0xFFFFFFFF), Color(0xFFE9EEF4), Color(0xFFC9D3DF)],
+          stops: const [0, 0.55, 1],
+        ).createShader(faceRect),
     );
-    _ring(canvas, 62, dark ? const Color(0xFF6E6E73) : const Color(0xFF9DB3CC), 1);
-    final rect = Rect.fromCircle(center: _c, radius: 46);
-    canvas.drawArc(rect, 0, 2 * math.pi, false,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 11
-          ..color = dark ? const Color(0xFF2C2C2E) : const Color(0xFFE5EAF0));
-    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * fraction, false,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 11
-          ..strokeCap = StrokeCap.round
-          ..shader = SweepGradient(
-            colors: [Color.lerp(color, Colors.white, 0.3)!, color],
-          ).createShader(rect));
-    // Gloss on the arc and the glass dome over the face.
-    canvas.drawArc(Rect.fromCircle(center: _c, radius: 49), -math.pi / 2,
-        2 * math.pi * fraction, false,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2
-          ..color = Colors.white.withValues(alpha: 0.45));
+    // Silver bezel.
+    canvas.drawCircle(
+      _c,
+      61,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..shader = const SweepGradient(
+          colors: [Color(0xFFF7F8FA), Color(0xFF9AA3AE), Color(0xFFE6EAEF),
+              Color(0xFF8A939E), Color(0xFFF7F8FA)],
+        ).createShader(faceRect),
+    );
+    // Groove: the empty track, sunk into the face.
+    final rect = Rect.fromCircle(center: _c, radius: 45);
+    canvas.drawCircle(
+      _c,
+      45,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 13
+        ..color = dark ? const Color(0xFF111113) : const Color(0xFFBAC4D0),
+    );
+    canvas.drawCircle(
+      _c.translate(0, 1.2),
+      45,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 13
+        ..color = Colors.black.withValues(alpha: dark ? 0.35 : 0.18)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+    );
+    final sweep = 2 * math.pi * fraction;
+    if (sweep > 0) {
+      // Shadow under the gel.
+      canvas.drawArc(rect.shift(const Offset(0, 1.5)), -math.pi / 2, sweep,
+          false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 11
+            ..strokeCap = StrokeCap.round
+            ..color = Colors.black.withValues(alpha: 0.3)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+      // The gel: shaded across its width like a filled tube.
+      final deep = Color.lerp(color, Colors.black, 0.35)!;
+      final shine = Color.lerp(color, Colors.white, 0.55)!;
+      const r0 = 45 - 5.5, r1 = 45 + 5.5;
+      canvas.drawArc(rect, -math.pi / 2, sweep, false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 11
+            ..strokeCap = StrokeCap.round
+            ..shader = RadialGradient(
+              colors: [deep, color, shine, color, deep],
+              stops: const [r0 / r1, (r0 + 2.5) / r1, (r0 + 6.5) / r1,
+                  (r0 + 8.5) / r1, 1],
+            ).createShader(Rect.fromCircle(center: _c, radius: r1)));
+      // Specular streak along the gel.
+      canvas.drawArc(Rect.fromCircle(center: _c, radius: 47.5), -math.pi / 2,
+          sweep, false,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.8
+            ..strokeCap = StrokeCap.round
+            ..color = Colors.white.withValues(alpha: 0.7));
+    }
+    // The glass dome: a bright highlight across the upper face.
+    final dome =
+        Rect.fromCenter(center: const Offset(65, 36), width: 92, height: 46);
     canvas.drawOval(
-      Rect.fromCenter(center: const Offset(65, 34), width: 84, height: 40),
+      dome,
       Paint()
         ..shader = LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.white.withValues(alpha: dark ? 0.22 : 0.6),
+            Colors.white.withValues(alpha: dark ? 0.32 : 0.75),
             Colors.white.withValues(alpha: 0),
           ],
-        ).createShader(
-            Rect.fromCenter(center: const Offset(65, 34), width: 84, height: 40)),
+        ).createShader(dome),
     );
   }
 
@@ -993,13 +1044,14 @@ class _TogglePainter extends CustomPainter {
     // up (seen nearly edge-on) when on.
     final coverH = 30 * (1 - 0.82 * t);
     final cover = Rect.fromLTWH(3, 6, size.width - 6, coverH);
+    // Smoked graphite, steel-edged: low-chroma like the rest of Obsidian.
     canvas.drawRRect(RRect.fromRectAndRadius(cover, const Radius.circular(3)),
-        Paint()..color = const Color(0xFFB0281E).withValues(alpha: 0.55 + 0.3 * t));
+        Paint()..color = const Color(0xFF3A3D42).withValues(alpha: 0.7 + 0.2 * t));
     canvas.drawRRect(RRect.fromRectAndRadius(cover, const Radius.circular(3)),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1
-          ..color = const Color(0xFFE0574A));
+          ..color = const Color(0xFF9398A0));
     canvas.drawLine(const Offset(5, 6), Offset(size.width - 5, 6),
         Paint()
           ..strokeWidth = 2

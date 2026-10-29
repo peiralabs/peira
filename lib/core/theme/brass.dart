@@ -59,6 +59,43 @@ class SectionAccent {
     colors: [plateStart, plateEnd],
   );
 
+  /// A full accent from one hue, built the way the Brass accents are: a
+  /// translucent plate of the hue, a lit-to-deep gem bar, a soft glow, a
+  /// near-white (dark) or deep-ink (light) active icon, a muted idle icon
+  /// and a header ink of the hue.
+  factory SectionAccent.fromHue(Color c, bool dark) {
+    Color mix(Color a, Color b, double t) => Color.lerp(a, b, t)!;
+    const white = Color(0xFFFFFFFF), black = Color(0xFF000000);
+    const grey = Color(0xFF8A8F96), greyInk = Color(0xFF5E636B);
+    return dark
+        ? SectionAccent(
+            plateStart: mix(c, black, 0.35).withValues(alpha: 0.44),
+            plateEnd: c.withValues(alpha: 0.16),
+            border: mix(c, white, 0.25).withValues(alpha: 0.5),
+            barTop: mix(c, white, 0.7),
+            barMid: c,
+            barBottom: mix(c, black, 0.5),
+            glow: mix(c, white, 0.15).withValues(alpha: 0.6),
+            iconActive: mix(c, white, 0.78),
+            iconIdle: mix(c, grey, 0.22),
+            headerText: mix(c, white, 0.2),
+            hover: c.withValues(alpha: 0.08),
+          )
+        : SectionAccent(
+            plateStart: c.withValues(alpha: 0.28),
+            plateEnd: mix(c, white, 0.6).withValues(alpha: 0.2),
+            border: c.withValues(alpha: 0.55),
+            barTop: mix(c, white, 0.35),
+            barMid: c,
+            barBottom: mix(c, black, 0.4),
+            glow: c.withValues(alpha: 0.25),
+            iconActive: mix(c, black, 0.3),
+            iconIdle: mix(c, greyInk, 0.25),
+            headerText: mix(c, black, 0.15),
+            hover: c.withValues(alpha: 0.08),
+          );
+  }
+
   LinearGradient get bar => LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
@@ -2013,28 +2050,108 @@ class Brass extends ThemeExtension<Brass> {
   /// A distinct shade of [base] (same hue, varied lightness) for index [i].
   /// The lightness band shifts down on parchment so shades keep contrast.
   Color shade(Color base, int i) {
-    const steps = [0.0, 0.14, -0.12, 0.24, -0.20, 0.07, -0.06];
+    // Lightness alone left nine nodes' lines nearly identical; each step
+    // also turns the hue a little, so lines stay in the panel's colour
+    // family but can be told apart.
+    const steps = [0.0, 0.14, -0.12, 0.24, -0.20, 0.07, -0.06, 0.18, -0.16];
+    final k = i % steps.length;
     final hsl = HSLColor.fromColor(base);
-    final l = (hsl.lightness + steps[i % steps.length]).clamp(
+    final l = (hsl.lightness + steps[k]).clamp(
       isDark ? 0.32 : 0.22,
       isDark ? 0.78 : 0.62,
     );
-    return hsl.withLightness(l).toColor();
+    // Lines part by the strength of the same ink (saturation and lightness)
+    // with only a small hue drift, so a metric's colour keeps its meaning: a
+    // temperature's amber never walks into green, a blue never into pink.
+    // The Brass Edition keeps the tightest drift, as period inks would.
+    final brassFamily = identical(this, dark) || identical(this, light);
+    final hues = brassFamily
+        ? const [0.0, 6.0, -6.0, 10.0, -10.0, 3.0, -3.0, 12.0, -12.0]
+        : const [0.0, 10.0, -10.0, 16.0, -16.0, 5.0, -5.0, 20.0, -20.0];
+    const inkStrength = [1.0, 0.8, 1.1, 0.6, 0.9, 0.5, 1.15, 0.72, 0.55];
+    final sat = (hsl.saturation * inkStrength[k]).clamp(0.0, 1.0);
+    return hsl
+        .withLightness(l)
+        .withSaturation(sat)
+        .withHue((hsl.hue + hues[k]) % 360)
+        .toColor();
   }
 
   /// Section accent kit by rail-section name.
-  SectionAccent kit(String section) => switch (section) {
-    'Services' => services,
-    'System' => system,
-    _ => control,
-  };
+  SectionAccent kit(String section) {
+    final hues = _sectionHues;
+    if (hues == null) {
+      return switch (section) {
+        'Services' => services,
+        'System' => system,
+        _ => control,
+      };
+    }
+    final hue = _hueFor(hues, section);
+    return _derived.putIfAbsent((identityHashCode(this), section),
+        () => SectionAccent.fromHue(hue, isDark));
+  }
 
   /// Flat accent colour for a rail section (the old AppTab.accent).
-  Color sectionAccent(String section) => switch (section) {
-    'Services' => copper,
-    'System' => indigo,
-    _ => bronze,
-  };
+  Color sectionAccent(String section) {
+    final hues = _sectionHues;
+    if (hues == null) {
+      return switch (section) {
+        'Services' => copper,
+        'System' => indigo,
+        _ => bronze,
+      };
+    }
+    return _hueFor(hues, section);
+  }
+
+  static Color _hueFor((Color, Color, Color) h, String section) =>
+      switch (section) {
+        'Services' => h.$2,
+        'System' => h.$3,
+        _ => h.$1,
+      };
+
+  static final _derived = <(int, String), SectionAccent>{};
+
+  /// Each family's Control / Services / System hues. The families used to
+  /// share Brass's garnet Services and navy System accents, so the sidebar
+  /// looked the same in every theme; now each family has its own three,
+  /// deepened for light mode. Null for the Brass family, which keeps its
+  /// authored accents.
+  (Color, Color, Color)? get _sectionHues {
+    (Color, Color, Color) deep((Color, Color, Color) h) => (
+      Color.lerp(h.$1, const Color(0xFF000000), 0.38)!,
+      Color.lerp(h.$2, const Color(0xFF000000), 0.32)!,
+      Color.lerp(h.$3, const Color(0xFF000000), 0.38)!,
+    );
+    const graphite = (Color(0xFF9FB4C8), Color(0xFFFF7A1A), Color(0xFFB8BEC6));
+    // Terminal's own phosphor tokens: green (seed), amber (ochre), cyan
+    // (slate).
+    const terminal = (Color(0xFF3BFF6B), Color(0xFFFFB000), Color(0xFF5AC8FA));
+    const nord = (Color(0xFF88C0D0), Color(0xFFD08770), Color(0xFF81A1C1));
+    const ember = (Color(0xFFFFB15C), Color(0xFFE24A4A), Color(0xFFD0884A));
+    // Obsidian is low-chroma steel: silver (giltBright), its warm copper and
+    // its steel blue (indigo).
+    const obsidian = (Color(0xFFD8DCE2), Color(0xFFB98A5A), Color(0xFF7FA8E0));
+    const aqua = (Color(0xFF0A84FF), Color(0xFFBF5AF2), Color(0xFF64D2FF));
+    const catppuccin = (Color(0xFFCBA6F7), Color(0xFFFAB387), Color(0xFF74C7EC));
+    if (identical(this, graphiteDark)) return graphite;
+    if (identical(this, graphiteLight)) return deep(graphite);
+    if (identical(this, terminalDark)) return terminal;
+    if (identical(this, terminalLight)) return deep(terminal);
+    if (identical(this, nordDark)) return nord;
+    if (identical(this, nordLight)) return deep(nord);
+    if (identical(this, emberDark)) return ember;
+    if (identical(this, emberLight)) return deep(ember);
+    if (identical(this, obsidianDark)) return obsidian;
+    if (identical(this, obsidianLight)) return deep(obsidian);
+    if (identical(this, aquaDark)) return aqua;
+    if (identical(this, aquaLight)) return deep(aqua);
+    if (identical(this, catppuccinDark)) return catppuccin;
+    if (identical(this, catppuccinLight)) return deep(catppuccin);
+    return null;
+  }
 }
 
 extension BrassContext on BuildContext {

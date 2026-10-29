@@ -418,11 +418,17 @@ class _Medallion extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Consumer(
-              builder: (context, ref, _) => FlipReadout(
-                text: value,
-                fontSize: 19,
-                epoch: ref.watch(sweepEpochProvider),
+            SizedBox(
+              width: 72,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Consumer(
+                  builder: (context, ref, _) => FlipReadout(
+                    text: value,
+                    fontSize: 19,
+                    epoch: ref.watch(sweepEpochProvider),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 5),

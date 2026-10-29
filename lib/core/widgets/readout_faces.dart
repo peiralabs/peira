@@ -8,6 +8,7 @@ class ReadoutLook {
     required this.face,
     required this.flap,
     this.gap = 0.08,
+    this.pad,
   });
 
   final Decoration window;
@@ -16,6 +17,10 @@ class ReadoutLook {
 
   /// Space between characters, as a fraction of the font size.
   final double gap;
+
+  /// Window padding; null gives the standard inset. Pill-shaped windows
+  /// need room at the ends for their rounded caps.
+  final EdgeInsets? pad;
 
   static ReadoutLook of(BuildContext context, double fs) {
     final b = context.brass;
@@ -94,8 +99,8 @@ class ReadoutLook {
           face: (c) => _SegmentFace(
             char: c,
             fs: fs,
-            on: const Color(0xFFFFB020),
-            ghost: const Color(0x0FFFB020),
+            on: const Color(0xFFD8DCE2),
+            ghost: const Color(0x0FD8DCE2),
             glow: true,
           ),
           flap: false,
@@ -133,46 +138,41 @@ class ReadoutLook {
           gap: 0.06,
         );
       case InstrumentKit.aqua:
-        // A glossy Aqua lozenge: a hard highlight split across the top half.
+        // The Aqua gel lozenge: blue jelly with a hard gloss across its top
+        // half, a deep-blue rim, white lettering. A lit object, the same in
+        // both modes.
         return ReadoutLook(
           window: BoxDecoration(
             borderRadius: BorderRadius.circular(fs),
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: dark
-                  ? const [
-                      Color(0xFF6A6A70),
-                      Color(0xFF48484C),
-                      Color(0xFF2E2E32),
-                      Color(0xFF404044),
-                    ]
-                  : const [
-                      Color(0xFFFFFFFF),
-                      Color(0xFFEFF4FA),
-                      Color(0xFFD9E5F2),
-                      Color(0xFFF5F9FD),
-                    ],
-              stops: const [0, 0.5, 0.5, 1],
+              colors: [
+                Color(0xFFB8DCFF),
+                Color(0xFF5AA6F5),
+                Color(0xFF1E6FDB),
+                Color(0xFF4FA3FF),
+              ],
+              stops: [0, 0.5, 0.5, 1],
             ),
-            border: Border.all(
-              color: dark ? const Color(0xFF7A7A80) : const Color(0xFF9DB3CC),
-            ),
+            border: Border.all(color: const Color(0xFF1553B0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: dark ? 0.4 : 0.15),
-                offset: const Offset(0, 1),
-                blurRadius: 2,
+                color: const Color(0xFF0A3A80).withValues(alpha: dark ? 0.6 : 0.35),
+                offset: const Offset(0, 1.5),
+                blurRadius: 3,
               ),
             ],
           ),
           face: (c) => _GlyphFace(
             char: c,
             fs: fs,
-            color: b.giltBright,
+            color: const Color(0xFFFFFFFF),
+            glow: const Color(0x991553B0),
           ),
           flap: false,
           gap: 0.0,
+          pad: EdgeInsets.symmetric(horizontal: fs * 0.55, vertical: fs * 0.06),
         );
       case InstrumentKit.catppuccin:
         return ReadoutLook(
@@ -189,6 +189,7 @@ class ReadoutLook {
           ),
           flap: false,
           gap: 0.0,
+          pad: EdgeInsets.symmetric(horizontal: fs * 0.5, vertical: fs * 0.08),
         );
     }
   }

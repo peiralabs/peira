@@ -264,7 +264,7 @@ class _GarnetUnderlinePainter extends BoxPainter {
         _glowLine(canvas, under, const Color(0xFFFFA24A), 2.5);
         return;
       case InstrumentKit.obsidian:
-        _glowLine(canvas, under, const Color(0xFFFFB020), 1.5);
+        _glowLine(canvas, under, const Color(0xFFD8DCE2), 1.5);
         return;
       case InstrumentKit.aqua:
         _pill(canvas, tab, brass.giltBright, gloss: true);
