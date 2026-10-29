@@ -4,7 +4,7 @@ import '../build_config.dart';
 import '../theme/app_theme.dart';
 
 /// Small shared brass ornaments used across the shell: gem diamonds, rivet
-/// studs, gilt rules, corner brackets, and the gilt wordmark.
+/// studs, gilt rules, 3D ledges, and the gilt wordmark.
 
 /// A rotated-square jewel accent (design: 6px diamond with a cabochon fill).
 class GemDiamond extends StatelessWidget {
@@ -142,47 +142,127 @@ class GiltRule extends StatelessWidget {
   }
 }
 
-/// Four gilt corner brackets laid over a panel (grand banner, About card).
-class CornerBrackets extends StatelessWidget {
-  const CornerBrackets({super.key, this.size = 16, this.inset = 9});
+/// A 3D ledge: a recessed well cut into a panel that an instrument sits
+/// installed in (grand banner astrolabe and medallions, the instruments
+/// tray, the About astrolabe). Lit from above, so the top wall falls into
+/// shadow and the lower wall and sill catch the light; every ink comes from
+/// the active family (its recess field and metal ramp).
+class BrassLedge extends StatelessWidget {
+  const BrassLedge({
+    super.key,
+    required this.child,
+    this.radius = 16,
+    this.padding = const EdgeInsets.all(10),
+    this.depth = 6,
+  });
 
-  final double size;
-  final double inset;
+  final Widget child;
+
+  /// Corner radius; [double.infinity] gives a circle or a pill.
+  final double radius;
+  final EdgeInsetsGeometry padding;
+
+  /// How far the well appears to sink (inner-shadow reach, in px).
+  final double depth;
 
   @override
   Widget build(BuildContext context) {
-    final c = _Palette.of(context).bracket;
-    Widget corner({bool top = false, bool left = false}) => Positioned(
-      top: top ? inset : null,
-      bottom: top ? null : inset,
-      left: left ? inset : null,
-      right: left ? null : inset,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          border: Border(
-            top: top ? BorderSide(color: c, width: 1.5) : BorderSide.none,
-            bottom: top ? BorderSide.none : BorderSide(color: c, width: 1.5),
-            left: left ? BorderSide(color: c, width: 1.5) : BorderSide.none,
-            right: left ? BorderSide.none : BorderSide(color: c, width: 1.5),
-          ),
-        ),
-      ),
-    );
-    return Positioned.fill(
-      child: IgnorePointer(
-        child: Stack(
-          children: [
-            corner(top: true, left: true),
-            corner(top: true),
-            corner(left: true),
-            corner(),
-          ],
-        ),
-      ),
+    return CustomPaint(
+      painter: _LedgePainter(context.brass, radius, depth),
+      child: Padding(padding: padding, child: child),
     );
   }
+}
+
+class _LedgePainter extends CustomPainter {
+  _LedgePainter(this.brass, this.radius, this.depth);
+
+  final Brass brass;
+  final double radius;
+  final double depth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final b = brass;
+    final rect = Offset.zero & size;
+    final r = Radius.circular(radius.clamp(0, size.shortestSide / 2));
+    final well = RRect.fromRectAndRadius(rect, r);
+    // Shadow ink: black in the dark, warm umber on parchment.
+    final ink = b.isDark ? const Color(0xFF000000) : const Color(0xFF46381F);
+    Shader vertical(List<Color> c, [List<double>? s]) => LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: c,
+      stops: s,
+    ).createShader(rect);
+    // Light comes from above and a little to the left (as on the astrolabe),
+    // so the lip's shadow falls down and slightly right.
+    Path lip(Offset shift) => Path()
+      ..fillType = PathFillType.evenOdd
+      ..addRect(rect.inflate(depth * 6))
+      ..addRRect(well.shift(shift));
+
+    // Floor: the family's recess field, opening up a touch toward the light
+    // that reaches the bottom of the well.
+    canvas.drawRRect(
+      well,
+      Paint()
+        ..shader = vertical([
+          b.recess,
+          Color.lerp(b.recess, b.panelBottom, b.isDark ? 0.4 : 0.3)!,
+        ]),
+    );
+
+    canvas.save();
+    canvas.clipRRect(well);
+    // Broad, soft shadow thrown by the top lip deep into the well.
+    canvas.drawPath(
+      lip(Offset(depth * 0.15, depth * 0.7)),
+      Paint()
+        ..color = ink.withValues(alpha: b.isDark ? 0.55 : 0.28)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, depth * 1.3),
+    );
+    // Tight contact shadow right under the edge (ambient occlusion).
+    canvas.drawPath(
+      lip(const Offset(0, 1)),
+      Paint()
+        ..color = ink.withValues(alpha: b.isDark ? 0.6 : 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.6),
+    );
+    // The lower wall turned toward the light: a faint warm bounce.
+    canvas.drawRRect(
+      well.deflate(0.75),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..shader = vertical([
+          Colors.transparent,
+          Colors.transparent,
+          b.giltBright.withValues(alpha: b.isDark ? 0.16 : 0.3),
+        ], const [0, 0.55, 1]),
+    );
+    canvas.restore();
+
+    // The cut edge: a fine chamfer, shadowed along the top where it faces
+    // away from the light and catching it along the bottom.
+    canvas.drawRRect(
+      well.inflate(0.5),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..shader = vertical([
+          ink.withValues(alpha: b.isDark ? 0.5 : 0.22),
+          b.giltDeep.withValues(alpha: 0.18),
+          b.giltBright.withValues(alpha: b.isDark ? 0.35 : 0.5),
+        ], const [0, 0.5, 1]),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_LedgePainter old) =>
+      !identical(old.brass, brass) ||
+      old.radius != radius ||
+      old.depth != depth;
 }
 
 /// The gilt-filled engraved wordmark ([kWordmark]: PEIRA or HOMELAB).
@@ -328,7 +408,6 @@ class BrassSectionHeader extends StatelessWidget {
 class _Palette {
   const _Palette({
     required this.studShadow,
-    required this.bracket,
     required this.wordmarkShadow,
     required this.dividerGilt,
     required this.dividerGiltFlare,
@@ -340,7 +419,6 @@ class _Palette {
   });
 
   final Color studShadow;
-  final Color bracket;
   final Color wordmarkShadow;
   final Color dividerGilt;
   final Color dividerGiltFlare;
@@ -350,7 +428,7 @@ class _Palette {
   final Color dividerBlueFlare;
   final Color headerTextShadow;
 
-  /// Derived from the active family: gilt rules/brackets from the theme's
+  /// Derived from the active family: gilt rules from the theme's
   /// metal (giltDeep/giltBright), the section dividers from the Control/
   /// Services/System accents (gilt / copper / slate). Shadows stay
   /// brightness-keyed — a shadow carries no theme identity.
@@ -359,7 +437,6 @@ class _Palette {
     return _Palette(
       studShadow:
           b.isDark ? const Color(0x80000000) : const Color(0x33352511),
-      bracket: b.giltBright.withValues(alpha: 0.7),
       wordmarkShadow:
           b.isDark ? const Color(0x59000000) : const Color(0x66FFFBEE),
       dividerGilt: b.giltDeep,

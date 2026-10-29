@@ -9,6 +9,7 @@ import '../../core/api/pbs_api.dart';
 import '../../core/providers/pbs_jobs.dart';
 import '../../core/providers/pbs_providers.dart';
 import '../../core/providers/proxmox_providers.dart';
+import '../../core/widgets/mechanical.dart';
 import 'pbs_elevate_dialog.dart';
 
 typedef PbsJobEditResult = ({
@@ -599,7 +600,7 @@ Future<void> _verifyDatastore(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SwitchListTile(
+            BrassSwitchTile(
               title: const Text('Ignore already verified'),
               value: ignore,
               onChanged: (v) => setState(() => ignore = v),
@@ -786,19 +787,19 @@ Future<void> _editJob(
                     controller: e.value,
                     decoration: InputDecoration(labelText: e.key),
                   ),
-                SwitchListTile(
+                BrassSwitchTile(
                   title: const Text('Disabled'),
                   value: disable,
                   onChanged: (v) => setState(() => disable = v),
                 ),
                 if (job.kind == 'verify')
-                  SwitchListTile(
+                  BrassSwitchTile(
                     title: const Text('Ignore verified'),
                     value: ignore,
                     onChanged: (v) => setState(() => ignore = v),
                   ),
                 if (job.kind == 'sync')
-                  SwitchListTile(
+                  BrassSwitchTile(
                     title: const Text('Remove vanished'),
                     value: remove,
                     onChanged: (v) => setState(() => remove = v),
@@ -922,13 +923,13 @@ Future<void> _restore(
                   ],
                   onChanged: (v) => storage = v ?? '',
                 ),
-                SwitchListTile(
+                BrassSwitchTile(
                   title: const Text('Start after restore'),
                   value: start,
                   onChanged: (v) => setState(() => start = v),
                 ),
                 if (snap.type == 'vm')
-                  SwitchListTile(
+                  BrassSwitchTile(
                     title: const Text('Regenerate MAC addresses'),
                     value: unique,
                     onChanged: (v) => setState(() => unique = v),

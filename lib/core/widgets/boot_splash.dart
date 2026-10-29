@@ -140,7 +140,7 @@ class _SplashBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final palette = brass.isDark ? _Palette.dark : _Palette.light;
+    final palette = _Palette.forBrass(brass);
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: RadialGradient(
@@ -211,7 +211,7 @@ class _ShimmerBarState extends State<_ShimmerBar>
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.brass.isDark ? _Palette.dark : _Palette.light;
+    final palette = _Palette.forBrass(context.brass);
     return SizedBox(
       width: 210,
       height: 3,
@@ -269,4 +269,21 @@ class _Palette {
     shimmerTrack: Color(0x338A6A2A),
     shimmerSweep: [Color(0x008A6A2A), Color(0xFF8A6A2A), Color(0x008A6A2A)],
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Palette>{};
+  static _Palette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Palette(
+        backdropCenter: themeColor(base.backdropCenter, b),
+        backdropEdge: themeColor(base.backdropEdge, b),
+        shimmerTrack: themeColor(base.shimmerTrack, b),
+        shimmerSweep: [for (final c in base.shimmerSweep) themeColor(c, b)],
+      ),
+    );
+  }
 }

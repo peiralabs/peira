@@ -9,7 +9,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_icon_badge.dart';
 import '../../core/widgets/brass_ornament.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/screen_header.dart';
+import '../../core/widgets/status_light.dart';
 
 /// Native Tailscale view in the Brass Edition language (design §8): navy
 /// screen header with the backend-state enamel pill, blue divider, a navy
@@ -54,7 +56,7 @@ class TailscaleScreen extends ConsumerWidget {
               ScreenHeader(
                 icon: Ph.shieldCheck,
                 badgeField: BrassIconBadge.navyField,
-                iconColor: const Color(0xFFDCE8F8),
+                iconColor: themeColor(const Color(0xFFDCE8F8), context.brass),
                 title: 'Tailscale',
                 subtitle: 'TAILNET MESH · $deviceCount DEVICE'
                     '${deviceCount == 1 ? '' : 'S'}',
@@ -122,11 +124,11 @@ class _StatePill extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: running
-              ? const [Color(0xCC2E4A30), Color(0xCC182B1A)]
-              : const [Color(0xCC4A2B28), Color(0xCC2B1715)],
+              ? [themeColor(const Color(0xCC2E4A30), context.brass), themeColor(const Color(0xCC182B1A), context.brass)]
+              : [themeColor(const Color(0xCC4A2B28), context.brass), themeColor(const Color(0xCC2B1715), context.brass)],
         ),
         border: Border.all(
-          color: running ? const Color(0x8C7BB26A) : const Color(0x8CC8564A),
+          color: running ? themeColor(const Color(0x8C7BB26A), context.brass) : themeColor(const Color(0x8CC8564A), context.brass),
         ),
       ),
       child: Row(
@@ -147,8 +149,8 @@ class _StatePill extends StatelessWidget {
             style: TextStyle(
               fontSize: 12.5,
               color: running
-                  ? const Color(0xFFC8E6BA)
-                  : const Color(0xFFE6BAB4),
+                  ? themeColor(const Color(0xFFC8E6BA), context.brass)
+                  : themeColor(const Color(0xFFE6BAB4), context.brass),
             ),
           ),
         ],
@@ -175,8 +177,8 @@ class _DeviceRowState extends State<_DeviceRow> {
   /// OS cabochon: linux = emerald, iOS/android = sapphire, offline = muted.
   Jewel get _jewel {
     if (!widget.isSelf && !widget.device.online) {
-      return const Jewel(
-          Color(0xFF9BA6B8), Color(0xFF5A6578), Color(0xFF2A3140));
+      return Jewel(
+          themeColor(const Color(0xFF9BA6B8), context.brass), themeColor(const Color(0xFF5A6578), context.brass), themeColor(const Color(0xFF2A3140), context.brass));
     }
     final os = widget.device.os.toLowerCase();
     if (os.contains('ios') || os.contains('android')) {
@@ -237,16 +239,15 @@ class _DeviceRowState extends State<_DeviceRow> {
             ),
             boxShadow: brass.cardShadow,
           ),
+          // A rack-mount plate: fastened at both ends, with its pilot lamp.
           child: Row(
             children: [
-              Container(
-                width: isSelf ? 10 : 9,
-                height: isSelf ? 10 : 9,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: jewel.cabochon,
-                  boxShadow: online ? brass.jewelHalo(jewel) : null,
-                ),
+              const ScrewHead(angle: 0.7),
+              const SizedBox(width: 12),
+              StatusLight(
+                health: online ? Health.ok : Health.offline,
+                size: isSelf ? 10 : 9,
+                color: jewel.mid,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -289,6 +290,8 @@ class _DeviceRowState extends State<_DeviceRow> {
                   color: palette.copyStud,
                   onPressed: () => _copyIp(context),
                 ),
+              const SizedBox(width: 8),
+              const ScrewHead(angle: -0.4),
             ],
           ),
         ),
@@ -363,6 +366,29 @@ class _Palette {
     copyStud: Color(0xFF3A5E92),
   );
 
-  static _Palette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _Palette of(BuildContext context) => forBrass(Brass.of(context));
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Palette>{};
+  static _Palette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Palette(
+        subtitle: themeColor(base.subtitle, b),
+        sectionLabel: themeColor(base.sectionLabel, b),
+        selfCardTop: themeColor(base.selfCardTop, b),
+        selfCardBottom: themeColor(base.selfCardBottom, b),
+        peerCardTop: themeColor(base.peerCardTop, b),
+        peerCardBottom: themeColor(base.peerCardBottom, b),
+        cardBorderHover: themeColor(base.cardBorderHover, b),
+        cardBorderRest: themeColor(base.cardBorderRest, b),
+        hostname: themeColor(base.hostname, b),
+        meta: themeColor(base.meta, b),
+        copyStud: themeColor(base.copyStud, b),
+      ),
+    );
+  }
 }

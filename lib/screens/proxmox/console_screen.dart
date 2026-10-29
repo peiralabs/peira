@@ -7,7 +7,7 @@ import '../../core/console/proxmox_term_socket.dart';
 import '../../core/providers/proxmox_providers.dart';
 import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
-import '../terminal/terminal_screen.dart' show molTerminalTheme;
+import '../terminal/terminal_screen.dart' show terminalThemeFor;
 
 /// Live guest serial console: a native `xterm` terminal wired to Proxmox's
 /// `vncwebsocket` PTY stream via [ProxmoxTermSocket]. Opened from the CT detail
@@ -146,12 +146,12 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
                   // the terminal viewport; only the drop shadow re-inks.
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Color(0xF0090E15), Color(0xF7060A0F)],
+                      colors: [themeColor(const Color(0xF0090E15), context.brass), themeColor(const Color(0xF7060A0F), context.brass)],
                     ),
-                    border: Border.all(color: const Color(0x578CAFE0)),
+                    border: Border.all(color: themeColor(const Color(0x578CAFE0), context.brass)),
                     boxShadow: context.brass.cardShadow,
                   ),
                   clipBehavior: Clip.antiAlias,
@@ -160,7 +160,7 @@ class _ConsoleScreenState extends ConsumerState<ConsoleScreen> {
                     // Grab the keyboard on open; without this the console
                     // connects but keystrokes never reach the socket.
                     autofocus: true,
-                    theme: molTerminalTheme,
+                    theme: terminalThemeFor(context),
                     textStyle: const TerminalStyle(
                       fontFamily: 'JetBrains Mono',
                     ),

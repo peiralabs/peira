@@ -11,6 +11,8 @@ import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/flip_readout.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/screen_header.dart';
 import '../../core/widgets/status_light.dart';
@@ -480,7 +482,7 @@ class _MetricPanel extends StatelessWidget {
                       style: TextStyle(color: brass.textMuted),
                     ),
                   )
-                : LineChart(
+                : ScopeFrame(child: LineChart(
                     LineChartData(
                       minY: 0,
                       maxY: yMax,
@@ -590,7 +592,7 @@ class _MetricPanel extends StatelessWidget {
                       ],
                     ),
                     duration: Duration.zero,
-                  ),
+                  )),
           ),
           const SizedBox(height: MolSpace.sm),
           Wrap(
@@ -1119,20 +1121,13 @@ class _StatReadout extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Flexible(
-                child: Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: context.displayFont,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 30,
-                    height: 1,
-                    color: brass.textHeading,
-                  ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: FlipReadout(text: value, fontSize: 22),
                 ),
               ),
               if (unit.isNotEmpty) ...[
@@ -2005,6 +2000,40 @@ class _MetricsPalette {
   );
 
   /// The pair for the ambient brightness (Theme dependency, like [Brass.of]).
-  static _MetricsPalette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _MetricsPalette of(BuildContext context) => forBrass(Brass.of(context));
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _MetricsPalette>{};
+  static _MetricsPalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _MetricsPalette(
+        accentCpu: themeColor(base.accentCpu, b),
+        accentMemory: themeColor(base.accentMemory, b),
+        accentNetwork: themeColor(base.accentNetwork, b),
+        accentDisk: themeColor(base.accentDisk, b),
+        accentTemp: themeColor(base.accentTemp, b),
+        accentAiTokens: themeColor(base.accentAiTokens, b),
+        accentAiLatency: themeColor(base.accentAiLatency, b),
+        accentTwin: themeColor(base.accentTwin, b),
+        accentPower: themeColor(base.accentPower, b),
+        accentCost: themeColor(base.accentCost, b),
+        chipSelectedBg: themeColor(base.chipSelectedBg, b),
+        chipSelectedBorder: themeColor(base.chipSelectedBorder, b),
+        chipSelectedText: themeColor(base.chipSelectedText, b),
+        chipIdleText: themeColor(base.chipIdleText, b),
+        unitText: themeColor(base.unitText, b),
+        tooltipBg: themeColor(base.tooltipBg, b),
+        tooltipText: themeColor(base.tooltipText, b),
+        healthStrip: themeColor(base.healthStrip, b),
+        guestPct: themeColor(base.guestPct, b),
+        guestName: themeColor(base.guestName, b),
+        guestRamBarStart: themeColor(base.guestRamBarStart, b),
+        guestRamBarEnd: themeColor(base.guestRamBarEnd, b),
+      ),
+    );
+  }
 }

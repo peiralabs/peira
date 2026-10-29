@@ -182,7 +182,7 @@ class _AttentionChip extends StatelessWidget {
     // rose band, leaving bare ink on the wash.
     final fill = !brass.isDark && item.health == Health.offline
         ? Color.alphaBlend(
-            color.withValues(alpha: 0.10), const Color(0xFFF4EEE2))
+            color.withValues(alpha: 0.10), themeColor(const Color(0xFFF4EEE2), context.brass))
         : color.withValues(alpha: 0.10);
     return Material(
       color: fill,
@@ -267,7 +267,7 @@ class _Palette {
     divider: Color(0x8C9E362C),
   );
 
-  static _Palette of(Brass brass) => brass.isDark ? dark : light;
+  static _Palette of(Brass brass) => forBrass(brass);
 
   final Color clearTop;
   final Color clearBottom;
@@ -279,4 +279,27 @@ class _Palette {
   final Color bannerShadow;
   final Color label;
   final Color divider;
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Palette>{};
+  static _Palette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Palette(
+        clearTop: themeColor(base.clearTop, b),
+        clearBottom: themeColor(base.clearBottom, b),
+        clearBorder: themeColor(base.clearBorder, b),
+        clearText: themeColor(base.clearText, b),
+        bannerLeft: themeColor(base.bannerLeft, b),
+        bannerRight: themeColor(base.bannerRight, b),
+        bannerBorder: themeColor(base.bannerBorder, b),
+        bannerShadow: themeColor(base.bannerShadow, b),
+        label: themeColor(base.label, b),
+        divider: themeColor(base.divider, b),
+      ),
+    );
+  }
 }

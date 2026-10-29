@@ -91,7 +91,7 @@ class CommandPalette extends ConsumerStatefulWidget {
       barrierColor: context.brass.isDark
           ? Colors.black.withValues(alpha: 0.45)
           // Eased 0x59→0x42: the heavier umber wash greyed the parchment.
-          : const Color(0x424A3A1C),
+          : themeColor(const Color(0x424A3A1C), context.brass),
       barrierLabel: 'Command palette',
       builder: (_) =>
           CommandPalette(destinations: destinations, onGuide: onGuide),

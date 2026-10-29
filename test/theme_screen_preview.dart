@@ -6,6 +6,8 @@
 // $THEME_PREVIEW_DIR/screen-<id>.png (dark) or screen-<id>-light.png (default /tmp).
 // For README shots of one tab: PREVIEW_TAB=<AppTab name, e.g. homeAssistant>,
 // optional PREVIEW_SUB=<hub strip index>, and PREVIEW_OUT=<file name>.
+// PREVIEW_H=<logical height> renders a taller window (default 900);
+// PREVIEW_ABOUT=1 opens the About overlay before the capture.
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -17,6 +19,7 @@ import 'package:peira/core/demo/demo.dart';
 import 'package:peira/core/navigation/app_tab.dart';
 import 'package:peira/core/providers/navigation_providers.dart';
 import 'package:peira/core/theme/app_theme.dart';
+import 'package:peira/core/widgets/about_overlay.dart';
 import 'package:peira/screens/app_shell.dart';
 
 import 'support/render_fonts.dart';
@@ -28,12 +31,14 @@ void main() {
   final tabName = Platform.environment['PREVIEW_TAB'];
   final sub = int.tryParse(Platform.environment['PREVIEW_SUB'] ?? '');
   final outName = Platform.environment['PREVIEW_OUT'];
+  final height = double.tryParse(Platform.environment['PREVIEW_H'] ?? '') ?? 900;
+  final about = Platform.environment['PREVIEW_ABOUT'] == '1';
   final pack = ThemePack.byId(id);
 
   setUpAll(loadRealFonts);
 
   testWidgets('render screen $id', (tester) async {
-    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.physicalSize = Size(1440, height);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
@@ -66,6 +71,12 @@ void main() {
       container.read(selectedTabProvider.notifier).select(tab.railIndex);
       if (sub != null) container.read(hubSubTabProvider(tab).notifier).select(sub);
       for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+    }
+    if (about) {
+      showAboutHomeLab(tester.element(find.byType(AppShell)));
+      for (var i = 0; i < 8; i++) {
         await tester.pump(const Duration(milliseconds: 120));
       }
     }

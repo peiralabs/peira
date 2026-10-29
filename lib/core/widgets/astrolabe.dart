@@ -78,7 +78,7 @@ class _AstrolabeState extends State<Astrolabe> with TickerProviderStateMixin {
     // Resolved per build so a System/Light/Dark flip or a theme-family switch
     // re-records the cache.
     final brass = context.brass;
-    final shadows = brass.isDark ? _Shadows.dark : _Shadows.light;
+    final shadows = _Shadows.forBrass(brass);
     return SizedBox(
       width: widget.size,
       height: widget.size,
@@ -123,6 +123,21 @@ class _Shadows {
     drop: Color(0x40352511),
     hub: Color(0x33352511),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Shadows>{};
+  static _Shadows forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Shadows(
+        drop: themeColor(base.drop, b),
+        hub: themeColor(base.hub, b),
+      ),
+    );
+  }
 }
 
 /// Lazily recorded static layers, keyed by detail + shadow palette (the

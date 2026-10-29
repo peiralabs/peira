@@ -13,6 +13,7 @@ import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/providers/tailscale_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
 import 'package:peira/core/widgets/ai_status_strip.dart';
+import 'package:peira/core/widgets/mechanical.dart';
 import 'package:peira/screens/setup/setup_probe.dart';
 import 'package:peira/screens/setup/setup_wizard_screen.dart';
 
@@ -155,7 +156,7 @@ void main() {
     expect(find.byType(SetupWizardScreen), findsOneWidget);
     // The self-signed trust default must survive (flipping it breaks the
     // default homelab path).
-    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    expect(tester.widget<BrassToggle>(find.byType(BrassToggle)).value, isTrue);
 
     await fill(tester);
     await tester.tap(find.text('Test connection'));

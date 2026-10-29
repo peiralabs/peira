@@ -377,7 +377,7 @@ class _BrassKnobState extends State<_BrassKnob> {
               child: Icon(
                 widget.collapsed ? PhBold.caretRight : PhBold.caretLeft,
                 size: 13,
-                color: const Color(0xFF4A3512),
+                color: themeColor(const Color(0xFF4A3512), context.brass),
               ),
             ),
           ),

@@ -7,6 +7,8 @@ import '../../core/providers/pbs_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
+import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/screen_header.dart';
 import '../pdm/pdm_format.dart';
 import 'pbs_actions.dart';
@@ -107,7 +109,11 @@ class _DatastoreCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
-          LinearProgressIndicator(value: fraction.clamp(0, 1), minHeight: 8),
+          RecessedBar(
+            fraction: fraction.clamp(0, 1).toDouble(),
+            gradient: brass.loadGradient(fraction.clamp(0, 1).toDouble()),
+            height: 12,
+          ),
           const SizedBox(height: 8),
           Text(
             store.estimatedFullDate == null
@@ -153,7 +159,7 @@ class _Sparkline extends StatelessWidget {
       if (value is num) spots.add(FlSpot(i.toDouble(), value.toDouble()));
     }
     if (spots.length < 2) return const SizedBox.shrink();
-    return LineChart(
+    return ScopeFrame(child: LineChart(
       LineChartData(
         minX: spots.first.x,
         maxX: spots.last.x,
@@ -170,7 +176,7 @@ class _Sparkline extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

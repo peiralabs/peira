@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'mechanical.dart';
 
 /// The Brass Edition card/panel surface (design §Design Tokens "Greens"):
 /// green-field gradient, gilt hairline border, `0 3px 0` contact shadow with
@@ -18,6 +19,7 @@ class BrassPanel extends StatefulWidget {
     this.onTap,
     this.fill,
     this.borderColor,
+    this.screws,
   });
 
   final Widget child;
@@ -42,6 +44,10 @@ class BrassPanel extends StatefulWidget {
 
   /// Optional resting border override to match [fill].
   final Color? borderColor;
+
+  /// Screw the plate down at its corners. Defaults to on for the instrument
+  /// plates (banner and top-ruled panels), off for plain panels.
+  final bool? screws;
 
   @override
   State<BrassPanel> createState() => _BrassPanelState();
@@ -139,6 +145,16 @@ class _BrassPanelState extends State<BrassPanel> {
                 ),
               ),
             Padding(padding: widget.padding, child: widget.child),
+            if (widget.screws ?? (widget.banner || widget.topRule)) ...const [
+              // No two slots are ever driven to the same angle.
+              Positioned(left: 6, top: 6, child: ScrewHead(angle: 0.5)),
+              Positioned(
+                  right: 6, top: 6, child: ScrewHead(angle: -0.9)),
+              Positioned(
+                  left: 6, bottom: 6, child: ScrewHead(angle: 1.3)),
+              Positioned(
+                  right: 6, bottom: 6, child: ScrewHead(angle: 0.1)),
+            ],
           ],
         ),
       ),

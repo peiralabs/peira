@@ -12,6 +12,7 @@ import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/service_frame.dart';
 
 /// Native Open WebUI over its API key: chat with any of its models (web
@@ -861,7 +862,7 @@ class _WorkspaceViewState extends ConsumerState<_WorkspaceView> {
                   '${(x['meta'] as Map?)?['description'] ?? x['command'] ?? ''}',
                 ),
                 trailing: title == 'Functions'
-                    ? Switch(
+                    ? BrassToggle(
                         value: x['is_active'] == true,
                         onChanged: (_) async {
                           await _act(

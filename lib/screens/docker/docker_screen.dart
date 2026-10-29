@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/flip_readout.dart';
 import '../../core/widgets/screen_header.dart';
 
 /// Standalone native Docker Engine control screen.
@@ -437,7 +438,7 @@ class _StatChip extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: Theme.of(context).textTheme.titleMedium),
+        FlipReadout(text: value, fontSize: 15),
         Text(label, style: TextStyle(color: brass.smallCaps, fontSize: 11)),
       ],
     );

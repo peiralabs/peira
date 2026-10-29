@@ -8,16 +8,17 @@ import '../theme/phosphor.dart';
 import '../update/update_check.dart';
 import 'astrolabe.dart';
 import 'brass_ornament.dart';
+import 'raised_dial.dart';
 
 /// The About overlay (design §Overlays): dimmed backdrop (click to dismiss),
-/// gilded card with corner brackets, full astrolabe, wordmark, and the
+/// gilded card, the full astrolabe installed in a ledge, wordmark, and the
 /// engraved plate line.
 Future<void> showAboutHomeLab(BuildContext context) {
   // The guide opens from the caller's context once the sheet has closed.
   final host = context;
   // The barrier is a route property, fixed at show time; the card itself
   // re-resolves in pageBuilder on theme flips.
-  final barrier = context.brass.isDark ? _Palette.dark : _Palette.light;
+  final barrier = _Palette.forBrass(context.brass);
   return showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -25,7 +26,7 @@ Future<void> showAboutHomeLab(BuildContext context) {
     barrierColor: barrier.barrier,
     pageBuilder: (context, _, _) {
       final brass = context.brass;
-      final palette = brass.isDark ? _Palette.dark : _Palette.light;
+      final palette = _Palette.forBrass(brass);
       return Center(
         child: Material(
           color: Colors.transparent,
@@ -50,7 +51,6 @@ Future<void> showAboutHomeLab(BuildContext context) {
             ),
             child: Stack(
               children: [
-                const CornerBrackets(size: 15),
                 // Inside the Stack bounds — RenderStack rejects hit tests
                 // outside its rect even with Clip.none, so the stud lives at
                 // the card corner (where the design puts it anyway).
@@ -69,7 +69,15 @@ Future<void> showAboutHomeLab(BuildContext context) {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Astrolabe(size: 168),
+                      const BrassLedge(
+                        radius: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        depth: 8,
+                        child: RaisedDial(
+                          diameter: 150,
+                          child: Astrolabe(size: 150),
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       const GiltWordmark(fontSize: 26, letterSpacingEm: 0.16),
                       const SizedBox(height: 8),
@@ -198,4 +206,25 @@ class _Palette {
     tagline: Color(0xFF6E5A28),
     version: Color(0xFF6B675C),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Palette>{};
+  static _Palette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Palette(
+        barrier: themeColor(base.barrier, b),
+        cardTop: themeColor(base.cardTop, b),
+        cardBottom: themeColor(base.cardBottom, b),
+        border: themeColor(base.border, b),
+        shadow: themeColor(base.shadow, b),
+        subtitle: themeColor(base.subtitle, b),
+        tagline: themeColor(base.tagline, b),
+        version: themeColor(base.version, b),
+      ),
+    );
+  }
 }

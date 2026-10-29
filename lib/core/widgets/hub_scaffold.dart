@@ -74,7 +74,7 @@ class _HubScaffoldState extends ConsumerState<HubScaffold>
       }
     });
 
-    final strip = context.brass.isDark ? _Strip.dark : _Strip.light;
+    final strip = _Strip.forBrass(context.brass);
     return Column(
       children: [
         Material(
@@ -102,7 +102,8 @@ class _HubScaffoldState extends ConsumerState<HubScaffold>
               ),
               overlayColor: WidgetStatePropertyAll(strip.overlay),
               indicatorSize: TabBarIndicatorSize.tab,
-              indicator: _GarnetUnderlineIndicator(strip),
+              indicator: _GarnetUnderlineIndicator(strip, context.kit,
+                  context.brass),
               onTap: (i) => ref
                   .read(hubSubTabProvider(widget.hub).notifier)
                   .select(i),
@@ -169,29 +170,111 @@ class _Strip {
     indicatorStart: Color(0xFF9E4438),
     indicatorEnd: Color(0xFF6E2018),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Strip>{};
+  static _Strip forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Strip(
+        top: themeColor(base.top, b),
+        bottom: themeColor(base.bottom, b),
+        hairline: themeColor(base.hairline, b),
+        selected: themeColor(base.selected, b),
+        idle: themeColor(base.idle, b),
+        overlay: themeColor(base.overlay, b),
+        indicatorStart: themeColor(base.indicatorStart, b),
+        indicatorEnd: themeColor(base.indicatorEnd, b),
+      ),
+    );
+  }
 }
 
 /// The 2.5px red underline for the active sub-tab
 /// (gradient `#f0b0a0 → #c05a4e`, design §7).
+/// The selected sub-tab's mark, in the family's idiom: Brass's gradient
+/// underline, Graphite's square orange bar, a glowing line on the screen
+/// families (Terminal green, Nord cyan, Ember amber, Obsidian thin amber),
+/// and a pill behind the tab on Aqua (glossy) and Catppuccin (soft).
 class _GarnetUnderlineIndicator extends Decoration {
-  const _GarnetUnderlineIndicator(this.strip);
+  const _GarnetUnderlineIndicator(this.strip, this.kit, this.brass);
 
   final _Strip strip;
+  final InstrumentKit kit;
+  final Brass brass;
 
   @override
   BoxPainter createBoxPainter([VoidCallback? onChanged]) =>
-      _GarnetUnderlinePainter(strip);
+      _GarnetUnderlinePainter(strip, kit, brass);
 }
 
 class _GarnetUnderlinePainter extends BoxPainter {
-  _GarnetUnderlinePainter(this.strip);
+  _GarnetUnderlinePainter(this.strip, this.kit, this.brass);
 
   final _Strip strip;
+  final InstrumentKit kit;
+  final Brass brass;
+
+  void _glowLine(Canvas canvas, Rect rect, Color c, double h) {
+    final line = Rect.fromLTWH(rect.left, rect.bottom - h, rect.width, h);
+    canvas.drawRect(line.inflate(1),
+        Paint()
+          ..color = c.withValues(alpha: 0.6)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
+    canvas.drawRect(line, Paint()..color = c);
+  }
+
+  void _pill(Canvas canvas, Rect tab, Color c, {required bool gloss}) {
+    final r = RRect.fromRectAndRadius(tab.deflate(5), const Radius.circular(12));
+    canvas.drawRRect(r, Paint()..color = c.withValues(alpha: gloss ? 0.28 : 0.18));
+    if (gloss) {
+      final top = Rect.fromLTWH(r.left + 3, r.top + 2, r.width - 6, r.height * 0.42);
+      canvas.drawRRect(RRect.fromRectAndRadius(top, const Radius.circular(9)),
+          Paint()..color = Colors.white.withValues(alpha: 0.22));
+    }
+    canvas.drawRRect(r,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = c.withValues(alpha: 0.55));
+  }
 
   @override
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
     final size = configuration.size;
     if (size == null) return;
+    final tab = offset & size;
+    final under = Rect.fromLTWH(tab.left + 8, tab.top, size.width - 16, size.height);
+    switch (kit) {
+      case InstrumentKit.graphite:
+        canvas.drawRect(
+            Rect.fromLTWH(under.left, under.bottom - 3, under.width, 3),
+            Paint()..color = const Color(0xFFFF6A00));
+        return;
+      case InstrumentKit.terminal:
+        _glowLine(canvas, under, const Color(0xFF39FF6A), 3);
+        return;
+      case InstrumentKit.nord:
+        _glowLine(canvas, under, const Color(0xFF8FD3E6), 2);
+        return;
+      case InstrumentKit.ember:
+        _glowLine(canvas, under, const Color(0xFFFFA24A), 2.5);
+        return;
+      case InstrumentKit.obsidian:
+        _glowLine(canvas, under, const Color(0xFFFFB020), 1.5);
+        return;
+      case InstrumentKit.aqua:
+        _pill(canvas, tab, brass.giltBright, gloss: true);
+        return;
+      case InstrumentKit.catppuccin:
+        _pill(canvas, tab, brass.giltBright, gloss: false);
+        return;
+      case InstrumentKit.brass:
+        break;
+    }
     final rect = Rect.fromLTWH(
       offset.dx + 8,
       offset.dy + size.height - 2.5,

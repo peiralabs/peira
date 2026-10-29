@@ -10,6 +10,7 @@ import '../../core/providers/proxmox_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brass_panel.dart';
 import '../../core/widgets/chart_card.dart';
+import '../../core/widgets/mechanical.dart';
 import 'console_screen.dart';
 import 'proxmox_common.dart';
 import 'proxmox_screen.dart' show selectedGuestProvider;
@@ -278,7 +279,7 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
                 ),
               ),
               if (_isVm)
-                SwitchListTile(
+                BrassSwitchTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Include RAM'),
                   subtitle: const Text('Save running memory state'),
@@ -407,7 +408,7 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
                   labelText: _isVm ? 'Name (optional)' : 'Hostname (optional)',
                 ),
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Full clone'),
                 subtitle: const Text('Independent copy of all disks'),
@@ -508,7 +509,7 @@ class _GuestDetailScreenState extends ConsumerState<GuestDetailScreen> {
                 decoration: InputDecoration(hintText: '$_vmid'),
                 onChanged: (_) => setLocal(() {}),
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Purge from backup/HA jobs'),
                 value: purge,

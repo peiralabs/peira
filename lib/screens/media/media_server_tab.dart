@@ -173,6 +173,7 @@ class _RecentTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: BrassPanel(
         padding: EdgeInsets.zero,
+        screws: true,
         child: ListTile(
           dense: true,
           title: Text(item.title, overflow: TextOverflow.ellipsis),

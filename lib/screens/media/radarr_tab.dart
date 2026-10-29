@@ -151,6 +151,7 @@ class _MovieTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: BrassPanel(
         padding: EdgeInsets.zero,
+        screws: true,
         child: ListTile(
           leading: Icon(
             movie.hasFile ? Icons.check_circle : Icons.download_for_offline,

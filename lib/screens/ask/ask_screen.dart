@@ -463,8 +463,7 @@ class _AskPalette {
   final Color staleText;
 
   /// Ambient-theme resolution (registers a Theme dependency, like Brass.of).
-  static _AskPalette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _AskPalette of(BuildContext context) => forBrass(Brass.of(context));
 
   ChatScaffoldStyle get chatStyle => ChatScaffoldStyle(
     userBubbleTop: userBubbleTop,
@@ -561,4 +560,49 @@ class _AskPalette {
     staleBorder: Color(0x8C9A7018),
     staleText: Color(0xFF6E5010),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _AskPalette>{};
+  static _AskPalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _AskPalette(
+        subtitle: themeColor(base.subtitle, b),
+        pillBorderFail: themeColor(base.pillBorderFail, b),
+        pillBorderUp: themeColor(base.pillBorderUp, b),
+        pillBg: themeColor(base.pillBg, b),
+        pillTextFail: themeColor(base.pillTextFail, b),
+        pillTextUp: themeColor(base.pillTextUp, b),
+        emptyIcon: themeColor(base.emptyIcon, b),
+        userBubbleTop: themeColor(base.userBubbleTop, b),
+        userBubbleBottom: themeColor(base.userBubbleBottom, b),
+        userBorder: themeColor(base.userBorder, b),
+        userInk: themeColor(base.userInk, b),
+        assistantTop: themeColor(base.assistantTop, b),
+        assistantBottom: themeColor(base.assistantBottom, b),
+        assistantBorder: themeColor(base.assistantBorder, b),
+        assistantInk: themeColor(base.assistantInk, b),
+        errorTop: themeColor(base.errorTop, b),
+        errorBottom: themeColor(base.errorBottom, b),
+        errorBorder: themeColor(base.errorBorder, b),
+        errorInk: themeColor(base.errorInk, b),
+        bubbleShadow: themeColor(base.bubbleShadow, b),
+        thinkingText: themeColor(base.thinkingText, b),
+        inputBg: themeColor(base.inputBg, b),
+        inputBorder: themeColor(base.inputBorder, b),
+        inputInk: themeColor(base.inputInk, b),
+        inputHint: themeColor(base.inputHint, b),
+        chipBg: themeColor(base.chipBg, b),
+        chipBorder: themeColor(base.chipBorder, b),
+        chipText: themeColor(base.chipText, b),
+        metaText: themeColor(base.metaText, b),
+        staleBg: themeColor(base.staleBg, b),
+        staleBorder: themeColor(base.staleBorder, b),
+        staleText: themeColor(base.staleText, b),
+      ),
+    );
+  }
 }

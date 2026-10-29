@@ -13,7 +13,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/brass_panel.dart';
-import '../../core/widgets/micro_spark.dart';
+import '../../core/widgets/flip_readout.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/screen_header.dart';
 import '../../core/widgets/status_light.dart';
@@ -325,16 +326,7 @@ class _StatChip extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontFamily: context.displayFont,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              height: 1,
-              color: palette.statChipValue,
-            ),
-          ),
+          FlipReadout(text: value, fontSize: 18),
           const SizedBox(height: 3),
           Text(
             label.toUpperCase(),
@@ -542,13 +534,12 @@ class _NodeCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             SizedBox(
-              height: 36,
-              child: cpuHistory.length < 2
-                  ? const SizedBox.expand()
-                  : CustomPaint(
-                      painter: MicroSpark(cpuHistory, brass.sparkGreen),
-                      child: const SizedBox.expand(),
-                    ),
+              height: 42,
+              child: TraceWindow(
+                data: cpuHistory,
+                color: brass.sparkGreen,
+                style: brass.isDark ? TraceStyle.scope : TraceStyle.paper,
+              ),
             ),
           ] else
             SizedBox(
@@ -1279,8 +1270,7 @@ class _Palette {
   );
 
   /// Resolve once per build; registers a Theme dependency like [Brass.of].
-  static _Palette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _Palette of(BuildContext context) => forBrass(Brass.of(context));
 
   final Color statChipBg;
   final Color statChipValue;
@@ -1311,4 +1301,44 @@ class _Palette {
 
   /// Guest-row idle chevron; also the group-header bulk-actions menu icon.
   final Color chevronIdle;
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Palette>{};
+  static _Palette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Palette(
+        statChipBg: themeColor(base.statChipBg, b),
+        statChipValue: themeColor(base.statChipValue, b),
+        chipLabel: themeColor(base.chipLabel, b),
+        newBtnFg: themeColor(base.newBtnFg, b),
+        newBtnBorder: themeColor(base.newBtnBorder, b),
+        nodeName: themeColor(base.nodeName, b),
+        readoutText: themeColor(base.readoutText, b),
+        ramBar: [for (final c in base.ramBar) themeColor(c, b)],
+        diskBar: [for (final c in base.diskBar) themeColor(c, b)],
+        footerLabel: themeColor(base.footerLabel, b),
+        footerValue: themeColor(base.footerValue, b),
+        guestsPillBorder: themeColor(base.guestsPillBorder, b),
+        guestsPillBg: themeColor(base.guestsPillBg, b),
+        guestsPillText: themeColor(base.guestsPillText, b),
+        vmPillBorder: themeColor(base.vmPillBorder, b),
+        vmPillBg: themeColor(base.vmPillBg, b),
+        vmPillText: themeColor(base.vmPillText, b),
+        ctPillBorder: themeColor(base.ctPillBorder, b),
+        ctPillBg: themeColor(base.ctPillBg, b),
+        ctPillText: themeColor(base.ctPillText, b),
+        rowHover: themeColor(base.rowHover, b),
+        rowSelectedRing: themeColor(base.rowSelectedRing, b),
+        guestName: themeColor(base.guestName, b),
+        statusRunning: themeColor(base.statusRunning, b),
+        statusStopped: themeColor(base.statusStopped, b),
+        chevronSelected: themeColor(base.chevronSelected, b),
+        chevronIdle: themeColor(base.chevronIdle, b),
+      ),
+    );
+  }
 }

@@ -8,6 +8,7 @@ import '../../core/api/home_assistant_api.dart';
 import '../../core/providers/home_assistant_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/service_frame.dart';
 
 /// Calls `domain.service` for the tab, refreshes the entity states, and
@@ -336,7 +337,7 @@ class HaQuickControl extends ConsumerWidget {
     final id = {'entity_id': e.entityId};
     if (e.state == 'unavailable') return const SizedBox(width: 48);
     if (_toggleDomains.contains(e.domain)) {
-      return Switch(
+      return BrassToggle(
         value: e.state == 'on',
         onChanged: (on) => haCall(
           context,
@@ -1076,7 +1077,7 @@ class _HaHistory extends ConsumerWidget {
           final t0 = numeric.first.when.millisecondsSinceEpoch.toDouble();
           return SizedBox(
             height: 140,
-            child: LineChart(
+            child: ScopeFrame(child: LineChart(
               LineChartData(
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
@@ -1099,7 +1100,7 @@ class _HaHistory extends ConsumerWidget {
                   ),
                 ],
               ),
-            ),
+            )),
           );
         }
         final recent = points.reversed.take(12);

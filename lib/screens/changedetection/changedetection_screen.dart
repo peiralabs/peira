@@ -7,6 +7,7 @@ import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/service_frame.dart';
 
 /// Native changedetection.io over its REST API and API key: every watch
@@ -262,9 +263,10 @@ class _WatchesViewState extends ConsumerState<_WatchesView> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: brass.textMuted, fontSize: 12),
                       ),
-                      trailing: IconButton(
+                      trailing: KnurledKnob(
+                        icon: Ph.arrowsClockwise,
                         tooltip: 'Recheck now',
-                        icon: const Icon(Icons.refresh),
+                        size: 26,
                         onPressed: () => _act(
                           context,
                           ref,
@@ -333,9 +335,10 @@ class _WatchPageState extends ConsumerState<_WatchPage> {
         title: Text(detail.value?.watch.title ?? 'Watch'),
         actions: [
           if (detail.value != null) ...[
-            IconButton(
+            KnurledKnob(
+              icon: Ph.arrowsClockwise,
               tooltip: 'Recheck now',
-              icon: const Icon(Icons.refresh),
+              size: 26,
               onPressed: () => _act(
                 context,
                 ref,
