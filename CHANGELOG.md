@@ -6,6 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.0.0] — 2026-10-29
+
+A major version: the service tabs that showed each service's web page now
+use its API, so an upgraded 1.2 setup needs an API key per service before
+those tabs work again (Settings, or the setup file below).
+
 ### Added
 
 - **Every service tab is native.** Home Assistant, Immich, Paperless-ngx,
@@ -22,6 +28,19 @@ adheres to [Semantic Versioning](https://semver.org/).
   (Settings › Import setup file, or drop it at
   `~/.config/peira/seed.json` for the next launch, after which it is
   deleted). See `docs/setup-file.md`.
+- **In-app guide.** Opens on first launch with a "Don't show this again"
+  box: what the app does, connecting Proxmox, where each service's key
+  comes from, the setup file, and every tab. Settings › Guide, the About
+  sheet and the command palette (Ctrl+K) reopen it.
+- **Demo mode covers the service tabs** with fake data, so `--demo` shows
+  every tab working.
+
+### Changed
+
+- Peira Labs branding: the masthead reads PEIRA, the dashboard ring and the
+  launcher icon read PEIRA LABS, and About links to peiralabs.com.
+- The setup wizard suggests the token name `peira` and lists the service
+  tabs that light up later.
 
 ### Removed
 
