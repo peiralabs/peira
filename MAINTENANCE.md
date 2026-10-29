@@ -43,8 +43,6 @@ works without it. README › Metrics has the link.
   assumes the Proxmox API.
 - **Auto-update or telemetry.** Structural (AppImage) and philosophical
   respectively.
-- **Wayland-native rendering** while CEF requires X11 — XWayland is the
-  supported path.
 
 ## Degradation plan (agreed in advance)
 

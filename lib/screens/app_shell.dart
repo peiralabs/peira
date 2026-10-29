@@ -21,6 +21,8 @@ import '../core/widgets/masthead.dart';
 import 'ai/ai_screen.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'docker/docker_screen.dart';
+import 'guide/guide_screen.dart';
+import 'home_assistant/home_assistant_screen.dart';
 import 'library/library_screen.dart';
 import 'media/media_screen.dart';
 import 'metrics/metrics_hub_screen.dart';
@@ -34,7 +36,6 @@ import 'setup/setup_wizard_screen.dart';
 import 'tailscale/tailscale_screen.dart';
 import 'terminal/terminal_screen.dart';
 import 'vault/vault_screen.dart';
-import 'webview/webview_screen.dart';
 
 /// Top-level navigation shell.
 ///
@@ -67,10 +68,7 @@ class AppShell extends ConsumerWidget {
     AppTab.metrics => MetricsHubScreen(railIndex: AppTab.metrics.railIndex),
     AppTab.ai => AiScreen(railIndex: AppTab.ai.railIndex),
     AppTab.media => MediaScreen(railIndex: AppTab.media.railIndex),
-    AppTab.homeAssistant => WebViewScreen(
-      service: 'Home Assistant',
-      tabIndex: AppTab.homeAssistant.railIndex,
-    ),
+    AppTab.homeAssistant => const HomeAssistantScreen(),
     AppTab.vault => VaultScreen(railIndex: AppTab.vault.railIndex),
     AppTab.library => LibraryScreen(railIndex: AppTab.library.railIndex),
     AppTab.tailscale => const TailscaleScreen(),
@@ -102,6 +100,39 @@ class AppShell extends ConsumerWidget {
       return const AmbientBackground(child: SetupWizardScreen());
     }
     final selectedIndex = ref.watch(selectedTabProvider) ?? 0;
+
+    // The guide opens by itself once a connection exists, until the
+    // operator ticks "Don't show this again"; never over demo data.
+    if (settings != null &&
+        !settings.guideDismissed &&
+        !ref.watch(demoModeProvider) &&
+        ref.watch(guideAutoOpenProvider) &&
+        !ref.watch(guideShownProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted || ref.read(guideShownProvider)) return;
+        ref.read(guideShownProvider.notifier).mark();
+        showGuide(context);
+      });
+    }
+
+    // The rail lists only tabs whose services are set up (plus whichever tab
+    // is open, so a deep link into an unconfigured tab still highlights).
+    // Every screen stays in the page stack; [selectedIndex] keeps indexing
+    // [_tabs], and [rail] maps rail positions back to it.
+    // Demo mode shows every tab: it exists to show the whole app, and its
+    // fake data does not fill in every service URL.
+    final showAll =
+        ref.watch(demoModeProvider) ||
+        (settings?.showUnconfiguredTabs ?? true);
+    final rail = [
+      for (var i = 0; i < _tabs.length; i++)
+        if (showAll ||
+            i == selectedIndex ||
+            settings == null ||
+            _tabs[i].isAvailable(settings))
+          i,
+    ];
+    final railSelected = rail.indexOf(selectedIndex);
 
     // Keep the background alert→desktop-notification watcher alive for the
     // life of the shell (configured, non-demo desktop only).
@@ -144,7 +175,7 @@ class AppShell extends ConsumerWidget {
     final activeAccent = brass.sectionAccent(_tabs[selectedIndex].section);
 
     final paletteDests = [
-      for (var i = 0; i < _tabs.length; i++)
+      for (final i in rail)
         PaletteDest(
           index: i,
           label: _tabs[i].label,
@@ -159,10 +190,11 @@ class AppShell extends ConsumerWidget {
         (AppTab.metrics, MetricsHubScreen.specs),
         (AppTab.ai, AiScreen.specs),
         (AppTab.media, MediaScreen.specs),
+        (AppTab.homeAssistant, HomeAssistantScreen.specs),
         (AppTab.vault, VaultScreen.specs),
         (AppTab.library, LibraryScreen.specs),
       ])
-        if (specs.length > 1 && _tabs.contains(hub))
+        if (specs.length > 1 && rail.contains(_tabs.indexOf(hub)))
           for (var s = 0; s < specs.length; s++)
             PaletteDest(
               index: _tabs.indexOf(hub),
@@ -173,13 +205,18 @@ class AppShell extends ConsumerWidget {
               subIndex: s,
             ),
     ];
-    void openPalette() => CommandPalette.show(context, paletteDests);
+    void openPalette() => CommandPalette.show(
+      context,
+      paletteDests,
+      onGuide: () => showGuide(context),
+    );
 
     void onSelect(int i) => ref.read(selectedTabProvider.notifier).select(i);
+    void onRailSelect(int r) => onSelect(rail[r]);
 
     if (_desktop) {
       final navDests = [
-        for (final t in _tabs)
+        for (final t in [for (final i in rail) _tabs[i]])
           NavDest(
             icon: t.icon,
             label: t.label,
@@ -213,11 +250,12 @@ class AppShell extends ConsumerWidget {
                           children: [
                             GlassNavRail(
                               destinations: navDests,
-                              selectedIndex: selectedIndex,
-                              onSelect: onSelect,
+                              selectedIndex: railSelected,
+                              onSelect: onRailSelect,
                               badges: {
                                 if (stoppedCount > 0)
-                                  AppTab.proxmox.railIndex: stoppedCount,
+                                  rail.indexOf(_tabs.indexOf(AppTab.proxmox)):
+                                      stoppedCount,
                               },
                               onSearch: openPalette,
                               collapsed: collapsed,
@@ -278,10 +316,10 @@ class AppShell extends ConsumerWidget {
           backgroundColor: Colors.transparent,
           body: body,
           bottomNavigationBar: NavigationBar(
-            selectedIndex: selectedIndex,
-            onDestinationSelected: onSelect,
+            selectedIndex: railSelected,
+            onDestinationSelected: onRailSelect,
             destinations: [
-              for (var i = 0; i < _tabs.length; i++)
+              for (final i in rail)
                 NavigationDestination(icon: iconFor(i), label: _tabs[i].label),
             ],
           ),

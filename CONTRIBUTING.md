@@ -14,8 +14,7 @@ flutter test
 ```
 
 The Flutter version is pinned in `.tool-versions` — CI builds with exactly
-that version. `flutter run -d linux` for a dev build; the first Linux build
-downloads CEF (one time, a few hundred MB).
+that version. `flutter run -d linux` for a dev build.
 
 ## What CI enforces on every PR
 

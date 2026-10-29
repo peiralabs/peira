@@ -389,24 +389,32 @@ class _AstrolabePainter extends CustomPainter {
     }
     // Circular legend text: no textPath in Flutter — place each character
     // along the r78 circle, rotated to the local tangent. The source path
-    // starts at the leftmost point and sweeps clockwise.
-    const text = 'BUILDAHOMELAB.DEV · 4 NODES · 55W IDLE · SELF-HOSTED · ';
+    // starts at the leftmost point and sweeps clockwise. The phrase repeats
+    // as many whole times as fit, and the spare arc is shared out as extra
+    // letter-spacing so the ring closes without a gap.
+    const phrase = 'PEIRA LABS · ';
     const r = 78.0;
-    var theta = math.pi; // leftmost point
-    for (final ch in text.characters) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: ch,
-          style: TextStyle(
-            fontFamily: 'EB Garamond',
-            fontWeight: FontWeight.w600,
-            fontSize: 8.6,
-            color: _bright,
+    const spacing = 1.7;
+    TextPainter glyph(String ch) => TextPainter(
+          text: TextSpan(
+            text: ch,
+            style: TextStyle(
+              fontFamily: 'EB Garamond',
+              fontWeight: FontWeight.w600,
+              fontSize: 8.6,
+              color: _bright,
+            ),
           ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
-      final advance = tp.width + 1.7; // letter-spacing 1.7
+          textDirection: TextDirection.ltr,
+        )..layout();
+    final unit = [for (final ch in phrase.characters) glyph(ch)];
+    final unitArc = unit.fold<double>(0, (s, tp) => s + tp.width + spacing);
+    const circumference = 2 * math.pi * r;
+    final repeats = math.max(1, (circumference / unitArc).floor());
+    final extra = (circumference - repeats * unitArc) / (repeats * unit.length);
+    var theta = math.pi; // leftmost point
+    for (final tp in [for (var i = 0; i < repeats; i++) ...unit]) {
+      final advance = tp.width + spacing + extra;
       theta += (advance / 2) / r;
       final pos = c + Offset(r * math.cos(theta), r * math.sin(theta));
       canvas.save();

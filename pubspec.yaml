@@ -1,5 +1,5 @@
 name: peira
-description: "A homelab control panel: native Proxmox VE management, metrics, media status, AI chat, an embedded terminal, and themed webviews — one screen for the whole lab."
+description: "A homelab control panel: native Proxmox VE management, metrics, media status, AI chat, an embedded terminal, and native control of each service — one screen for the whole lab."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.2.0+3
+version: 2.0.0+4
 
 environment:
   sdk: ^3.12.2
@@ -37,11 +37,6 @@ dependencies:
   flutter_riverpod: ^3.3.2
   riverpod_annotation: ^4.0.3
   dio: ^5.10.0
-  webview_flutter: ^4.14.0
-  # Pinned EXACTLY: each webview_cef release pins its own CEF/Chromium, and
-  # the app carries two behavioral workarounds verified against this version
-  # (docs/webview-cef-notes.md). Bump deliberately, never via `pub upgrade`.
-  webview_cef: 0.5.1
   flutter_secure_storage: ^10.3.1
   fl_chart: ^1.2.0
   freezed_annotation: ^3.1.0
@@ -54,6 +49,8 @@ dependencies:
   # PDM certificate pinning (SHA-256 of the presented cert against the
   # stored fingerprint). Also used dev-side by the marker scanner.
   crypto: ^3.0.7
+  flutter_markdown_plus: ^1.0.12
+  file_selector: ^1.1.0
 
 dev_dependencies:
   flutter_test:

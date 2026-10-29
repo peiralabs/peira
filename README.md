@@ -5,8 +5,10 @@ Proxmox VE management (nodes, containers, snapshots, live charts),
 Proxmox Datacenter Manager and Proxmox Backup Server tabs, a
 Prometheus-backed metrics tab, media-stack status panels, an AI chat for any
 OpenAI-compatible endpoint, an embedded terminal whose SSH targets are built
-from live Proxmox inventory, and themed embedded views for the web services
-that already have great UIs (Grafana, Open WebUI, Wiki.js, Jellyseerr). Eight
+from live Proxmox inventory, and native tabs that drive each service through
+its own API — Home Assistant, Immich, Paperless-ngx, Karakeep, Seerr, Open
+WebUI, Wiki.js, SearXNG and changedetection.io — each with an "Open in
+browser" button for whatever the API cannot do. Eight
 theme families restyle the whole interface — each with its own palette and
 typography — so it can look like anything from an engraved brass instrument
 to a neon-green terminal.
@@ -147,7 +149,7 @@ degrades gracefully:
   [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
   — an optional install, separate from `node_exporter`; the rest of the tab
   works without it. Grafana (with a Viewer-role API key) powers the alerts
-  feed and its embedded view; both are optional.
+  feed; it is optional.
 - **Media services are optional and live wherever you run them** — NAS,
   containers, VMs. Jellyfin, Plex, Radarr, Sonarr, Prowlarr, qBittorrent, and
   Jellyseerr each appear once configured; nothing assumes a NAS.
@@ -164,11 +166,10 @@ Every endpoint and credential is stored in the system keychain via
 | Environment | Status |
 |---|---|
 | openSUSE Tumbleweed, GNOME on X11 (1.15 text scaling) | Daily-driven by the maintainer |
-| Ubuntu 24.04 | Automated acceptance: launch, wizard + token round-trip through GNOME Keyring, CEF webview rendering |
+| Ubuntu 24.04 | Automated acceptance: launch, wizard + token round-trip through GNOME Keyring |
 | Fedora 44 | Same automated acceptance |
 | Arch (2026-04 base) | Same automated acceptance |
-| Wayland session **with XWayland** (GNOME/KDE default) | **Supported** — the shell runs natively on the Wayland GDK backend and embedded webviews render via XWayland. Verified on openSUSE + GNOME/Wayland. |
-| Pure Wayland, **no XWayland** | **Partial** — the shell runs; embedded webviews detect the missing X11 surface and offer to open in your browser instead of failing. (Rare on desktops — all mainstream Wayland sessions ship XWayland.) |
+| Wayland session (GNOME/KDE default) | **Supported** — the app runs natively on the Wayland GDK backend; nothing needs XWayland. Verified on openSUSE + GNOME/Wayland. |
 | Windows / macOS | Never; out of scope |
 
 Two honest footnotes: the automated acceptance ran under headless X11 with
@@ -199,8 +200,6 @@ flutter test
 flutter build linux --release
 ```
 
-The Flutter version is pinned in `.tool-versions`. The first Linux build
-downloads the Chromium Embedded Framework for the embedded webviews (a few
-hundred MB, one time). `tool/build_appimage.sh` packages the release bundle
+The Flutter version is pinned in `.tool-versions`. `tool/build_appimage.sh` packages the release bundle
 as an AppImage and audits the binary's full link closure against
 `tool/appimage_system_deps.txt`.

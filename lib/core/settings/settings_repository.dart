@@ -41,7 +41,8 @@ class SettingsRepository {
     _keys.themeId,
     _keys.railCollapsed,
     _keys.notifyAlerts,
-    _keys.webAutoLogin,
+    _keys.showUnconfiguredTabs,
+    _keys.guideDismissed,
     _keys.pdmUrl,
     _keys.pdmTokenId,
     _keys.pdmTokenSecret,
@@ -96,6 +97,14 @@ class SettingsRepository {
     paperlessUrl: 'paperless_url',
     immichUrl: 'immich_url',
     changedetectionUrl: 'changedetection_url',
+    homeAssistantToken: 'home_assistant_token',
+    paperlessToken: 'paperless_token',
+    immichApiKey: 'immich_api_key',
+    karakeepApiKey: 'karakeep_api_key',
+    jellyseerrApiKey: 'jellyseerr_api_key',
+    openWebuiApiKey: 'open_webui_api_key',
+    changedetectionApiKey: 'changedetection_api_key',
+    wikiApiKey: 'wiki_api_key',
     lokiUrl: 'loki_url',
     pdmUrl: 'pdm_url',
     pdmTokenId: 'pdm_token_id',
@@ -136,15 +145,29 @@ class SettingsRepository {
     sshTargets: 'ssh_targets',
     sshUsername: 'ssh_username',
     electricityRateUsdPerKwh: 'electricity_rate_usd_per_kwh',
-    webLoginsJson: 'web_logins_json',
-    webAutoLogin: 'web_auto_login',
     notifyAlerts: 'notify_alerts',
+    showUnconfiguredTabs: 'show_unconfigured_tabs',
+    guideDismissed: 'guide_dismissed',
+  );
+
+  /// Keys of features that were removed. Web-view logins (2026-10-28, when
+  /// every tab went native) held service passwords, so they are deleted from
+  /// the keychain — live keys and every profile's stash — rather than left
+  /// unreferenced.
+  static const retiredKeys = {'web_logins_json', 'web_auto_login'};
+
+  static bool _isRetired(String key) => retiredKeys.any(
+    (r) => key == r || (key.startsWith('profile.') && key.endsWith('.$r')),
   );
 
   Future<AppSettings> load() async {
     final Map<String, String> values;
     try {
       values = await _storage.readAll();
+      final retired = [for (final k in values.keys) if (_isRetired(k)) k];
+      if (retired.isNotEmpty) {
+        await Future.wait([for (final k in retired) _storage.delete(key: k)]);
+      }
     } on PlatformException catch (e) {
       _translate(e);
     }
@@ -176,6 +199,14 @@ class SettingsRepository {
       paperlessUrl: values[_keys.paperlessUrl] ?? '',
       immichUrl: values[_keys.immichUrl] ?? '',
       changedetectionUrl: values[_keys.changedetectionUrl] ?? '',
+      homeAssistantToken: values[_keys.homeAssistantToken] ?? '',
+      paperlessToken: values[_keys.paperlessToken] ?? '',
+      immichApiKey: values[_keys.immichApiKey] ?? '',
+      karakeepApiKey: values[_keys.karakeepApiKey] ?? '',
+      jellyseerrApiKey: values[_keys.jellyseerrApiKey] ?? '',
+      openWebuiApiKey: values[_keys.openWebuiApiKey] ?? '',
+      changedetectionApiKey: values[_keys.changedetectionApiKey] ?? '',
+      wikiApiKey: values[_keys.wikiApiKey] ?? '',
       lokiUrl: values[_keys.lokiUrl] ?? '',
       pdmUrl: values[_keys.pdmUrl] ?? '',
       pdmTokenId: values[_keys.pdmTokenId] ?? '',
@@ -217,9 +248,9 @@ class SettingsRepository {
       sshUsername: values[_keys.sshUsername] ?? 'root',
       electricityRateUsdPerKwh:
           double.tryParse(values[_keys.electricityRateUsdPerKwh] ?? '') ?? 0.30,
-      webLoginsJson: values[_keys.webLoginsJson] ?? '',
-      webAutoLogin: values[_keys.webAutoLogin] != 'false',
       notifyAlerts: values[_keys.notifyAlerts] != 'false',
+      showUnconfiguredTabs: values[_keys.showUnconfiguredTabs] == 'true',
+      guideDismissed: values[_keys.guideDismissed] == 'true',
     );
   }
 
@@ -256,6 +287,14 @@ class SettingsRepository {
     _keys.paperlessUrl: settings.paperlessUrl,
     _keys.immichUrl: settings.immichUrl,
     _keys.changedetectionUrl: settings.changedetectionUrl,
+    _keys.homeAssistantToken: settings.homeAssistantToken,
+    _keys.paperlessToken: settings.paperlessToken,
+    _keys.immichApiKey: settings.immichApiKey,
+    _keys.karakeepApiKey: settings.karakeepApiKey,
+    _keys.jellyseerrApiKey: settings.jellyseerrApiKey,
+    _keys.openWebuiApiKey: settings.openWebuiApiKey,
+    _keys.changedetectionApiKey: settings.changedetectionApiKey,
+    _keys.wikiApiKey: settings.wikiApiKey,
     _keys.lokiUrl: settings.lokiUrl,
     _keys.pdmUrl: settings.pdmUrl,
     _keys.pdmTokenId: settings.pdmTokenId,
@@ -297,9 +336,9 @@ class SettingsRepository {
     _keys.electricityRateUsdPerKwh: settings.electricityRateUsdPerKwh
         .toString(),
     _keys.trustSelfSigned: settings.trustSelfSigned.toString(),
-    _keys.webLoginsJson: settings.webLoginsJson,
-    _keys.webAutoLogin: settings.webAutoLogin.toString(),
     _keys.notifyAlerts: settings.notifyAlerts.toString(),
+    _keys.showUnconfiguredTabs: settings.showUnconfiguredTabs.toString(),
+    _keys.guideDismissed: settings.guideDismissed.toString(),
   };
 
   Future<void> _write(AppSettings settings) => _writeAll(toMap(settings));

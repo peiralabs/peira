@@ -19,12 +19,12 @@ class SettingsController extends _$SettingsController {
   Future<AppSettings> build() async {
     final repo = ref.watch(settingsRepositoryProvider);
     var settings = await repo.load();
-    if (!settings.isConfigured) {
-      final seeded = SettingsSeed.consume();
-      if (seeded != null) {
-        await repo.save(seeded);
-        settings = seeded;
-      }
+    // A setup file dropped next to the app configures it at launch, first
+    // run or not; its keys overwrite, everything else is kept.
+    final seeded = SettingsSeed.consume(settings);
+    if (seeded != null) {
+      await repo.save(seeded.settings);
+      settings = seeded.settings;
     }
     return settings;
   }

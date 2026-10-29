@@ -1927,7 +1927,7 @@ class Brass extends ThemeExtension<Brass> {
     stops: const [0, 0.34, 0.5, 0.64, 1],
   );
 
-  /// Gilt wordmark fill (`HOMELAB` masthead / splash / About). Luminous gold
+  /// Gilt wordmark fill (kWordmark: masthead / splash / About). Luminous gold
   /// leaf in the dark; engraved ink-pressed bronze on parchment.
   LinearGradient get wordmarkGradient => LinearGradient(
     begin: Alignment.topCenter,

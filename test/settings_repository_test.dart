@@ -24,6 +24,17 @@ class _MemoryStorage extends Fake implements FlutterSecureStorage {
   }) async => Map.of(_data);
 
   @override
+  Future<void> delete({
+    required String key,
+    AppleOptions? iOptions,
+    AndroidOptions? aOptions,
+    LinuxOptions? lOptions,
+    WebOptions? webOptions,
+    AppleOptions? mOptions,
+    WindowsOptions? wOptions,
+  }) async => _data.remove(key);
+
+  @override
   Future<void> write({
     required String key,
     required String? value,
@@ -67,6 +78,14 @@ void main() {
       paperlessUrl: 'http://pl.example:8020',
       immichUrl: 'http://im.example:2283',
       changedetectionUrl: 'http://cd.example:5000',
+      homeAssistantToken: 'hatok',
+      paperlessToken: 'pltok',
+      immichApiKey: 'imkey',
+      karakeepApiKey: 'kkkey',
+      jellyseerrApiKey: 'srkey',
+      openWebuiApiKey: 'owkey',
+      changedetectionApiKey: 'cdkey',
+      wikiApiKey: 'wkkey',
       lokiUrl: 'http://lk.example:3100',
       pdmUrl: 'https://pdm.example:8443',
       pdmTokenId: 'user@pam!pdmtoken',
@@ -106,6 +125,8 @@ void main() {
       sshTargets: 'node1=root@192.168.1.10',
       sshUsername: 'admin',
       electricityRateUsdPerKwh: 0.42,
+      showUnconfiguredTabs: true,
+      guideDismissed: true,
     );
 
     final repo = SettingsRepository(_MemoryStorage());
@@ -123,4 +144,28 @@ void main() {
     // …and the effective user falls back.
     expect((await repo.load()).sshUser, 'root');
   });
+
+  test(
+    'retired web-login keys are purged, live and in profile stashes',
+    () async {
+      final storage = _MemoryStorage();
+      final repo = SettingsRepository(storage);
+      await repo.save(const AppSettings(proxmoxUrl: 'https://pve:8006'));
+      for (final k in const [
+        'web_logins_json',
+        'web_auto_login',
+        'profile.home.web_logins_json',
+        'profile.home.web_auto_login',
+      ]) {
+        await storage.write(key: k, value: 'x');
+      }
+      await storage.write(key: 'profile.home.proxmox_url', value: 'keep');
+
+      final loaded = await repo.load();
+      final left = await storage.readAll();
+      expect(loaded.proxmoxUrl, 'https://pve:8006');
+      expect(left.keys.where((k) => k.contains('web_')), isEmpty);
+      expect(left['profile.home.proxmox_url'], 'keep');
+    },
+  );
 }

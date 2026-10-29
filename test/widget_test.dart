@@ -13,13 +13,12 @@ import 'package:peira/core/models/tailscale_status.dart';
 import 'package:peira/core/navigation/app_tab.dart';
 import 'package:peira/core/providers/grafana_providers.dart';
 import 'package:peira/core/providers/media_providers.dart';
+import 'package:peira/core/providers/navigation_providers.dart';
 import 'package:peira/core/providers/ollama_providers.dart';
 import 'package:peira/core/providers/proxmox_providers.dart';
 import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/providers/tailscale_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
-import 'package:peira/core/webview/display_server.dart';
-import 'package:peira/core/webview/webview_factory.dart';
 import 'package:peira/core/widgets/ai_status_strip.dart';
 import 'package:peira/core/widgets/command_palette.dart';
 import 'package:peira/core/widgets/glass_nav_rail.dart';
@@ -37,29 +36,6 @@ class _FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> save(AppSettings settings) async => _settings = settings;
-}
-
-/// Real factories touch platform channels (CEF / WKWebView) that don't exist
-/// in widget tests.
-class _FakeWebViewFactory implements WebViewFactory {
-  @override
-  Widget build(String url,
-          {String? maskScript, bool controls = false, String? controlsLabel}) =>
-      Center(child: Text('webview: $url'));
-}
-
-/// Records the mask script of every build so tests can assert the screen
-/// re-delivers a re-resolved mask on a brightness flip (the platform views'
-/// didUpdateWidget → executeJavaScript path can't run without CEF/WKWebView).
-class _RecordingWebViewFactory implements WebViewFactory {
-  final masks = <String?>[];
-
-  @override
-  Widget build(String url,
-      {String? maskScript, bool controls = false, String? controlsLabel}) {
-    masks.add(maskScript);
-    return Center(child: Text('webview: $url'));
-  }
 }
 
 const _fakeNodes = [
@@ -133,7 +109,6 @@ const _fakeTailscale = TailscaleStatus(
 Widget _app({
   AppSettings settings = const AppSettings(),
   List<GrafanaAlert> alerts = const [],
-  WebViewFactory? webViewFactory,
 }) =>
     ProviderScope(
       overrides: [
@@ -145,9 +120,6 @@ Widget _app({
         allContainersProvider.overrideWith((ref) async => _fakeContainers),
         activeAlertsProvider.overrideWith((ref) async => alerts),
         recentTasksProvider.overrideWith((ref) async => const []),
-        webViewFactoryProvider
-            .overrideWithValue(webViewFactory ?? _FakeWebViewFactory()),
-        webviewSupportProvider.overrideWithValue(null),
         tailscaleStatusProvider.overrideWith((ref) async => _fakeTailscale),
         ollamaModelsProvider.overrideWith((ref) async => _fakeOllamaModels),
         ollamaRunningProvider.overrideWith((ref) async => _fakeOllamaRunning),
@@ -156,9 +128,10 @@ Widget _app({
     );
 
 // Every service field populated, mirroring a fully-seeded install, so tests
-// that exercise the webview / Grafana tabs start from a realistic state
+// that exercise the service tabs start from a realistic state
 // rather than proxmox-only settings.
 const _configured = AppSettings(
+  showUnconfiguredTabs: true,
   proxmoxUrl: 'https://pve.example:8006',
   proxmoxTokenId: 'user@pve!token',
   proxmoxTokenSecret: 'secret',
@@ -184,6 +157,70 @@ void _desktopViewport(WidgetTester tester) {
 }
 
 void main() {
+  testWidgets('the rail hides tabs whose services are not set up', (
+    tester,
+  ) async {
+    _desktopViewport(tester);
+    await tester.pumpWidget(
+      _app(
+        settings: const AppSettings(
+          proxmoxUrl: 'https://pve.example:8006',
+          proxmoxTokenId: 'user@pve!token',
+          proxmoxTokenSecret: 'secret',
+          paperlessUrl: 'http://paperless.example:8000',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final rail = find.byType(GlassNavRail);
+    for (final label in [
+      'Dashboard',
+      'Proxmox',
+      'Library',
+      'Tailscale',
+      'Settings',
+    ]) {
+      expect(
+        find.descendant(of: rail, matching: find.text(label)),
+        findsWidgets,
+        reason: '$label should be listed',
+      );
+    }
+    for (final label in ['PDM', 'PBS', 'Docker', 'Media', 'Home Assistant']) {
+      expect(
+        find.descendant(of: rail, matching: find.text(label)),
+        findsNothing,
+        reason: '$label has no URL and should be hidden',
+      );
+    }
+
+    // Selecting a listed tab through the rail lands on that tab, even
+    // though rail positions no longer equal tab indices.
+    await tester.tap(find.descendant(of: rail, matching: find.text('Library')));
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(GlassNavRail)),
+    );
+    expect(container.read(selectedTabProvider), AppTab.library.railIndex);
+  });
+
+  test('isAvailable follows the service URLs', () {
+    const none = AppSettings();
+    expect(AppTab.homeAssistant.isAvailable(none), isFalse);
+    expect(AppTab.dashboard.isAvailable(none), isTrue);
+    expect(AppTab.settings.isAvailable(none), isTrue);
+    expect(
+      AppTab.media.isAvailable(const AppSettings(immichUrl: 'http://i:2283')),
+      isTrue,
+    );
+    expect(
+      AppTab.metrics.isAvailable(const AppSettings(grafanaUrl: 'http://g:3000')),
+      isTrue,
+      reason: 'Prometheus is derived from the Grafana host',
+    );
+  });
+
   testWidgets('app shell shows all desktop destinations', (tester) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app(settings: _configured));
@@ -344,6 +381,7 @@ void main() {
       (tester) async {
     _desktopViewport(tester);
     const media = AppSettings(
+      showUnconfiguredTabs: true,
       proxmoxUrl: 'https://pve.example:8006',
       proxmoxTokenId: 'user@pve!token',
       proxmoxTokenSecret: 'secret',
@@ -360,7 +398,6 @@ void main() {
           allContainersProvider.overrideWith((ref) async => _fakeContainers),
           activeAlertsProvider.overrideWith((ref) async => const []),
           recentTasksProvider.overrideWith((ref) async => const []),
-          webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
           tailscaleStatusProvider.overrideWith((ref) async => _fakeTailscale),
           ollamaModelsProvider.overrideWith((ref) async => _fakeOllamaModels),
           ollamaRunningProvider
@@ -398,70 +435,6 @@ void main() {
     await tester.tap(find.text('Radarr').first);
     await tester.pumpAndSettle();
     expect(find.text('Dune: Part Two'), findsOneWidget);
-  });
-
-  testWidgets('webview tab without a URL points at Settings', (tester) async {
-    _desktopViewport(tester);
-    // Proxmox configured but Wiki URL unset — the tab should prompt for it.
-    const noWiki = AppSettings(
-      proxmoxUrl: 'https://pve.example:8006',
-      proxmoxTokenId: 'user@pve!token',
-      proxmoxTokenSecret: 'secret',
-    );
-    await tester.pumpWidget(_app(settings: noWiki));
-    await tester.pumpAndSettle();
-
-    // The wiki webview is the Vault hub's default sub-view.
-    await tester.tap(find.text(kPublicBuild ? 'Wiki' : 'Vault'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Wiki has no URL yet.\nEnter it in Settings.'),
-        findsOneWidget);
-  });
-
-  testWidgets('webview tab with a URL builds the platform web view lazily',
-      (tester) async {
-    _desktopViewport(tester);
-    const settings = AppSettings(
-      proxmoxUrl: 'https://pve.example:8006',
-      proxmoxTokenId: 'user@pve!token',
-      proxmoxTokenSecret: 'secret',
-      wikiUrl: 'http://wiki.example:3000',
-    );
-    await tester.pumpWidget(_app(settings: settings));
-    await tester.pumpAndSettle();
-
-    // Not built until the hub is selected.
-    expect(find.text('webview: http://wiki.example:3000'), findsNothing);
-
-    await tester.tap(find.text(kPublicBuild ? 'Wiki' : 'Vault'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('webview: http://wiki.example:3000'), findsOneWidget);
-  });
-
-  testWidgets('brightness flip re-delivers the mask script to an open webview',
-      (tester) async {
-    _desktopViewport(tester);
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
-    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
-    final factory = _RecordingWebViewFactory();
-    // _configured keeps the default themeMode 'system', so the effective
-    // brightness follows platformBrightness.
-    await tester.pumpWidget(
-        _app(settings: _configured, webViewFactory: factory));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text(kPublicBuild ? 'Wiki' : 'Vault'));
-    await tester.pumpAndSettle();
-    expect(factory.masks.last, contains('color-scheme: light'));
-
-    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
-    await tester.pumpAndSettle();
-
-    // The Theme-driven rebuild handed the still-open webview a dark mask;
-    // CefWebView/IosWebView re-inject it from didUpdateWidget.
-    expect(factory.masks.last, contains('color-scheme: dark'));
   });
 
   testWidgets('first launch without credentials shows the setup wizard',
@@ -547,7 +520,6 @@ void main() {
           allContainersProvider.overrideWith((ref) async => _fakeContainers),
           activeAlertsProvider.overrideWith((ref) async => const []),
           recentTasksProvider.overrideWith((ref) async => const []),
-          webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
           tailscaleStatusProvider.overrideWith((ref) async => _fakeTailscale),
           ollamaModelsProvider.overrideWith((ref) async => _fakeOllamaModels),
           ollamaRunningProvider

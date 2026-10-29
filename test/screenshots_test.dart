@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peira/app.dart';
 import 'package:peira/core/api/ask_api.dart';
+import 'package:peira/core/api/home_assistant_api.dart';
 import 'package:peira/core/api/loki_api.dart';
 import 'package:peira/core/api/ollama_api.dart';
 import 'package:peira/core/api/pbs_api.dart';
@@ -35,6 +36,7 @@ import 'package:peira/core/models/servarr_queue_item.dart';
 import 'package:peira/core/models/tailscale_status.dart';
 import 'package:peira/core/providers/cluster_history_providers.dart';
 import 'package:peira/core/providers/grafana_providers.dart';
+import 'package:peira/core/providers/home_assistant_providers.dart';
 import 'package:peira/core/providers/loki_providers.dart';
 import 'package:peira/core/providers/media_providers.dart';
 import 'package:peira/core/providers/metrics_providers.dart';
@@ -230,6 +232,7 @@ const _tailscale = TailscaleStatus(
 );
 
 const _configured = AppSettings(
+  showUnconfiguredTabs: true,
   proxmoxUrl: 'https://pve.example:8006',
   proxmoxTokenId: 'user@pve!token',
   proxmoxTokenSecret: 'secret',
@@ -832,6 +835,49 @@ class _GoldenStage extends StatelessWidget {
   );
 }
 
+const _haStates = [
+  HaEntity(
+    entityId: 'light.kitchen',
+    state: 'on',
+    attributes: {'friendly_name': 'Kitchen', 'brightness': 180},
+  ),
+  HaEntity(
+    entityId: 'light.porch',
+    state: 'off',
+    attributes: {'friendly_name': 'Porch'},
+  ),
+  HaEntity(
+    entityId: 'switch.rack_fan',
+    state: 'on',
+    attributes: {'friendly_name': 'Rack fan'},
+  ),
+  HaEntity(
+    entityId: 'climate.hallway',
+    state: 'heat',
+    attributes: {'friendly_name': 'Hallway', 'current_temperature': 69},
+  ),
+  HaEntity(
+    entityId: 'media_player.living_room',
+    state: 'playing',
+    attributes: {'friendly_name': 'Living room', 'supported_features': 152461},
+  ),
+  HaEntity(
+    entityId: 'scene.movie_night',
+    state: 'unknown',
+    attributes: {'friendly_name': 'Movie night'},
+  ),
+  HaEntity(
+    entityId: 'sensor.rack_temperature',
+    state: '31.4',
+    attributes: {'friendly_name': 'Rack temperature', 'unit_of_measurement': '°C'},
+  ),
+  HaEntity(
+    entityId: 'weather.home',
+    state: 'sunny',
+    attributes: {'friendly_name': 'Home', 'temperature': 79, 'temperature_unit': '°F'},
+  ),
+];
+
 void main() {
   /// Defines one screen as two CI goldens so every screen is checked in both
   /// brightness modes. [pump] builds the tree and runs any interactions;
@@ -1137,6 +1183,41 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  screenshotBoth('Home Assistant tab', 'home_assistant_tab', (
+    tester,
+    brightness,
+    pumpWidget,
+  ) async {
+    await pumpWidget(
+      ProviderScope(
+        overrides: [
+          serviceReachableProvider.overrideWith((ref, url) async => true),
+          settingsRepositoryProvider.overrideWithValue(
+            _FakeSettingsRepository(
+              _withMode(
+                _configured,
+                brightness,
+              ).copyWith(
+                homeAssistantUrl: 'http://ha.example:8123',
+                homeAssistantToken: 'demo-token',
+              ),
+            ),
+          ),
+          nodesProvider.overrideWith((ref) async => _nodes),
+          allContainersProvider.overrideWith((ref) async => _cts),
+          allVmsProvider.overrideWith((ref) async => _vms),
+          recentTasksProvider.overrideWith((ref) async => const []),
+          tailscaleStatusProvider.overrideWith((ref) async => _tailscale),
+          haStatesProvider.overrideWith((ref) async => _haStates),
+        ],
+        child: const HomeLabApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Home Assistant').first);
+    await tester.pumpAndSettle();
+  });
+
   // Closure (not a declaration) so the overrides-list type is inferred —
   // riverpod 3 doesn't re-export the sealed Override type, so a declaration
   // couldn't name its return type.
@@ -1383,6 +1464,7 @@ void main() {
     pumpWidget,
   ) async {
     const media = AppSettings(
+      showUnconfiguredTabs: true,
       proxmoxUrl: 'https://pve.example:8006',
       proxmoxTokenId: 'user@pve!token',
       proxmoxTokenSecret: 'secret',
@@ -1455,6 +1537,7 @@ void main() {
     pumpWidget,
   ) async {
     const media = AppSettings(
+      showUnconfiguredTabs: true,
       proxmoxUrl: 'https://pve.example:8006',
       proxmoxTokenId: 'user@pve!token',
       proxmoxTokenSecret: 'secret',

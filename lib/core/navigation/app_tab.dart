@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../build_config.dart';
+import '../models/app_settings.dart';
 import '../theme/phosphor.dart';
 
 /// The canonical AppShell tab order and identity — the single source of truth
@@ -32,12 +33,12 @@ enum AppTab {
   // AI hub: Chat (Hermes personally), Models (Ollama library), Open WebUI.
   ai('AI', Ph.brain, 'Services'),
   media('Media', Ph.monitorPlay, 'Services'),
-  // The full Home Assistant frontend (device control, automations, add /
-  // remove integrations) as an embedded webview — HA's UI already does
-  // everything, so the tab needs only a URL.
+  // Native Home Assistant over its REST API (entities and their controls,
+  // any service call, logbook, to-do lists, system tools); the HA frontend
+  // opens in the browser for dashboards and config editors.
   homeAssistant('Home Assistant', Ph.house, 'Services'),
   // Vault hub: Wiki + Ask. The public build has no Ask, so the hub collapses
-  // to the bare wiki webview and the label follows suit.
+  // to the bare Wiki view and the label follows suit.
   vault(kPublicBuild ? 'Wiki' : 'Vault', Ph.bookOpenText, 'Services'),
   // Library hub: Karakeep bookmarks + Paperless documents — the reading/
   // records shelf beside the Vault's knowledge base.
@@ -57,10 +58,43 @@ enum AppTab {
   final String section;
   final bool desktopOnly;
 
-  /// Position in the desktop rail. Deep links and webview lazy-activation go
+  /// Position in the desktop rail. Deep links and hub activation go
   /// through this rather than [index] — it is the indirection point that let
   /// the public build hide tabs before the 2026-08-07 hub restructure moved
   /// personal-only gating to the sub-tab level, and it stays so any future
   /// tab-level filtering has one place to live.
   int get railIndex => index;
+
+  /// Whether the rail lists this tab for [s]: a service tab appears once any
+  /// of its services has a URL (a missing API credential then shows the
+  /// tab's own setup prompt, not a hidden tab). Settings
+  /// `showUnconfiguredTabs` overrides this in the shell.
+  bool isAvailable(AppSettings s) => switch (this) {
+    dashboard || proxmox || tailscale || terminal || settings => true,
+    pdm => s.pdmUrl.isNotEmpty,
+    pbs => s.pbs1Url.isNotEmpty || s.pbs2Url.isNotEmpty,
+    docker => s.dockerUrl.isNotEmpty,
+    metrics =>
+      s.prometheusEndpoint.isNotEmpty ||
+          s.lokiUrl.isNotEmpty ||
+          s.changedetectionUrl.isNotEmpty,
+    ai =>
+      s.hermesApiEndpoint.isNotEmpty ||
+          s.ollamaApiEndpoint.isNotEmpty ||
+          s.ollamaUrl.isNotEmpty ||
+          s.searxngUrl.isNotEmpty,
+    media => [
+      s.jellyfinUrl,
+      s.plexUrl,
+      s.radarrUrl,
+      s.sonarrUrl,
+      s.qbittorrentUrl,
+      s.prowlarrUrl,
+      s.jellyseerrUrl,
+      s.immichUrl,
+    ].any((u) => u.isNotEmpty),
+    homeAssistant => s.homeAssistantUrl.isNotEmpty,
+    vault => s.wikiUrl.isNotEmpty || (!kPublicBuild && s.askUrl.isNotEmpty),
+    library => s.karakeepUrl.isNotEmpty || s.paperlessUrl.isNotEmpty,
+  };
 }

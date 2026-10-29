@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../build_config.dart';
 import '../theme/app_theme.dart';
 
 /// Small shared brass ornaments used across the shell: gem diamonds, rivet
@@ -184,11 +185,11 @@ class CornerBrackets extends StatelessWidget {
   }
 }
 
-/// The gilt-filled engraved wordmark ("HOMELAB").
+/// The gilt-filled engraved wordmark ([kWordmark]: PEIRA or HOMELAB).
 class GiltWordmark extends StatelessWidget {
   const GiltWordmark({
     super.key,
-    this.text = 'HOMELAB',
+    this.text = kWordmark,
     this.fontSize = 17,
     this.letterSpacingEm = 0.32,
   });

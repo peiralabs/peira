@@ -33,16 +33,10 @@ doesn't mean retyping every field. Not built yet.
 
 ## Other known limitations
 
-- **Wayland-native sessions are unsupported** — CEF renders via X11;
-  XWayland is required. Pure-Wayland compositors without XWayland will not
-  show webview tabs.
-- **CEF's sandbox needs unprivileged user namespaces** (an AppImage cannot
-  ship a setuid helper). Most distros enable them; hardened kernels with
-  `kernel.unprivileged_userns_clone=0` will crash webview tabs.
 - **Window minimum is 1100×700** — laptops below that resolution clip; small
   screens and phones are out of scope for the desktop target.
 - **A brief dashboard flash can appear before the first-run wizard** while
   settings load. Cosmetic.
-- **Software rendering fallback**: without working GL, Flutter and CEF fall
+- **Software rendering fallback**: without working GL, Flutter falls
   back to software paths (`libEGL warning: DRI3 error` in logs is harmless
   in VMs/containers).

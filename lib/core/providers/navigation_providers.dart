@@ -11,7 +11,7 @@ part 'navigation_providers.g.dart';
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 @Riverpod(keepAlive: true)
 class SelectedTab extends _$SelectedTab {
   @override
@@ -35,4 +35,21 @@ class HubSubTab extends _$HubSubTab {
   int build(AppTab tab) => 0;
 
   void select(int index) => state = index;
+}
+
+/// Whether the guide may open by itself. Off under `flutter test`, where
+/// most widget tests boot a configured shell and a surprise dialog would
+/// cover it; the guide's own test overrides it.
+@Riverpod(keepAlive: true)
+bool guideAutoOpen(Ref ref) =>
+    !Platform.environment.containsKey('FLUTTER_TEST');
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+@Riverpod(keepAlive: true)
+class GuideShown extends _$GuideShown {
+  @override
+  bool build() => false;
+
+  void mark() => state = true;
 }

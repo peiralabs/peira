@@ -15,7 +15,6 @@ import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/providers/tailscale_providers.dart';
 import 'package:peira/core/providers/terminal_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
-import 'package:peira/core/webview/webview_factory.dart';
 import 'package:peira/core/widgets/ai_status_strip.dart';
 import 'package:peira/screens/hermes/hermes_screen.dart';
 
@@ -35,13 +34,6 @@ class _FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> save(AppSettings settings) async => _settings = settings;
-}
-
-class _FakeWebViewFactory implements WebViewFactory {
-  @override
-  Widget build(String url,
-          {String? maskScript, bool controls = false, String? controlsLabel}) =>
-      Center(child: Text('webview: $url'));
 }
 
 class _FakeAdapter implements HttpClientAdapter {
@@ -66,6 +58,7 @@ class _FakeAdapter implements HttpClientAdapter {
 }
 
 const _settings = AppSettings(
+  showUnconfiguredTabs: true,
   proxmoxUrl: 'https://10.0.0.5:8006',
   proxmoxTokenId: 'user@pve!token',
   proxmoxTokenSecret: 'secret',
@@ -210,7 +203,6 @@ void main() {
             .overrideWith((ref) async => throw Exception('no ollama')),
         ollamaRunningProvider
             .overrideWith((ref) async => throw Exception('no ollama')),
-        webViewFactoryProvider.overrideWithValue(_FakeWebViewFactory()),
       ],
       child: const HomeLabApp(),
     ));

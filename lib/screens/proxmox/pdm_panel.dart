@@ -17,7 +17,7 @@ import '../../core/widgets/status_light.dart';
 /// Proxmox Datacenter Manager status on the Proxmox tab: reachability, the
 /// registered remotes with their cluster state (audit-scope API token), and
 /// the browser deep-link — PDM's own UI stays the place for anything deeper
-/// (its self-signed cert keeps it out of the embedded webviews).
+/// (its self-signed cert is pinned by fingerprint for the API calls).
 ///
 /// Renders nothing until a PDM URL is configured, so operators without PDM
 /// never see it.

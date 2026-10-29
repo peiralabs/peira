@@ -13,7 +13,7 @@ part of 'navigation_providers.dart';
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 
 @ProviderFor(SelectedTab)
 final selectedTabProvider = SelectedTabProvider._();
@@ -23,14 +23,14 @@ final selectedTabProvider = SelectedTabProvider._();
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 final class SelectedTabProvider extends $NotifierProvider<SelectedTab, int?> {
   /// Currently selected AppShell tab. Null until something picks one, letting
   /// the shell decide the initial tab (Dashboard normally, Settings on first
   /// launch). Dashboard tiles set this to jump to other tabs.
   ///
   /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-  /// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+  /// straight into one tab while debugging it.
   SelectedTabProvider._()
     : super(
         from: null,
@@ -65,7 +65,7 @@ String _$selectedTabHash() => r'd1d7674671b915657f747ed0a08be31c47a81588';
 /// launch). Dashboard tiles set this to jump to other tabs.
 ///
 /// `MOL_INITIAL_TAB` forces the starting tab — a debug aid for launching
-/// straight into a webview tab (e.g. to attach CEF DevTools to Grafana).
+/// straight into one tab while debugging it.
 
 abstract class _$SelectedTab extends $Notifier<int?> {
   int? build();
@@ -199,5 +199,117 @@ abstract class _$HubSubTab extends $Notifier<int> {
               Object?
             >;
     return element.handleCreate(ref, () => build(_$args));
+  }
+}
+
+/// Whether the guide may open by itself. Off under `flutter test`, where
+/// most widget tests boot a configured shell and a surprise dialog would
+/// cover it; the guide's own test overrides it.
+
+@ProviderFor(guideAutoOpen)
+final guideAutoOpenProvider = GuideAutoOpenProvider._();
+
+/// Whether the guide may open by itself. Off under `flutter test`, where
+/// most widget tests boot a configured shell and a surprise dialog would
+/// cover it; the guide's own test overrides it.
+
+final class GuideAutoOpenProvider extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Whether the guide may open by itself. Off under `flutter test`, where
+  /// most widget tests boot a configured shell and a surprise dialog would
+  /// cover it; the guide's own test overrides it.
+  GuideAutoOpenProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'guideAutoOpenProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$guideAutoOpenHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return guideAutoOpen(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$guideAutoOpenHash() => r'f5df1a6b3a1a2cd45d64bf6acf4a13c1173020d6';
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+
+@ProviderFor(GuideShown)
+final guideShownProvider = GuideShownProvider._();
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+final class GuideShownProvider extends $NotifierProvider<GuideShown, bool> {
+  /// Set once the guide has opened by itself this session, so a rebuild of
+  /// the shell does not open it again.
+  GuideShownProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'guideShownProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$guideShownHash();
+
+  @$internal
+  @override
+  GuideShown create() => GuideShown();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$guideShownHash() => r'99d6433e8415c31bf4a2c280233b825f3d7e6ba8';
+
+/// Set once the guide has opened by itself this session, so a rebuild of
+/// the shell does not open it again.
+
+abstract class _$GuideShown extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<bool, bool>,
+              bool,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
   }
 }

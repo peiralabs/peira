@@ -9,7 +9,6 @@
 #endif
 
 #include "flutter/generated_plugin_registrant.h"
-#include <webview_cef/webview_cef_plugin.h>
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -119,11 +118,6 @@ static void my_application_activate(GApplication* application) {
   FlView* view = fl_view_new(project);
   // Resolved above from the persisted active-theme colour.
   fl_view_set_background_color(view, &background_color);
-  // Route keyboard events to CEF so embedded web views receive input.
-  g_signal_connect(view, "key_press_event",
-                   G_CALLBACK(processKeyEventForCEF), nullptr);
-  g_signal_connect(view, "key_release_event",
-                   G_CALLBACK(processKeyEventForCEF), nullptr);
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
