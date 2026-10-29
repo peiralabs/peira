@@ -31,6 +31,7 @@ import '../providers/settings_providers.dart';
 import '../providers/tailscale_providers.dart';
 import '../settings/settings_repository.dart';
 import '../widgets/ai_status_strip.dart';
+import 'demo_services.dart';
 
 /// Demo mode: a fully populated, obviously-fake lab with no configuration
 /// and no network access — `./Peira.AppImage --demo` (or `MOL_DEMO=1`).
@@ -135,6 +136,24 @@ const _demoSettings = AppSettings(
   pdmUrl: 'https://10.0.0.6:8443',
   pdmTokenId: 'user@pam!pdmtoken',
   pdmTokenSecret: 'demo',
+  // Native service tabs run on canned data (demo_services.dart); these
+  // match its demoServiceUrls.
+  homeAssistantUrl: 'http://10.0.0.20:8123',
+  homeAssistantToken: 'demo',
+  wikiUrl: 'http://10.0.0.21:3000',
+  wikiApiKey: 'demo',
+  changedetectionUrl: 'http://10.0.0.22:5000',
+  changedetectionApiKey: 'demo',
+  paperlessUrl: 'http://10.0.0.23:8000',
+  paperlessToken: 'demo',
+  karakeepUrl: 'http://10.0.0.24:3000',
+  karakeepApiKey: 'demo',
+  jellyseerrUrl: 'http://10.0.0.25:5055',
+  jellyseerrApiKey: 'demo',
+  searxngUrl: 'http://10.0.0.26:8888',
+  immichUrl: 'http://10.0.0.27:2283',
+  immichApiKey: 'demo',
+  openWebuiApiKey: 'demo',
 );
 
 /// Two fake PDM remotes with a few guests each. Anything not overridden goes
@@ -695,6 +714,7 @@ final demoOverrides = [
   pbsSnapshotsProvider.overrideWith((ref, args) async => const []),
   pbsTasksProvider.overrideWith((ref, args) async => const []),
   pdmApiProvider.overrideWith((ref) async => _demoPdm),
+  ...demoServiceOverrides,
   pdmPanelProvider.overrideWith(
     (ref) async => PdmPanelState(
       reachable: true,

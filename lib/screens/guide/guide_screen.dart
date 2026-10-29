@@ -80,7 +80,7 @@ const _pages = [
         'services you run. Blank values are ignored, so a half-filled file '
         'never clears a working setting.',
     '• Import it from Settings › Setup file › Import setup file, or save '
-        'it as ~/.config/homelab/seed.json: the app imports it at the '
+        'it as ~/.config/peira/seed.json: the app imports it at the '
         'next launch and then deletes it, so your keys do not stay in a '
         'plain file.',
     'docs/setup-file.md lists every key and where each credential comes '

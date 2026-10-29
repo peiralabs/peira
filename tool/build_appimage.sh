@@ -89,15 +89,15 @@ done <<< "$externals"
 [ -z "$undeclared" ] || die "undeclared external libraries:$undeclared — bundle them or declare them in $MANIFEST"
 echo "  closure audit: OK ($(printf '%s\n' "$externals" | wc -l) NEEDED sonames)"
 
-cp "$REPO/assets/icon/homelab-512.png" "$APPDIR/homelab.png" || die "app icon missing"
+cp "$REPO/assets/icon/homelab-512.png" "$APPDIR/peira.png" || die "app icon missing"
 
-cat > "$APPDIR/homelab.desktop" << 'EOF'
+cat > "$APPDIR/peira.desktop" << 'EOF'
 [Desktop Entry]
 Type=Application
 Name=Peira
 Comment=Peira control panel
 Exec=peira
-Icon=homelab
+Icon=peira
 Categories=Utility;System;
 StartupWMClass=dev.peira.app
 EOF

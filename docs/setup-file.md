@@ -11,8 +11,8 @@ lists every key, with blanks and the defaults.
 
 - **Settings › Import setup file…** (any platform): paste the file's
   contents. It is saved straight away.
-- **Desktop drop-in:** save the file as `~/.config/homelab/seed.json`
-  (or `$XDG_CONFIG_HOME/homelab/seed.json`). The app imports it at its
+- **Desktop drop-in:** save the file as `~/.config/peira/seed.json`
+  (or `$XDG_CONFIG_HOME/peira/seed.json`). The app imports it at its
   next launch and then **deletes it**, so credentials do not stay in a
   plain file. A malformed file is deleted too, and nothing is imported.
 

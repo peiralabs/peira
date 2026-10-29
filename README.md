@@ -1,27 +1,49 @@
-# Homelab control panel
+# Peira
 
-A Flutter desktop app that puts a whole homelab on one screen: native
-Proxmox VE management (nodes, containers, snapshots, live charts),
-Proxmox Datacenter Manager and Proxmox Backup Server tabs, a
-Prometheus-backed metrics tab, media-stack status panels, an AI chat for any
-OpenAI-compatible endpoint, an embedded terminal whose SSH targets are built
-from live Proxmox inventory, and native tabs that drive each service through
-its own API — Home Assistant, Immich, Paperless-ngx, Karakeep, Seerr, Open
-WebUI, Wiki.js, SearXNG and changedetection.io — each with an "Open in
-browser" button for whatever the API cannot do. Eight
-theme families restyle the whole interface — each with its own palette and
-typography — so it can look like anything from an engraved brass instrument
-to a neon-green terminal.
+**One control room for a Proxmox homelab.** Peira is a Linux desktop app from
+[Peira Labs](https://peiralabs.com) that runs your Proxmox VE cluster and the
+services around it from a single window — every tab talks to its service's own
+API, natively, with no embedded web pages. Say it *PAY-rah*.
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Peira dashboard](docs/screenshots/dashboard.png)
 
-| First launch | Container detail |
+- **Proxmox VE, natively:** nodes, containers and VMs with live charts,
+  start/stop/reboot, snapshots, clones, backups and restores, serial consoles,
+  and create-from-template. Proxmox Datacenter Manager and Proxmox Backup
+  Server get their own tabs.
+- **Your services, natively:** Home Assistant (every entity and its controls,
+  services, logbook), Immich (library, albums, people, job queues),
+  Paperless-ngx (search, edit, upload), Karakeep (bookmarks, tags, lists,
+  feeds), Seerr (discover, request, approve), Open WebUI (chat, history,
+  knowledge), Wiki.js (pages, search, history), SearXNG (private search) and
+  changedetection.io (watches and diffs). Each tab has an **Open in browser**
+  button for whatever its API cannot do.
+- **Metrics and media:** Prometheus telemetry, Loki logs, Jellyfin and Plex
+  status, Radarr, Sonarr, Prowlarr and qBittorrent.
+- **A terminal** whose SSH targets come from the live Proxmox inventory, and a
+  Tailscale view.
+- **Set up in one step:** fill in a setup file once and import it; tabs for
+  services you don't run stay out of the sidebar; a built-in guide walks you
+  through the rest on first launch.
+- **Eight theme families**, each with dark and light variants.
+
+| Proxmox VE | Home Assistant |
 |---|---|
-| ![Setup wizard](docs/screenshots/setup-wizard.png) | ![Container detail](docs/screenshots/container-detail.png) |
+| ![Proxmox tab](docs/screenshots/proxmox.png) | ![Home Assistant tab](docs/screenshots/home-assistant.png) |
+
+| Documents (Paperless-ngx) | Wiki (Wiki.js) |
+|---|---|
+| ![Documents tab](docs/screenshots/documents.png) | ![Wiki tab](docs/screenshots/wiki.png) |
+
+| Watches (changedetection.io) | First launch |
+|---|---|
+| ![Watches tab](docs/screenshots/watches.png) | ![Setup wizard](docs/screenshots/setup-wizard.png) |
 
 | Datacenter Manager | Backup Server |
 |---|---|
 | ![PDM tab](docs/screenshots/pdm.png) | ![PBS tab](docs/screenshots/pbs.png) |
+
+Every screenshot is demo mode: the nodes, guests and services are fake.
 
 ## Themes
 
@@ -46,10 +68,27 @@ variants; pick one in Settings. The shots below are demo mode.
 - **Proxmox VE and an API token** — that's the only hard requirement. A
   read-only token (`PVEAuditor`) lights up everything except management
   actions; the first-run wizard shows the exact `pveum` commands.
-- A Linux desktop with GTK 3, an X11 or Wayland (with XWayland) session, and a
-  Secret Service (GNOME Keyring or KWallet) for credential storage.
-- Everything else — Prometheus, Grafana, media services, AI endpoints — is
-  optional; panels appear as you configure them.
+- A Linux desktop with GTK 3 (X11 or Wayland) and a Secret Service (GNOME
+  Keyring, KWallet or KeePassXC) for credential storage.
+- Everything else — Prometheus, Grafana, media services, AI endpoints, Home
+  Assistant and the rest — is optional; each tab appears once its service is
+  configured.
+
+## Set up
+
+1. On first launch the wizard connects Proxmox (URL plus an API token; it shows
+   the exact `pveum` commands).
+2. For each service you run, add its URL and API key in Settings. The guide
+   (it opens on first launch, and lives in Settings › Guide) lists where every
+   key comes from.
+3. Or do it all at once: fill in
+   [setup/setup.example.json](setup/setup.example.json) and import it from
+   Settings › Import setup file, or save it as `~/.config/peira/seed.json`
+   for the next launch (it is deleted after import). See
+   [docs/setup-file.md](docs/setup-file.md).
+
+Keys are stored in your system keychain, never in plain files; each one only
+reaches its own service.
 
 ## Install
 
@@ -140,19 +179,18 @@ degrades gracefully:
   serial; desktop ISOs use VGA). Provisioning a VM directly from a cloud image
   (disk import + cloud-init) is not supported yet — a cloud `.img` will not
   boot when attached as a CD-ROM.
-- **The Wiki tab targets Wiki.js v2 specifically.** The native reskin detects
-  Wiki.js's DOM and switches itself off on anything else — BookStack,
-  Outline, or Confluence load with their own styling rather than a
-  half-applied mask.
+- **The Wiki tab targets Wiki.js v2** through its GraphQL API (with an API key
+  from Administration › API Access). Other wikis are not supported.
 - **Metrics needs Prometheus** scraping `node_exporter` on your nodes. The
   guest-metrics panel additionally needs
   [prometheus-pve-exporter](https://github.com/prometheus-pve/prometheus-pve-exporter)
   — an optional install, separate from `node_exporter`; the rest of the tab
   works without it. Grafana (with a Viewer-role API key) powers the alerts
   feed; it is optional.
-- **Media services are optional and live wherever you run them** — NAS,
-  containers, VMs. Jellyfin, Plex, Radarr, Sonarr, Prowlarr, qBittorrent, and
-  Jellyseerr each appear once configured; nothing assumes a NAS.
+- **Services are optional and live wherever you run them** — NAS, containers,
+  VMs. Each tab appears once its service has a URL, and asks for exactly the
+  key it is missing; Settings › Show tabs for services not set up lists them
+  all. Nothing assumes a NAS.
 - **AI Chat speaks to any OpenAI-compatible endpoint** (Ollama, LiteLLM,
   vLLM, OpenRouter…) — endpoint, model name, and optional API key are
   settings. The Ollama tab is a native model library for a local Ollama
