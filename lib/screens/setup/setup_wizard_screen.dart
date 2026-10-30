@@ -10,6 +10,7 @@ import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/util/open_url.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/screen_header.dart';
 import '../settings/profile_actions.dart';
 import 'setup_probe.dart';
@@ -131,7 +132,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                       'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
                       obscure: true,
                     ),
-                    SwitchListTile(
+                    BrassSwitchTile(
                       contentPadding: EdgeInsets.zero,
                       value: _trust,
                       onChanged: (v) => setState(() => _trust = v),

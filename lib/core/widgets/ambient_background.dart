@@ -72,8 +72,13 @@ class _DeskPainter extends CustomPainter {
       // lower-left, cool-accent lower-right — all from the theme's palette.
       glowAt(const Alignment(0, -1.1), size.width * 0.60, size.height * 0.42,
           brass.giltBright.withValues(alpha: 0.16));
+      // The deep-field wash: Brass's pine green; other families wash in their
+      // own panel colour warmed by their metal, so no family turns green.
+      final field = InstrumentKit.of(brass) == InstrumentKit.brass
+          ? brass.pine
+          : Color.lerp(brass.panelTop, brass.giltDeep, 0.2)!;
       glowAt(const Alignment(0.56, -1.16), size.width * 1.2, size.height * 0.9,
-          brass.pine.withValues(alpha: 0.50));
+          field.withValues(alpha: 0.50));
       glowAt(const Alignment(-0.88, 1.12), size.width * 0.9, size.height * 0.7,
           brass.madder.withValues(alpha: 0.16));
       glowAt(const Alignment(1.0, 1.16), size.width * 0.8, size.height * 0.7,

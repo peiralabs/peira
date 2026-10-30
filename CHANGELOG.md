@@ -6,6 +6,43 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-29
+
+### Added
+
+- **Instrument kits.** Each theme family draws the shared instruments in its
+  own style: readouts, meters, dials, charts, status lamps, switches and
+  fasteners (see the README's Instruments section). Brass becomes a working
+  instrument panel: split-flap counters, liquid-filled gauge tubes, raised
+  dials in recessed ledges, screwed instrument plates, oscilloscope and
+  chart-paper traces, a strip-chart recorder for cluster CPU, knurled
+  refresh knobs, jewel pilot lamps, and bat-handle toggles.
+- Every switch shows a green (on) or red (off) lamp.
+- The terminal follows the theme: a CRT housing, and an ANSI colour scheme
+  per family (green and amber phosphor, Nord, Catppuccin Mocha, macOS).
+- Metrics charts mark warning and critical zones (CPU, memory, disk,
+  temperatures) and zoom the temperature and power scales to the range
+  that matters.
+
+### Changed
+
+- Colours that only suited Brass (sub-tab strips, the attention banner,
+  header badges, the terminal frame, chat and service palettes) now follow
+  the selected theme family.
+- Settings-style switches, progress bars and status lights use the theme's
+  instruments instead of the stock Material widgets.
+- Chart lines use each family's own inks, so the graphs match the theme;
+  Brass keeps to period inks.
+- The sidebar's section icons and titles take each family's colours.
+
+### Fixed
+
+- A counter replay arriving mid-count dropped the flip in flight.
+- Charts were hard to read in Ember and most light modes.
+- Percentage charts could show an axis above 100 %.
+- A readout wider than its dial (such as 17/17) overflowed it; readouts now
+  scale down to fit.
+
 ## [2.0.0] — 2026-10-29
 
 A major version: the service tabs that showed each service's web page now

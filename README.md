@@ -25,7 +25,11 @@ API, natively, with no embedded web pages. Say it *PAY-rah*.
 - **Set up in one step:** fill in a setup file once and import it; tabs for
   services you don't run stay out of the sidebar; a built-in guide walks you
   through the rest on first launch.
-- **Eight theme families**, each with dark and light variants.
+- **Eight theme families, each with its own instruments**: the gauges,
+  readouts, meters, charts, lamps and switches change with the theme, from
+  Brass's split-flap counters and liquid-filled gauge tubes to Ember's Nixie
+  tubes and VU meters. Charts and the sidebar take the family's colours.
+  Every family has dark and light variants.
 
 | Proxmox VE | Home Assistant |
 |---|---|
@@ -44,6 +48,35 @@ API, natively, with no embedded web pages. Say it *PAY-rah*.
 | ![PDM tab](docs/screenshots/pdm.png) | ![PBS tab](docs/screenshots/pbs.png) |
 
 Every screenshot is demo mode: the nodes, guests and services are fake.
+
+## Instruments
+
+The dashboard and every tab are built like a real instrument panel, and each
+theme family brings its own instrument maker's style:
+
+| Family | Readouts | Meters | Dials | Switches |
+|---|---|---|---|---|
+| **Brass** | Split-flap counters | Liquid glass tubes | Mercury tube gauges | Bat-handle toggles |
+| **Graphite** | Grey LCD digits | 10-cell bar graphs | Needle gauges, orange pointer | Flat rockers |
+| **Terminal** | Green LED segments | Block bars | Vector-scope rings | Slide switches |
+| **Nord** | Cockpit value boxes | LED strips | Labelled arc gauges | Lit push-buttons |
+| **Ember** | Nixie tubes | Magic-eye indicators | VU meters | Rockers |
+| **Obsidian** | Steel LCD segments | Steel cell bars | Steel graticule rings | Guarded toggles |
+| **Aqua** | Glossy lozenges | Striped gel bars | Glass dials | Gel capsules |
+| **Catppuccin** | Pastel pills | Rounded cells | Soft rings | Rounded rockers |
+
+They move like the real thing: counters click up from zero as the gauges
+sweep in, needles swing, meters fill, status lamps breathe at a pace set by
+severity, and every switch carries a green (on) or red (off) lamp. Charts sit
+behind glass, on a phosphor scope or chart paper depending on the family,
+and draw in the family's own inks (Brass keeps to period inks). Metrics charts
+shade their warning and critical zones, and the temperature and power charts
+zoom to the range that matters. The sidebar's section colours follow the
+family too.
+
+![Instrument kits, one row per theme family](docs/screenshots/instruments.png)
+
+![Node plates and switches, one row per theme family](docs/screenshots/controls.png)
 
 ## Themes
 

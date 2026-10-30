@@ -7,6 +7,8 @@ import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
+import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/service_frame.dart';
 import 'immich_widgets.dart';
 
@@ -426,12 +428,12 @@ class _PeopleView extends ConsumerWidget {
                 controller: name,
                 decoration: const InputDecoration(labelText: 'Name'),
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 title: const Text('Favourite'),
                 value: favorite,
                 onChanged: (v) => setLocal(() => favorite = v),
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 title: const Text('Hidden'),
                 value: hidden,
                 onChanged: (v) => setLocal(() => hidden = v),
@@ -732,9 +734,11 @@ class _ServerView extends ConsumerWidget {
                   '${_gib(s.usageBytes)} in the library',
                 ),
                 const SizedBox(height: 10),
-                LinearProgressIndicator(
-                  value: (s.diskPercent / 100).clamp(0, 1),
-                  minHeight: 8,
+                RecessedBar(
+                  fraction: (s.diskPercent / 100).clamp(0, 1).toDouble(),
+                  gradient: context.brass
+                      .loadGradient((s.diskPercent / 100).clamp(0, 1).toDouble()),
+                  height: 12,
                 ),
                 const SizedBox(height: 6),
                 Text(

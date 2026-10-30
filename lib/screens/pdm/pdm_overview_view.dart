@@ -6,6 +6,7 @@ import '../../core/providers/pdm_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/screen_header.dart';
 import '../../core/widgets/status_light.dart';
@@ -31,10 +32,11 @@ class PdmOverviewView extends ConsumerWidget {
             title: 'Datacenter Manager',
             subtitle: 'REMOTES · CLUSTERS · CAPACITY',
             trailing: [
-              IconButton(
+              KnurledKnob(
+                icon: Ph.arrowsClockwise,
                 tooltip: 'Refresh',
+                size: 26,
                 onPressed: refresh,
-                icon: const Icon(Ph.arrowsClockwise),
               ),
             ],
           ),

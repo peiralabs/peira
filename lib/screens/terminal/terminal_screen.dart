@@ -14,6 +14,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_icon_badge.dart';
 import '../../core/widgets/brass_ornament.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/screen_header.dart';
 
 /// ANSI palette remapped to the brass/navy design (§9) so the shell reads as
@@ -52,6 +53,134 @@ const molTerminalTheme = TerminalTheme(
 /// parchment: navy wash chips, engraved gilt borders, ink-dark labels. Dark
 /// values are verbatim from the dark-only era; everything not listed here
 /// (the panel slab, title bar, gems, placeholder inks) draws on the kept-dark
+TerminalTheme _ansi({
+  required Color bg,
+  required Color fg,
+  required Color cursor,
+  required List<Color> c,
+}) => TerminalTheme(
+  cursor: cursor,
+  selection: cursor.withValues(alpha: 0.25),
+  foreground: fg,
+  background: bg,
+  black: c[0],
+  red: c[1],
+  green: c[2],
+  yellow: c[3],
+  blue: c[4],
+  magenta: c[5],
+  cyan: c[6],
+  white: c[7],
+  brightBlack: c[8],
+  brightRed: c[9],
+  brightGreen: c[10],
+  brightYellow: c[11],
+  brightBlue: c[12],
+  brightMagenta: c[13],
+  brightCyan: c[14],
+  brightWhite: c[15],
+  searchHitBackground: c[11],
+  searchHitBackgroundCurrent: cursor,
+  searchHitForeground: bg,
+);
+
+/// The shell's colours in each family's idiom: Brass keeps its own; Terminal
+/// is green-phosphor monochrome, Ember amber phosphor, Obsidian steel-white
+/// on true black, Nord and Catppuccin their official ANSI schemes, Aqua the
+/// macOS system colours, Graphite a muted neutral set. Always a dark,
+/// self-luminous screen, in light mode too.
+TerminalTheme terminalThemeFor(BuildContext context) {
+  switch (context.kit) {
+    case InstrumentKit.brass:
+      return molTerminalTheme;
+    case InstrumentKit.terminal:
+      return _ansi(
+        bg: const Color(0xFF020703),
+        fg: const Color(0xFF39FF6A),
+        cursor: const Color(0xFF9CFFB4),
+        c: const [
+          Color(0xFF0A1F0F), Color(0xFF3FD46A), Color(0xFF39FF6A), Color(0xFF9CFFB4),
+          Color(0xFF2BB35A), Color(0xFF5FE08A), Color(0xFF7DFFA0), Color(0xFFB8FFCC),
+          Color(0xFF1F5A2E), Color(0xFF6CFF94), Color(0xFF7DFFA0), Color(0xFFCCFFDA),
+          Color(0xFF4ED67A), Color(0xFF8CFFB0), Color(0xFFA6FFC2), Color(0xFFE6FFEE),
+        ],
+      );
+    case InstrumentKit.ember:
+      return _ansi(
+        bg: const Color(0xFF120804),
+        fg: const Color(0xFFFFB15C),
+        cursor: const Color(0xFFFFD49A),
+        c: const [
+          Color(0xFF2A1406), Color(0xFFFF7A3D), Color(0xFFFFB15C), Color(0xFFFFD08A),
+          Color(0xFFC9813E), Color(0xFFE89A5A), Color(0xFFFFC27A), Color(0xFFFFE2BC),
+          Color(0xFF6A3A18), Color(0xFFFF9A62), Color(0xFFFFC27A), Color(0xFFFFE0A8),
+          Color(0xFFE0A060), Color(0xFFFFB27A), Color(0xFFFFD49A), Color(0xFFFFF1DE),
+        ],
+      );
+    case InstrumentKit.obsidian:
+      return _ansi(
+        bg: const Color(0xFF000000),
+        fg: const Color(0xFFCDD0D6),
+        cursor: const Color(0xFFD8DCE2),
+        c: const [
+          Color(0xFF151515), Color(0xFFD9534A), Color(0xFF7FB86A), Color(0xFFFFB020),
+          Color(0xFF6C8EBF), Color(0xFFB07FB8), Color(0xFF6FB3B3), Color(0xFFB8BCC2),
+          Color(0xFF3A3A3E), Color(0xFFF07068), Color(0xFF9AD486), Color(0xFFFFCB60),
+          Color(0xFF8EACD6), Color(0xFFCB9CD4), Color(0xFF8ED0D0), Color(0xFFE6E8EB),
+        ],
+      );
+    case InstrumentKit.nord:
+      return _ansi(
+        bg: const Color(0xFF2E3440),
+        fg: const Color(0xFFD8DEE9),
+        cursor: const Color(0xFFD8DEE9),
+        c: const [
+          Color(0xFF3B4252), Color(0xFFBF616A), Color(0xFFA3BE8C), Color(0xFFEBCB8B),
+          Color(0xFF81A1C1), Color(0xFFB48EAD), Color(0xFF88C0D0), Color(0xFFE5E9F0),
+          Color(0xFF4C566A), Color(0xFFBF616A), Color(0xFFA3BE8C), Color(0xFFEBCB8B),
+          Color(0xFF81A1C1), Color(0xFFB48EAD), Color(0xFF8FBCBB), Color(0xFFECEFF4),
+        ],
+      );
+    case InstrumentKit.catppuccin:
+      return _ansi(
+        bg: const Color(0xFF1E1E2E),
+        fg: const Color(0xFFCDD6F4),
+        cursor: const Color(0xFFF5E0DC),
+        c: const [
+          Color(0xFF45475A), Color(0xFFF38BA8), Color(0xFFA6E3A1), Color(0xFFF9E2AF),
+          Color(0xFF89B4FA), Color(0xFFF5C2E7), Color(0xFF94E2D5), Color(0xFFBAC2DE),
+          Color(0xFF585B70), Color(0xFFF38BA8), Color(0xFFA6E3A1), Color(0xFFF9E2AF),
+          Color(0xFF89B4FA), Color(0xFFF5C2E7), Color(0xFF94E2D5), Color(0xFFA6ADC8),
+        ],
+      );
+    case InstrumentKit.aqua:
+      return _ansi(
+        bg: const Color(0xFF1E1E1E),
+        fg: const Color(0xFFF2F2F2),
+        cursor: const Color(0xFF0A84FF),
+        c: const [
+          Color(0xFF000000), Color(0xFFFF5F57), Color(0xFF28C840), Color(0xFFFEBC2E),
+          Color(0xFF0A84FF), Color(0xFFBF5AF2), Color(0xFF64D2FF), Color(0xFFE5E5EA),
+          Color(0xFF636366), Color(0xFFFF7B74), Color(0xFF4CD964), Color(0xFFFFD60A),
+          Color(0xFF409CFF), Color(0xFFDA8FFF), Color(0xFF70D7FF), Color(0xFFFFFFFF),
+        ],
+      );
+    case InstrumentKit.graphite:
+      return _ansi(
+        bg: const Color(0xFF15181B),
+        fg: const Color(0xFFD5DADF),
+        cursor: const Color(0xFFFF6A00),
+        c: const [
+          Color(0xFF22272D), Color(0xFFD0675F), Color(0xFF8DBF8B), Color(0xFFD9C27A),
+          Color(0xFF7FA5CC), Color(0xFFB9A0CF), Color(0xFF7FC6C6), Color(0xFFC9CED4),
+          Color(0xFF4A535C), Color(0xFFE08A83), Color(0xFFA8D4A6), Color(0xFFE8D69A),
+          Color(0xFF9ABCDE), Color(0xFFCDB8E0), Color(0xFF9ADADA), Color(0xFFEEF1F4),
+        ],
+      );
+  }
+}
+
+
 /// slab and stays shared.
 class _Chrome {
   const _Chrome({
@@ -116,8 +245,33 @@ class _Chrome {
   final Color connectBorder;
   final Color connectFg;
 
-  static _Chrome of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _Chrome of(BuildContext context) => forBrass(Brass.of(context));
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Chrome>{};
+  static _Chrome forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Chrome(
+        headerSubtitle: themeColor(base.headerSubtitle, b),
+        tabSelectedBg: themeColor(base.tabSelectedBg, b),
+        tabIdleBg: themeColor(base.tabIdleBg, b),
+        tabSelectedBorder: themeColor(base.tabSelectedBorder, b),
+        tabIdleBorder: themeColor(base.tabIdleBorder, b),
+        tabSelectedText: themeColor(base.tabSelectedText, b),
+        tabIdleText: themeColor(base.tabIdleText, b),
+        tabCloseIcon: themeColor(base.tabCloseIcon, b),
+        menuGroupHeader: themeColor(base.menuGroupHeader, b),
+        connectBg1: themeColor(base.connectBg1, b),
+        connectBg2: themeColor(base.connectBg2, b),
+        connectBorder: themeColor(base.connectBorder, b),
+        connectFg: themeColor(base.connectFg, b),
+      ),
+    );
+  }
 }
 
 /// One terminal session (a tab) — its own [Terminal] + [Pty]. A local session
@@ -381,7 +535,7 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
             ScreenHeader(
               icon: Ph.terminalWindow,
               badgeField: BrassIconBadge.navyField,
-              iconColor: const Color(0xFFDCE8F8),
+              iconColor: themeColor(const Color(0xFFDCE8F8), context.brass),
               title: 'Terminal',
               subtitle: '${_host.toUpperCase()} · ${_shellName.toUpperCase()} · '
                   '${_sessions.length} SESSION${_sessions.length == 1 ? '' : 'S'}',
@@ -419,13 +573,13 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                                     child: Text(
                                       'Could not start:\n${s.error}',
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                          color: Color(0xFFDD8078)),
+                                      style: TextStyle(
+                                          color: themeColor(const Color(0xFFDD8078), context.brass)),
                                     ),
                                   )
                                 : TerminalView(
                                     s.terminal,
-                                    theme: molTerminalTheme,
+                                    theme: terminalThemeFor(context),
                                     textStyle: const TerminalStyle(
                                       fontFamily: 'JetBrains Mono',
                                     ),
@@ -538,7 +692,7 @@ class _Tab extends StatelessWidget {
                   gradient: session.exited
                       ? null
                       : session.jewel.cabochon,
-                  color: session.exited ? const Color(0xFF6A5040) : null,
+                  color: session.exited ? themeColor(const Color(0xFF6A5040), context.brass) : null,
                 ),
               ),
               const SizedBox(width: 8),
@@ -689,10 +843,11 @@ class _EmptyTerminal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
         'No sessions — use Connect to open one.',
-        style: TextStyle(color: Color(0xFF7F93B0)),
+        style: TextStyle(
+            color: themeColor(const Color(0xFF7F93B0), context.brass)),
       ),
     );
   }
@@ -742,15 +897,53 @@ class _TerminalPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The monitor housing: dark turned metal, screwed at the corners, with
+    // the screen set into it.
+    final m = context.brass.brassStops;
+    return Container(
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.lerp(m[3], Colors.black, 0.55)!,
+            Color.lerp(m[4], Colors.black, 0.7)!,
+          ],
+        ),
+        border: Border.all(color: m[3].withValues(alpha: 0.5)),
+        boxShadow: context.brass.cardShadow,
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(child: _screen(context)),
+          const Positioned(left: -5, top: -5, child: ScrewHead(angle: 0.6)),
+          const Positioned(right: -5, top: -5, child: ScrewHead(angle: -1)),
+          const Positioned(left: -5, bottom: -5, child: ScrewHead(angle: 1.2)),
+          const Positioned(right: -5, bottom: -5, child: ScrewHead(angle: 0.2)),
+        ],
+      ),
+    );
+  }
+
+  Widget _screen(BuildContext context) {
+    final b = context.brass;
+    final bg = terminalThemeFor(context).background;
+    final titleInk = themeColor(const Color(0xFF7F93B0), b);
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(
+        borderRadius: BorderRadius.circular(10),
+        gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xF0090E15), Color(0xF7060A0F)],
+          colors: [
+            Color.lerp(bg, Colors.white, 0.02)!.withValues(alpha: 0.94),
+            Color.lerp(bg, Colors.black, 0.25)!.withValues(alpha: 0.97),
+          ],
         ),
-        border: Border.all(color: const Color(0x578CAFE0)),
+        border: Border.all(color: themeColor(const Color(0x578CAFE0), b)),
         boxShadow: context.brass.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
@@ -760,8 +953,11 @@ class _TerminalPanel extends StatelessWidget {
           Container(
             height: 34,
             padding: const EdgeInsets.symmetric(horizontal: 13),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0x2E8CAFE0))),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                    color: themeColor(const Color(0x2E8CAFE0), b)),
+              ),
             ),
             child: Row(
               children: [
@@ -775,10 +971,10 @@ class _TerminalPanel extends StatelessWidget {
                     title,
                     textAlign: TextAlign.center,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'JetBrains Mono',
                       fontSize: 12.5,
-                      color: Color(0xFF7F93B0),
+                      color: titleInk,
                     ),
                   ),
                 ),
@@ -787,7 +983,7 @@ class _TerminalPanel extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(child: child),
+          Expanded(child: CrtGlass(child: child)),
         ],
       ),
     );

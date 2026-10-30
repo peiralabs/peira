@@ -319,8 +319,7 @@ class _HermesPalette {
   final Color inputHint;
 
   /// Ambient-theme resolution (registers a Theme dependency, like Brass.of).
-  static _HermesPalette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _HermesPalette of(BuildContext context) => forBrass(Brass.of(context));
 
   ChatScaffoldStyle get chatStyle => ChatScaffoldStyle(
     userBubbleTop: userBubbleTop,
@@ -405,4 +404,42 @@ class _HermesPalette {
     inputInk: Color(0xFF3A2C24),
     inputHint: Color(0xFF6E5A4E),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _HermesPalette>{};
+  static _HermesPalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _HermesPalette(
+        subtitle: themeColor(base.subtitle, b),
+        pillBorderFail: themeColor(base.pillBorderFail, b),
+        pillBorderUp: themeColor(base.pillBorderUp, b),
+        pillBg: themeColor(base.pillBg, b),
+        pillTextFail: themeColor(base.pillTextFail, b),
+        pillTextUp: themeColor(base.pillTextUp, b),
+        emptyIcon: themeColor(base.emptyIcon, b),
+        userBubbleTop: themeColor(base.userBubbleTop, b),
+        userBubbleBottom: themeColor(base.userBubbleBottom, b),
+        userBorder: themeColor(base.userBorder, b),
+        userInk: themeColor(base.userInk, b),
+        assistantTop: themeColor(base.assistantTop, b),
+        assistantBottom: themeColor(base.assistantBottom, b),
+        assistantBorder: themeColor(base.assistantBorder, b),
+        assistantInk: themeColor(base.assistantInk, b),
+        errorTop: themeColor(base.errorTop, b),
+        errorBottom: themeColor(base.errorBottom, b),
+        errorBorder: themeColor(base.errorBorder, b),
+        errorInk: themeColor(base.errorInk, b),
+        bubbleShadow: themeColor(base.bubbleShadow, b),
+        thinkingText: themeColor(base.thinkingText, b),
+        inputBg: themeColor(base.inputBg, b),
+        inputBorder: themeColor(base.inputBorder, b),
+        inputInk: themeColor(base.inputInk, b),
+        inputHint: themeColor(base.inputHint, b),
+      ),
+    );
+  }
 }

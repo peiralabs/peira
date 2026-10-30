@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,8 @@ import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/flip_readout.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/recessed_bar.dart';
 import '../../core/widgets/screen_header.dart';
 import '../../core/widgets/status_light.dart';
@@ -92,6 +96,10 @@ class MetricsScreen extends ConsumerWidget {
                     accent: pal.accentCpu,
                     series: m.cpu,
                     maxY: 100,
+                    warnAt: 60,
+                    critAt: 85,
+                    warnLabel: 'BUSY',
+                    critLabel: 'SATURATED',
                     format: _pct,
                   ),
                   _MetricPanel(
@@ -99,6 +107,10 @@ class MetricsScreen extends ConsumerWidget {
                     accent: pal.accentMemory,
                     series: m.memory,
                     maxY: 100,
+                    warnAt: 80,
+                    critAt: 95,
+                    warnLabel: 'TIGHT',
+                    critLabel: 'SWAPPING',
                     format: _pct,
                   ),
                   _MetricPanel(
@@ -106,6 +118,10 @@ class MetricsScreen extends ConsumerWidget {
                     accent: pal.accentDisk,
                     series: m.disk,
                     maxY: 100,
+                    warnAt: 80,
+                    critAt: 90,
+                    warnLabel: 'FILLING',
+                    critLabel: 'FULL',
                     format: _pct,
                   ),
                   _MetricPanel(
@@ -119,7 +135,11 @@ class MetricsScreen extends ConsumerWidget {
                     accent: pal.accentTemp,
                     series: m.temps,
                     format: (v) => '${v.toStringAsFixed(0)}°C',
-                    warnAt: 80,
+                    warnAt: 70,
+                    critAt: 85,
+                    warnLabel: 'WARM 70°C',
+                    critLabel: 'THROTTLE 85°C',
+                    zoom: true,
                   ),
                   if (insights.value case final ins?)
                     _TopGuestsPanel(guests: ins.topGuests)
@@ -361,6 +381,10 @@ class _MetricPanel extends StatelessWidget {
     required this.format,
     this.maxY,
     this.warnAt,
+    this.critAt,
+    this.warnLabel,
+    this.critLabel,
+    this.zoom = false,
     this.sumLatest = false,
   });
 
@@ -370,16 +394,38 @@ class _MetricPanel extends StatelessWidget {
   final String Function(double) format;
   final double? maxY;
 
-  /// Draws a dashed warn line at this y-value (e.g. 80°C).
+  /// Draws a dashed warn line at this y-value (e.g. 70°C).
   final double? warnAt;
+
+  /// With [warnAt], a health metric's danger level: the band from [warnAt]
+  /// to here is tinted as warm and everything above as hot, in the family's
+  /// own warn / crit colours, so the chart shows what the numbers mean.
+  final double? critAt;
+
+  /// Engraved labels on the threshold lines (e.g. "warm", "throttle").
+  final String? warnLabel;
+  final String? critLabel;
+
+  /// Fit the y-range to the data (with headroom above the thresholds)
+  /// instead of starting at zero, for metrics that never go near zero
+  /// (temperatures, power draw).
+  final bool zoom;
 
   /// Big readout = sum of the series' last points instead of their max —
   /// for panels whose headline reads as a total (AI tokens), not as the
   /// hottest node.
   final bool sumLatest;
 
-  /// Per-node line shades of this panel's series colour.
-  Color _colorFor(Brass brass, int i) => brass.shade(accent, i);
+  /// Per-node line shades of this panel's series colour, kept legible on
+  /// the chart's screen: no lighter than mid-tone on light paper, no darker
+  /// than mid-tone on a dark screen.
+  Color _colorFor(Brass brass, int i) {
+    final hsl = HSLColor.fromColor(brass.shade(accent, i));
+    final l = brass.isDark
+        ? hsl.lightness.clamp(0.5, 0.85)
+        : hsl.lightness.clamp(0.18, 0.46);
+    return hsl.withLightness(l).toColor();
+  }
 
   /// Splits "42%" / "6.1 MB/s" / "75°C" into value + unit.
   static (String, String) _split(String s) {
@@ -405,8 +451,41 @@ class _MetricPanel extends StatelessWidget {
         if (p.$2 > top) top = p.$2;
       }
     }
+    var low = double.infinity;
+    for (final s in series) {
+      for (final p in s.points) {
+        if (p.$2 < low) low = p.$2;
+      }
+    }
     var yMax = maxY ?? (top <= 0 ? 1.0 : top * 1.2);
-    if (warnAt != null && yMax < warnAt! * 1.1) yMax = warnAt! * 1.1;
+    final ceiling = critAt ?? warnAt;
+    // Headroom above the danger line only on open-ended scales: a fixed
+    // ceiling (100 %) is already the honest top.
+    if (maxY == null && ceiling != null && yMax < ceiling * 1.08) {
+      yMax = ceiling * 1.08;
+    }
+    var yMin = 0.0;
+    if (zoom && low.isFinite) {
+      // A round floor ten below the coolest reading, a round ceiling with
+      // room above the hottest reading and the danger line.
+      yMin = math.max(0, ((low - 10) / 10).floor() * 10.0);
+      yMax = (math.max(top + 8, (ceiling ?? 0) + 5) / 10).ceil() * 10.0;
+    }
+    final multi = series.length > 1;
+    HorizontalLineLabel? lineLabel(String? text, Color c) => text == null
+        ? null
+        : HorizontalLineLabel(
+            show: true,
+            alignment: Alignment.topRight,
+            padding: const EdgeInsets.only(right: 4, bottom: 1),
+            style: TextStyle(
+              fontSize: 9.5,
+              letterSpacing: 9.5 * 0.08,
+              color: c,
+              fontWeight: FontWeight.w600,
+            ),
+            labelResolver: (_) => text,
+          );
 
     final latest = series.isEmpty
         ? null
@@ -480,10 +559,29 @@ class _MetricPanel extends StatelessWidget {
                       style: TextStyle(color: brass.textMuted),
                     ),
                   )
-                : LineChart(
+                : ScopeFrame(child: LineChart(
                     LineChartData(
-                      minY: 0,
+                      minY: yMin,
                       maxY: yMax,
+                      // Heat zones: warm from warnAt, hot from critAt.
+                      rangeAnnotations: critAt == null || warnAt == null
+                          ? const RangeAnnotations()
+                          : RangeAnnotations(
+                              horizontalRangeAnnotations: [
+                                HorizontalRangeAnnotation(
+                                  y1: warnAt!,
+                                  y2: critAt!,
+                                  color: brass.warn.withValues(
+                                      alpha: brass.isDark ? 0.10 : 0.12),
+                                ),
+                                HorizontalRangeAnnotation(
+                                  y1: critAt!,
+                                  y2: yMax,
+                                  color: brass.crit.withValues(
+                                      alpha: brass.isDark ? 0.14 : 0.13),
+                                ),
+                              ],
+                            ),
                       // Hover crosshair + tooltip: node name and value, in the
                       // brass language.
                       lineTouchData: LineTouchData(
@@ -519,15 +617,24 @@ class _MetricPanel extends StatelessWidget {
                               horizontalLines: [
                                 HorizontalLine(
                                   y: warnAt!,
-                                  color: brass.ochre.withValues(alpha: 0.55),
+                                  color: brass.warn.withValues(alpha: 0.7),
                                   strokeWidth: 1,
                                   dashArray: const [6, 4],
+                                  label: lineLabel(warnLabel, brass.warn),
                                 ),
+                                if (critAt != null)
+                                  HorizontalLine(
+                                    y: critAt!,
+                                    color: brass.crit.withValues(alpha: 0.8),
+                                    strokeWidth: 1.2,
+                                    dashArray: const [6, 4],
+                                    label: lineLabel(critLabel, brass.crit),
+                                  ),
                               ],
                             ),
                       gridData: FlGridData(
                         drawVerticalLine: false,
-                        horizontalInterval: yMax / 4,
+                        horizontalInterval: (yMax - yMin) / 4,
                         getDrawingHorizontalLine: (_) => FlLine(
                           color: theme.dividerColor.withValues(alpha: 0.5),
                           strokeWidth: 1,
@@ -572,8 +679,11 @@ class _MetricPanel extends StatelessWidget {
                             barWidth: 1.6,
                             dotData: const FlDotData(show: false),
                             color: _colorFor(brass, e.key),
+                            // Shaded area only for a single series: with
+                            // several nodes the fills stack into a slab
+                            // that hides the lines.
                             belowBarData: BarAreaData(
-                              show: true,
+                              show: !multi,
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
@@ -590,7 +700,7 @@ class _MetricPanel extends StatelessWidget {
                       ],
                     ),
                     duration: Duration.zero,
-                  ),
+                  )),
           ),
           const SizedBox(height: MolSpace.sm),
           Wrap(
@@ -741,9 +851,12 @@ class _GuestRow extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 30,
+            width: 34,
             child: Text(
               label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
               style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 10 * 0.14,
@@ -1025,6 +1138,7 @@ class _PowerSection extends StatelessWidget {
       accent: pal.accentPower,
       series: p.power,
       format: (v) => '${v.toStringAsFixed(0)} W',
+      zoom: true,
     );
 
     return Column(
@@ -1119,20 +1233,13 @@ class _StatReadout extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Flexible(
-                child: Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: context.displayFont,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 30,
-                    height: 1,
-                    color: brass.textHeading,
-                  ),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: FlipReadout(text: value, fontSize: 22),
                 ),
               ),
               if (unit.isNotEmpty) ...[
@@ -1638,6 +1745,13 @@ class _SmartSection extends StatelessWidget {
           accent: pal.accentTemp,
           series: smart.temps,
           format: (v) => '${v.toStringAsFixed(0)}°C',
+          // Drive makers' guidance: past ~50°C wear rises; 60°C is the top
+          // of most HDDs' operating range.
+          warnAt: 50,
+          critAt: 60,
+          warnLabel: 'WARM 50°C',
+          critLabel: 'HOT 60°C',
+          zoom: true,
         ),
         const SizedBox(height: MolSpace.md),
         BrassPanel(
@@ -2005,6 +2119,44 @@ class _MetricsPalette {
   );
 
   /// The pair for the ambient brightness (Theme dependency, like [Brass.of]).
-  static _MetricsPalette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _MetricsPalette of(BuildContext context) => forBrass(Brass.of(context));
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _MetricsPalette>{};
+  static _MetricsPalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    // Chart inks are the family's own, not carried over from Brass: the
+    // nearest-token transfer lands every family on the same green / blue /
+    // amber / red status hues.
+    final inks = ChartInks.of(InstrumentKit.of(b), b.isDark)!;
+    return _themed.putIfAbsent(
+      b,
+      () => _MetricsPalette(
+        accentCpu: inks.cpu,
+        accentMemory: inks.memory,
+        accentNetwork: inks.network,
+        accentDisk: inks.disk,
+        accentTemp: inks.temp,
+        accentAiTokens: inks.aiTokens,
+        accentAiLatency: inks.aiLatency,
+        accentTwin: inks.twin,
+        accentPower: inks.power,
+        accentCost: inks.cost,
+        chipSelectedBg: themeColor(base.chipSelectedBg, b),
+        chipSelectedBorder: themeColor(base.chipSelectedBorder, b),
+        chipSelectedText: themeColor(base.chipSelectedText, b),
+        chipIdleText: themeColor(base.chipIdleText, b),
+        unitText: themeColor(base.unitText, b),
+        tooltipBg: themeColor(base.tooltipBg, b),
+        tooltipText: themeColor(base.tooltipText, b),
+        healthStrip: themeColor(base.healthStrip, b),
+        guestPct: themeColor(base.guestPct, b),
+        guestName: themeColor(base.guestName, b),
+        guestRamBarStart: themeColor(base.guestRamBarStart, b),
+        guestRamBarEnd: themeColor(base.guestRamBarEnd, b),
+      ),
+    );
+  }
 }

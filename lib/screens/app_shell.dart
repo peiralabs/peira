@@ -338,16 +338,14 @@ class _BevelFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bevel = context.brass.isDark
-        ? _BevelPalette.dark
-        : _BevelPalette.light;
+    final bevel = _BevelPalette.forBrass(context.brass);
     return DecoratedBox(
       decoration: BoxDecoration(border: Border.all(color: bevel.outer)),
       position: DecorationPosition.foreground,
       child: DecoratedBox(
         decoration: BoxDecoration(
           // Dark-bronze middle stroke — reads on both fields.
-          border: Border.all(color: const Color(0x6B785C28), width: 3),
+          border: Border.all(color: themeColor(const Color(0x6B785C28), context.brass), width: 3),
         ),
         position: DecorationPosition.foreground,
         child: DecoratedBox(
@@ -378,6 +376,21 @@ class _BevelPalette {
     outer: Color(0x808A6A2A),
     topHighlight: Color(0x66FFFBEE),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _BevelPalette>{};
+  static _BevelPalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _BevelPalette(
+        outer: themeColor(base.outer, b),
+        topHighlight: themeColor(base.topHighlight, b),
+      ),
+    );
+  }
 }
 
 /// Fades + slides the screen in on tab change (design: om-fade .45s,

@@ -11,6 +11,7 @@ import '../../core/update/update_check.dart';
 import '../../core/util/open_url.dart';
 import '../../core/widgets/brass_icon_badge.dart';
 import '../../core/widgets/brass_ornament.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/screen_header.dart';
 import '../guide/guide_screen.dart';
 import 'connection_profiles_panel.dart';
@@ -391,12 +392,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 badgeField: BrassIconBadge.navyField,
                 // The badge well is navy in both modes, so the icy icon ink
                 // is shared; only the subtitle sits on the page itself.
-                iconColor: const Color(0xFFDCE8F8),
+                iconColor: themeColor(const Color(0xFFDCE8F8), context.brass),
                 title: 'Settings',
                 subtitle: 'SYSTEM KEYCHAIN · NEVER PLAIN FILES',
                 subtitleColor: context.brass.isDark
-                    ? const Color(0xFF9DB8DD)
-                    : const Color(0xFF425C86),
+                    ? themeColor(const Color(0xFF9DB8DD), context.brass)
+                    : themeColor(const Color(0xFF425C86), context.brass),
               ),
               const SizedBox(height: 16),
               const SectionDivider(),
@@ -468,7 +469,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 ),
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Show tabs for services not set up'),
                 subtitle: const Text(
@@ -516,7 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 obscure: true,
                 required: true,
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Trust self-signed certificate'),
                 subtitle: const Text(
@@ -635,7 +636,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 'Docker Engine URL',
                 hint: 'http://host:2375',
               ),
-              SwitchListTile(
+              BrassSwitchTile(
                 contentPadding: EdgeInsets.zero,
                 value: _dockerTlsVerify,
                 onChanged: (v) => setState(() => _dockerTlsVerify = v),
@@ -742,7 +743,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 obscure: true,
               ),
               _section(context, 'Notifications'),
-              SwitchListTile(
+              BrassSwitchTile(
                 contentPadding: EdgeInsets.zero,
                 value: _notifyAlerts,
                 onChanged: (v) => setState(() => _notifyAlerts = v),

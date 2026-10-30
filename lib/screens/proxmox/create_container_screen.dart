@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/proxmox_api.dart';
 import '../../core/providers/proxmox_providers.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 
 /// Guided "new LXC container" form. Picks a node → loads that node's templates
 /// and disk storages → collects resources → POSTs to Proxmox and (optionally)
@@ -358,20 +359,20 @@ class _CreateGuestScreenState extends ConsumerState<CreateGuestScreen> {
                   child: widget.kind == GuestKind.lxc
                       ? Column(
                           children: [
-                            SwitchListTile(
+                            BrassSwitchTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Network: DHCP on vmbr0'),
                               value: _dhcp,
                               onChanged: (v) => setState(() => _dhcp = v),
                             ),
-                            SwitchListTile(
+                            BrassSwitchTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Unprivileged'),
                               value: _unprivileged,
                               onChanged: (v) =>
                                   setState(() => _unprivileged = v),
                             ),
-                            SwitchListTile(
+                            BrassSwitchTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Start after create'),
                               value: _startAfter,
@@ -379,7 +380,7 @@ class _CreateGuestScreenState extends ConsumerState<CreateGuestScreen> {
                             ),
                           ],
                         )
-                      : SwitchListTile(
+                      : BrassSwitchTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Start after create'),
                           value: _startAfter,

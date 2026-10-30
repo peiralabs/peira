@@ -115,6 +115,7 @@ class _IndexerTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: BrassPanel(
         padding: EdgeInsets.zero,
+        screws: true,
         child: ListTile(
           leading: Icon(
             indexer.enable ? Icons.check_circle : Icons.pause_circle_outline,

@@ -7,6 +7,7 @@ import '../../core/providers/settings_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/service_frame.dart';
 
 /// Native Karakeep over its REST API and an API key: bookmarks with
@@ -250,88 +251,95 @@ class _BookmarkTile extends ConsumerWidget {
     final b = bookmark;
     final brass = context.brass;
     final host = b.url == null ? null : Uri.tryParse(b.url!)?.host;
-    return ListTile(
-      key: ValueKey('kk-${b.id}'),
-      contentPadding: const EdgeInsets.symmetric(vertical: 4),
-      leading: SizedBox(
-        width: 64,
-        height: 48,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: b.imageUrl == null
-              ? Icon(
-                  b.kind == 'text'
-                      ? Icons.notes
-                      : b.kind == 'asset'
-                      ? Icons.attach_file
-                      : Icons.link,
-                  color: brass.textMuted,
-                )
-              : Image.network(
-                  b.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) =>
-                      Icon(Icons.link, color: brass.textMuted),
-                ),
-        ),
-      ),
-      title: Text(b.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        [
-          ?host,
-          if (b.tags.isNotEmpty) b.tags.map((t) => '#${t.name}').join(' '),
-        ].join('  ·  '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: brass.textMuted, fontSize: 12),
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: b.favourited ? 'Unfavourite' : 'Favourite',
-            icon: Icon(b.favourited ? Icons.star : Icons.star_border),
-            onPressed: () async {
-              if (await _act(
-                context,
-                ref,
-                (api) => api.updateBookmark(b.id, favourited: !b.favourited),
-              )) {
-                onChanged();
-              }
-            },
-          ),
-          IconButton(
-            tooltip: b.archived ? 'Unarchive' : 'Archive',
-            icon: Icon(
-              b.archived ? Icons.unarchive_outlined : Icons.archive_outlined,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: BrassPanel(
+        padding: EdgeInsets.zero,
+        screws: true,
+        child: ListTile(
+          key: ValueKey('kk-${b.id}'),
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+          leading: SizedBox(
+            width: 64,
+            height: 48,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: b.imageUrl == null
+                  ? Icon(
+                      b.kind == 'text'
+                          ? Icons.notes
+                          : b.kind == 'asset'
+                          ? Icons.attach_file
+                          : Icons.link,
+                      color: brass.textMuted,
+                    )
+                  : Image.network(
+                      b.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          Icon(Icons.link, color: brass.textMuted),
+                    ),
             ),
-            onPressed: () async {
-              if (await _act(
-                context,
-                ref,
-                (api) => api.updateBookmark(b.id, archived: !b.archived),
-              )) {
-                onChanged();
-              }
-            },
           ),
-        ],
+          title: Text(b.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+          subtitle: Text(
+            [
+              ?host,
+              if (b.tags.isNotEmpty) b.tags.map((t) => '#${t.name}').join(' '),
+            ].join('  ·  '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: brass.textMuted, fontSize: 12),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: b.favourited ? 'Unfavourite' : 'Favourite',
+                icon: Icon(b.favourited ? Icons.star : Icons.star_border),
+                onPressed: () async {
+                  if (await _act(
+                    context,
+                    ref,
+                    (api) => api.updateBookmark(b.id, favourited: !b.favourited),
+                  )) {
+                    onChanged();
+                  }
+                },
+              ),
+              IconButton(
+                tooltip: b.archived ? 'Unarchive' : 'Archive',
+                icon: Icon(
+                  b.archived ? Icons.unarchive_outlined : Icons.archive_outlined,
+                ),
+                onPressed: () async {
+                  if (await _act(
+                    context,
+                    ref,
+                    (api) => api.updateBookmark(b.id, archived: !b.archived),
+                  )) {
+                    onChanged();
+                  }
+                },
+              ),
+            ],
+          ),
+          onTap: () async {
+            await showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              showDragHandle: true,
+              builder: (_) => DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: 0.8,
+                builder: (context, scroll) =>
+                    _BookmarkDetail(id: b.id, scroll: scroll),
+              ),
+            );
+            onChanged();
+          },
+    ),
       ),
-      onTap: () async {
-        await showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          showDragHandle: true,
-          builder: (_) => DraggableScrollableSheet(
-            expand: false,
-            initialChildSize: 0.8,
-            builder: (context, scroll) =>
-                _BookmarkDetail(id: b.id, scroll: scroll),
-          ),
-        );
-        onChanged();
-      },
     );
   }
 }
@@ -948,49 +956,56 @@ class _ListsView extends ConsumerWidget {
           const SizedBox(height: 10),
           if (all.isEmpty) const Center(child: Text('No lists yet.')),
           for (final l in all)
-            ListTile(
-              leading: Text(l.icon, style: const TextStyle(fontSize: 22)),
-              title: Text(l.name),
-              subtitle: Text(
-                l.type == 'smart' ? 'Smart: ${l.query ?? ''}' : 'Manual list',
-              ),
-              onTap: () => _open(
-                context,
-                l.name,
-                (api, c) => api.listBookmarks(l.id, cursor: c),
-              ),
-              trailing: PopupMenuButton<String>(
-                onSelected: (v) async {
-                  if (v == 'rename') {
-                    final n = await _ask(
-                      context,
-                      'Rename list',
-                      'Name',
-                      initial: l.name,
-                    );
-                    if (n == null || !context.mounted) return;
-                    await _act(
-                      context,
-                      ref,
-                      (api) => api.updateList(l.id, name: n),
-                    );
-                  } else {
-                    if (!await _confirm(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: BrassPanel(
+                padding: EdgeInsets.zero,
+                screws: true,
+                child: ListTile(
+                  leading: Text(l.icon, style: const TextStyle(fontSize: 22)),
+                  title: Text(l.name),
+                  subtitle: Text(
+                    l.type == 'smart' ? 'Smart: ${l.query ?? ''}' : 'Manual list',
+                  ),
+                  onTap: () => _open(
+                    context,
+                    l.name,
+                    (api, c) => api.listBookmarks(l.id, cursor: c),
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (v) async {
+                      if (v == 'rename') {
+                        final n = await _ask(
                           context,
-                          'Delete ${l.name}?',
-                          'The list is removed; its bookmarks stay.',
-                        ) ||
-                        !context.mounted) {
-                      return;
-                    }
-                    await _act(context, ref, (api) => api.deleteList(l.id));
-                  }
-                  ref.invalidate(kkListsProvider);
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'rename', child: Text('Rename')),
-                  PopupMenuItem(value: 'delete', child: Text('Delete')),
-                ],
+                          'Rename list',
+                          'Name',
+                          initial: l.name,
+                        );
+                        if (n == null || !context.mounted) return;
+                        await _act(
+                          context,
+                          ref,
+                          (api) => api.updateList(l.id, name: n),
+                        );
+                      } else {
+                        if (!await _confirm(
+                              context,
+                              'Delete ${l.name}?',
+                              'The list is removed; its bookmarks stay.',
+                            ) ||
+                            !context.mounted) {
+                          return;
+                        }
+                        await _act(context, ref, (api) => api.deleteList(l.id));
+                      }
+                      ref.invalidate(kkListsProvider);
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'rename', child: Text('Rename')),
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+            ),
               ),
             ),
         ],
@@ -1091,54 +1106,62 @@ class _FeedsView extends ConsumerWidget {
           const SizedBox(height: 8),
           if (list.isEmpty) const Center(child: Text('No feeds.')),
           for (final f in list)
-            ListTile(
-              title: Text(f.name),
-              subtitle: Text(
-                '${f.url}\n'
-                '${f.lastFetched == null ? 'Never fetched' : 'Last fetch ${f.lastFetched!.toLocal().toString().substring(0, 16)} · ${f.lastStatus ?? ''}'}',
-              ),
-              isThreeLine: true,
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Switch(
-                    value: f.enabled,
-                    onChanged: (v) async {
-                      await _act(
-                        context,
-                        ref,
-                        (api) => api.setFeedEnabled(f.id, v),
-                      );
-                      ref.invalidate(kkFeedsProvider);
-                    },
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: BrassPanel(
+                padding: EdgeInsets.zero,
+                screws: true,
+                child: ListTile(
+                  title: Text(f.name),
+                  subtitle: Text(
+                    '${f.url}\n'
+                    '${f.lastFetched == null ? 'Never fetched' : 'Last fetch ${f.lastFetched!.toLocal().toString().substring(0, 16)} · ${f.lastStatus ?? ''}'}',
                   ),
-                  IconButton(
-                    tooltip: 'Fetch now',
-                    icon: const Icon(Icons.refresh),
-                    onPressed: () => _act(
-                      context,
-                      ref,
-                      (api) => api.fetchFeed(f.id),
-                      done: 'Fetch queued',
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Delete feed',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
-                      if (!await _confirm(
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      BrassToggle(
+                        value: f.enabled,
+                        onChanged: (v) async {
+                          await _act(
                             context,
-                            'Delete ${f.name}?',
-                            'Bookmarks it already created stay.',
-                          ) ||
-                          !context.mounted) {
-                        return;
-                      }
-                      await _act(context, ref, (api) => api.deleteFeed(f.id));
-                      ref.invalidate(kkFeedsProvider);
-                    },
+                            ref,
+                            (api) => api.setFeedEnabled(f.id, v),
+                          );
+                          ref.invalidate(kkFeedsProvider);
+                        },
+                      ),
+                      KnurledKnob(
+                        icon: Ph.arrowsClockwise,
+                        tooltip: 'Fetch now',
+                        size: 26,
+                        onPressed: () => _act(
+                          context,
+                          ref,
+                          (api) => api.fetchFeed(f.id),
+                          done: 'Fetch queued',
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete feed',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () async {
+                          if (!await _confirm(
+                                context,
+                                'Delete ${f.name}?',
+                                'Bookmarks it already created stay.',
+                              ) ||
+                              !context.mounted) {
+                            return;
+                          }
+                          await _act(context, ref, (api) => api.deleteFeed(f.id));
+                          ref.invalidate(kkFeedsProvider);
+                        },
+                      ),
+                    ],
                   ),
-                ],
+            ),
               ),
             ),
         ],

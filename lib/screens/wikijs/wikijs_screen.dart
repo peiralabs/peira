@@ -276,26 +276,33 @@ class _PageTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    return ListTile(
-      key: ValueKey('wiki-${page.id}'),
-      contentPadding: EdgeInsets.zero,
-      title: Text(page.title),
-      subtitle: Text(
-        [
-          '/${page.locale}/${page.path}',
-          if (page.description.isNotEmpty) page.description,
-        ].join('  ·  '),
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: brass.textMuted, fontSize: 12),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: BrassPanel(
+        padding: EdgeInsets.zero,
+        screws: true,
+        child: ListTile(
+          key: ValueKey('wiki-${page.id}'),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18),
+          title: Text(page.title),
+          subtitle: Text(
+            [
+              '/${page.locale}/${page.path}',
+              if (page.description.isNotEmpty) page.description,
+            ].join('  ·  '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: brass.textMuted, fontSize: 12),
+          ),
+          trailing: page.updated == null
+              ? null
+              : Text(
+                  page.updated!.toLocal().toString().substring(0, 10),
+                  style: TextStyle(color: brass.textMuted, fontSize: 12),
+                ),
+          onTap: () => openWikiPage(context, page.id),
+    ),
       ),
-      trailing: page.updated == null
-          ? null
-          : Text(
-              page.updated!.toLocal().toString().substring(0, 10),
-              style: TextStyle(color: brass.textMuted, fontSize: 12),
-            ),
-      onTap: () => openWikiPage(context, page.id),
     );
   }
 }

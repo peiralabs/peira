@@ -8,6 +8,7 @@ import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/mechanical.dart';
 import '../../core/widgets/screen_header.dart';
 
 /// Native tail over the lab's centralized logs (Loki + Alloy shippers): host
@@ -56,10 +57,11 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
             title: 'Logs',
             subtitle: 'LOKI JOURNAL · TRAILING HOUR · NEWEST FIRST',
             trailing: [
-              IconButton(
+              KnurledKnob(
+                icon: Ph.arrowsClockwise,
                 tooltip: 'Refresh',
+                size: 26,
                 onPressed: _refresh,
-                icon: const Icon(Ph.arrowsClockwise, size: 20),
               ),
             ],
           ),

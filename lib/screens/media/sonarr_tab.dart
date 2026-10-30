@@ -156,6 +156,7 @@ class _SeriesTile extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: BrassPanel(
         padding: EdgeInsets.zero,
+        screws: true,
         child: ListTile(
           leading: Icon(
             complete ? Icons.check_circle : Icons.live_tv_outlined,

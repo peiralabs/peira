@@ -13,6 +13,7 @@ import 'package:peira/core/providers/navigation_providers.dart';
 import 'package:peira/core/providers/settings_providers.dart';
 import 'package:peira/core/settings/settings_repository.dart';
 import 'package:peira/core/theme/app_theme.dart';
+import 'package:peira/core/widgets/mechanical.dart';
 import 'package:peira/screens/home_assistant/home_assistant_screen.dart';
 
 class _SettingsRepository implements SettingsRepository {
@@ -143,7 +144,7 @@ void main() {
 
   testWidgets('the switch and the scene call their services', (tester) async {
     final (_, recorder) = await _pump(tester, _configured);
-    await tester.tap(find.byType(Switch));
+    await tester.tap(find.byType(BrassToggle));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Run'));
     await tester.pumpAndSettle();

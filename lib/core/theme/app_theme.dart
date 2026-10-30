@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'brass.dart';
 
 export 'brass.dart';
+export 'instrument_kit.dart';
+export 'theme_transfer.dart';
 
 /// "Brass Edition" — the HomeLab theme. An antique brass astronomical
 /// instrument in a Victorian library: deep bottle-green fields, gilt and

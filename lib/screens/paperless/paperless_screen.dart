@@ -386,34 +386,41 @@ class _DocumentsViewState extends ConsumerState<_DocumentsView>
                         child: Center(child: Text('No documents match.')),
                       ),
                     for (final d in _docs)
-                      ListTile(
-                        key: ValueKey('pl-${d.id}'),
-                        contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                        leading: _Thumb(id: d.id),
-                        title: Text(d.title),
-                        subtitle: Text(
-                          [
-                            _date(d.created),
-                            ?corrName[d.correspondent],
-                            ?typeName[d.documentType],
-                            if (d.asn != null) 'ASN ${d.asn}',
-                            for (final t in d.tags) '#${tagName[t] ?? t}',
-                          ].join('  ·  '),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: brass.textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
-                        onTap: () async {
-                          await Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => _DocumentPage(id: d.id),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: BrassPanel(
+                          padding: EdgeInsets.zero,
+                          screws: true,
+                          child: ListTile(
+                            key: ValueKey('pl-${d.id}'),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                            leading: _Thumb(id: d.id),
+                            title: Text(d.title),
+                            subtitle: Text(
+                              [
+                                _date(d.created),
+                                ?corrName[d.correspondent],
+                                ?typeName[d.documentType],
+                                if (d.asn != null) 'ASN ${d.asn}',
+                                for (final t in d.tags) '#${tagName[t] ?? t}',
+                              ].join('  ·  '),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: brass.textMuted,
+                                fontSize: 12,
+                              ),
                             ),
-                          );
-                          _reload();
-                        },
+                            onTap: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => _DocumentPage(id: d.id),
+                                ),
+                              );
+                              _reload();
+                            },
+                      ),
+                        ),
                       ),
                     const SizedBox(height: 10),
                     Center(
@@ -1062,42 +1069,49 @@ class _TasksView extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           for (final t in r.tasks)
-            ListTile(
-              dense: true,
-              leading: Icon(
-                switch (t.status) {
-                  'success' => Icons.check_circle_outline,
-                  'failure' || 'revoked' => Icons.error_outline,
-                  _ => Icons.hourglass_empty,
-                },
-                color: switch (t.status) {
-                  'success' => brass.ok,
-                  'failure' || 'revoked' => brass.crit,
-                  _ => brass.textMuted,
-                },
-              ),
-              title: Text(t.name, overflow: TextOverflow.ellipsis),
-              subtitle: Text(
-                [
-                  t.status,
-                  if (t.created != null)
-                    t.created!.toLocal().toString().substring(0, 16),
-                  ?t.result,
-                ].join('  ·  '),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: t.documentId == null
-                  ? null
-                  : IconButton(
-                      tooltip: 'Open document',
-                      icon: const Icon(Icons.description_outlined),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => _DocumentPage(id: t.documentId!),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: BrassPanel(
+                padding: EdgeInsets.zero,
+                screws: true,
+                child: ListTile(
+                  dense: true,
+                  leading: Icon(
+                    switch (t.status) {
+                      'success' => Icons.check_circle_outline,
+                      'failure' || 'revoked' => Icons.error_outline,
+                      _ => Icons.hourglass_empty,
+                    },
+                    color: switch (t.status) {
+                      'success' => brass.ok,
+                      'failure' || 'revoked' => brass.crit,
+                      _ => brass.textMuted,
+                    },
+                  ),
+                  title: Text(t.name, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    [
+                      t.status,
+                      if (t.created != null)
+                        t.created!.toLocal().toString().substring(0, 16),
+                      ?t.result,
+                    ].join('  ·  '),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: t.documentId == null
+                      ? null
+                      : IconButton(
+                          tooltip: 'Open document',
+                          icon: const Icon(Icons.description_outlined),
+                          onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => _DocumentPage(id: t.documentId!),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+            ),
+              ),
             ),
         ],
       ),
@@ -1184,19 +1198,26 @@ class _TrashViewState extends ConsumerState<_TrashView> {
           if (p.documents.isEmpty)
             const Center(child: Text('The trash is empty.')),
           for (final d in p.documents)
-            ListTile(
-              title: Text(d.title),
-              subtitle: Text(_date(d.created)),
-              trailing: TextButton(
-                child: const Text('Restore'),
-                onPressed: () async {
-                  await _act(
-                    context,
-                    ref,
-                    (api) => api.trashAction('restore', ids: [d.id]),
-                  );
-                  _reload();
-                },
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: BrassPanel(
+                padding: EdgeInsets.zero,
+                screws: true,
+                child: ListTile(
+                  title: Text(d.title),
+                  subtitle: Text(_date(d.created)),
+                  trailing: TextButton(
+                    child: const Text('Restore'),
+                    onPressed: () async {
+                      await _act(
+                        context,
+                        ref,
+                        (api) => api.trashAction('restore', ids: [d.id]),
+                      );
+                      _reload();
+                    },
+                  ),
+            ),
               ),
             ),
         ],

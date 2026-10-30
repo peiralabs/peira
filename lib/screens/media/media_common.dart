@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/providers/media_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/flip_readout.dart';
 import '../../core/widgets/recessed_bar.dart';
 
 /// Human-readable byte size (e.g. `4.2 GB`).
@@ -110,7 +111,23 @@ class MediaTilePalette {
     recessBorder: Color(0x4738702E),
   );
 
-  static MediaTilePalette of(Brass brass) => brass.isDark ? dark : light;
+  static MediaTilePalette of(Brass brass) => forBrass(brass);
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, MediaTilePalette>{};
+  static MediaTilePalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => MediaTilePalette(
+        ink: themeColor(base.ink, b),
+        caption: themeColor(base.caption, b),
+        recessBorder: themeColor(base.recessBorder, b),
+      ),
+    );
+  }
 }
 
 /// Brass stat strip (design §7): Playfair w800 values over small-caps labels
@@ -126,16 +143,9 @@ Widget mediaSummary(BuildContext context, List<(String, String)> stats) {
           Expanded(
             child: Column(
               children: [
-                Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontFamily: context.displayFont,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 27,
-                    height: 1.05,
-                    color: brass.textHeading,
-                  ),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: FlipReadout(text: value),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -278,11 +288,11 @@ class MediaFab extends StatelessWidget {
       decoration: BoxDecoration(
         // Matches the M3 extended-FAB stadium so the ink shadow hugs it.
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x3846381F),
+            color: themeColor(const Color(0x3846381F), context.brass),
             blurRadius: 10,
-            offset: Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),

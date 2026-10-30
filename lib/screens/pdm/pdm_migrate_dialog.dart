@@ -7,6 +7,7 @@ import '../../core/api/pdm_api.dart';
 import '../../core/providers/pdm_jobs.dart';
 import '../../core/providers/pdm_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/mechanical.dart';
 import 'pdm_format.dart';
 
 class PdmMigrateDialog extends ConsumerStatefulWidget {
@@ -304,7 +305,7 @@ class _PdmMigrateDialogState extends ConsumerState<PdmMigrateDialog> {
                         ),
                         keyboardType: TextInputType.number,
                       ),
-                      SwitchListTile(
+                      BrassSwitchTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text(
                           'Delete the original after a successful migration',

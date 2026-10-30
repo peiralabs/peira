@@ -35,6 +35,20 @@ class BrassIconBadge extends StatelessWidget {
     colors: [Color(0xFF3A5A8A), Color(0xFF101D33)],
   );
 
+  static const _greenField = RadialGradient(
+    center: Alignment(-0.2, -0.36),
+    colors: [Color(0xFF26402A), Color(0xFF0E1A10)],
+  );
+
+  /// The field's jewel tones carried onto the active family's tokens (Brass
+  /// keeps them as authored).
+  static RadialGradient _themed(RadialGradient g, Brass b) => RadialGradient(
+    center: g.center,
+    radius: g.radius,
+    colors: [for (final c in g.colors) themeColor(c, b)],
+    stops: g.stops,
+  );
+
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
@@ -58,14 +72,11 @@ class BrassIconBadge extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(11),
-          gradient: field ??
-              const RadialGradient(
-                center: Alignment(-0.2, -0.36),
-                colors: [Color(0xFF26402A), Color(0xFF0E1A10)],
-              ),
+          gradient: _themed(field ?? _greenField, brass),
         ),
         child: Icon(icon,
-            size: size * 0.46, color: iconColor ?? const Color(0xFFF2E6BF)),
+            size: size * 0.46,
+            color: themeColor(iconColor ?? const Color(0xFFF2E6BF), brass)),
       ),
     );
   }

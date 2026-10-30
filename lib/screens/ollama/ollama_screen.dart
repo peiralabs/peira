@@ -213,17 +213,17 @@ class _PullButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(11),
             gradient: pal.pullBtnFill,
-            border: Border.all(color: const Color(0x80E09678)),
+            border: Border.all(color: themeColor(const Color(0x80E09678), context.brass)),
             boxShadow: brass.cardShadow,
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Ph.downloadSimple, size: 15, color: Color(0xFFF6D9C4)),
-              SizedBox(width: 8),
+              Icon(Ph.downloadSimple, size: 15, color: themeColor(const Color(0xFFF6D9C4), context.brass)),
+              const SizedBox(width: 8),
               Text(
                 'Pull model',
-                style: TextStyle(fontSize: 13.5, color: Color(0xFFF6D9C4)),
+                style: TextStyle(fontSize: 13.5, color: themeColor(const Color(0xFFF6D9C4), context.brass)),
               ),
             ],
           ),
@@ -625,8 +625,7 @@ class _OllamaPalette {
   final Color progressTrack;
 
   /// Ambient-theme resolution (registers a Theme dependency, like Brass.of).
-  static _OllamaPalette of(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark ? dark : light;
+  static _OllamaPalette of(BuildContext context) => forBrass(Brass.of(context));
 
   static const dark = _OllamaPalette(
     subtitle: Color(0xFFD79F92),
@@ -702,4 +701,42 @@ class _OllamaPalette {
     progressBar: Color(0xFF9C4136),
     progressTrack: Color(0x339C4136),
   );
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _OllamaPalette>{};
+  static _OllamaPalette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _OllamaPalette(
+        subtitle: themeColor(base.subtitle, b),
+        pillBorderFail: themeColor(base.pillBorderFail, b),
+        pillBorderUp: themeColor(base.pillBorderUp, b),
+        pillBg: themeColor(base.pillBg, b),
+        pillTextFail: themeColor(base.pillTextFail, b),
+        pillTextUp: themeColor(base.pillTextUp, b),
+        pullBtnFill: themeGradient(base.pullBtnFill, b),
+        cardFill: themeGradient(base.cardFill, b),
+        borderRunning: themeColor(base.borderRunning, b),
+        borderIdle: themeColor(base.borderIdle, b),
+        accentRunning: themeColor(base.accentRunning, b),
+        accentIdle: themeColor(base.accentIdle, b),
+        cubeIcon: themeColor(base.cubeIcon, b),
+        modelName: themeColor(base.modelName, b),
+        statusBorderRunning: themeColor(base.statusBorderRunning, b),
+        statusBorderIdle: themeColor(base.statusBorderIdle, b),
+        statusBgRunning: themeColor(base.statusBgRunning, b),
+        statusDotRunning: themeColor(base.statusDotRunning, b),
+        statusDotIdle: themeColor(base.statusDotIdle, b),
+        statusTextRunning: themeColor(base.statusTextRunning, b),
+        statusTextIdle: themeColor(base.statusTextIdle, b),
+        statValue: themeColor(base.statValue, b),
+        statLabel: themeColor(base.statLabel, b),
+        progressBar: themeColor(base.progressBar, b),
+        progressTrack: themeColor(base.progressTrack, b),
+      ),
+    );
+  }
 }

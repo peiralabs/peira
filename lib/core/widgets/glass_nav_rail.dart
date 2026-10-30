@@ -377,7 +377,7 @@ class _BrassKnobState extends State<_BrassKnob> {
               child: Icon(
                 widget.collapsed ? PhBold.caretRight : PhBold.caretLeft,
                 size: 13,
-                color: const Color(0xFF4A3512),
+                color: themeColor(const Color(0xFF4A3512), context.brass),
               ),
             ),
           ),
@@ -603,6 +603,7 @@ class _NavItemState extends State<_NavItem> {
     final rail = _RailPalette.of(context);
     final kit = widget.kit;
     final selected = widget.selected;
+    final brassFamily = context.kit == InstrumentKit.brass;
 
     final iconBox = SizedBox(
       width: 44,
@@ -700,9 +701,16 @@ class _NavItemState extends State<_NavItem> {
                           softWrap: false,
                           style: TextStyle(
                             fontSize: 16,
-                            color: selected
-                                ? rail.labelSelected
-                                : rail.labelIdle,
+                            // Brass keeps its authored inks; other families
+                            // tint the titles with the section's hue.
+                            color: brassFamily
+                                ? (selected
+                                    ? rail.labelSelected
+                                    : rail.labelIdle)
+                                : (selected
+                                    ? kit.iconActive
+                                    : Color.lerp(rail.labelIdle,
+                                        kit.barMid, 0.5)!),
                             fontWeight: selected
                                 ? FontWeight.w600
                                 : FontWeight.w500,

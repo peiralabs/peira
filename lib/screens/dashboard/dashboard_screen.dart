@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,6 +12,7 @@ import '../../core/providers/cluster_history_providers.dart';
 import '../../core/providers/grafana_providers.dart';
 import '../../core/providers/navigation_providers.dart';
 import '../../core/providers/proxmox_providers.dart';
+import '../../core/providers/sweep_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/mol_motion.dart';
 import '../../core/theme/phosphor.dart';
@@ -20,9 +20,10 @@ import '../../core/util/open_url.dart';
 import '../../core/widgets/astrolabe.dart';
 import '../../core/widgets/brass_ornament.dart';
 import '../../core/widgets/brass_panel.dart';
+import '../../core/widgets/flip_readout.dart';
 import '../../core/widgets/instrument_gauge.dart';
-import '../../core/widgets/micro_spark.dart';
-import '../../core/widgets/recessed_bar.dart';
+import '../../core/widgets/mechanical.dart';
+import '../../core/widgets/raised_dial.dart';
 import '../../core/widgets/status_light.dart';
 import '../proxmox/node_detail_screen.dart';
 import 'attention_strip.dart';
@@ -168,7 +169,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// The grand banner: corner brackets, the hero astrolabe, cluster title +
+/// The grand banner: the hero astrolabe in its ledge, cluster title +
 /// enamel status plaque, and the gilded stat medallions.
 class _GrandBanner extends StatelessWidget {
   const _GrandBanner({
@@ -218,7 +219,6 @@ class _GrandBanner extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 26),
       child: Stack(
         children: [
-          const CornerBrackets(),
           // Astrolabe + title on the left; the medallions pushed flush to the
           // right edge (design §Dashboard grand banner). Below ~560px of
           // content the medallions wrap under the title instead of overflowing.
@@ -251,20 +251,33 @@ class _GrandBanner extends StatelessWidget {
               );
               final medallions = total == 0
                   ? null
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _Medallion(value: '$online/$total', label: 'Nodes'),
-                        const SizedBox(width: 20),
-                        _Medallion(
-                            value: '$runningGuests/$totalGuests',
-                            label: 'Guests'),
-                      ],
+                  : BrassLedge(
+                      radius: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _Medallion(value: '$online/$total', label: 'Nodes'),
+                          const SizedBox(width: 14),
+                          _Medallion(
+                              value: '$runningGuests/$totalGuests',
+                              label: 'Guests'),
+                        ],
+                      ),
                     );
+              const astrolabe = BrassLedge(
+                radius: double.infinity,
+                padding: EdgeInsets.all(11),
+                depth: 8,
+                child: RaisedDial(
+                  diameter: 108,
+                  child: Astrolabe(size: 108),
+                ),
+              );
               if (constraints.maxWidth >= 560) {
                 return Row(
                   children: [
-                    const Astrolabe(size: 120),
+                    astrolabe,
                     const SizedBox(width: 24),
                     Expanded(child: titleBlock),
                     if (medallions != null) ...[
@@ -280,7 +293,7 @@ class _GrandBanner extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Astrolabe(size: 120),
+                      astrolabe,
                       const SizedBox(width: 24),
                       Expanded(child: titleBlock),
                     ],
@@ -321,9 +334,9 @@ class _EnamelPlaque extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Color.lerp(const Color(0xFF1A2A1C), tint, 0.22)!
+            Color.lerp(themeColor(const Color(0xFF1A2A1C), context.brass), tint, 0.22)!
                 .withValues(alpha: 0.8),
-            Color.lerp(const Color(0xFF14231A), tint, 0.12)!
+            Color.lerp(themeColor(const Color(0xFF14231A), context.brass), tint, 0.12)!
                 .withValues(alpha: 0.85),
           ],
         ),
@@ -376,57 +389,61 @@ class _Medallion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brass = context.brass;
-    final palette = _Palette.of(brass);
-    return Container(
+    final brassKit = context.kit == InstrumentKit.brass;
+    return RaisedDial(
+      diameter: 92,
+      child: Container(
       width: 92,
       height: 92,
       padding: const EdgeInsets.all(2.5),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: brass.brassV,
-        boxShadow: [
-          BoxShadow(
-              color: palette.medallionShadow,
-              offset: const Offset(0, 3),
-              blurRadius: 7),
-        ],
       ),
       // The recessed well stays dark inside the brass ring in both modes
       // (mapping dashboard.medallionCenter), so its inks are pinned, not
       // tokens — like the gauge readouts on their kept-dark faces.
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            center: Alignment(-0.2, -0.36),
-            colors: [Color(0xFF26402A), Color(0xFF0E1A10)],
+            center: const Alignment(-0.2, -0.36),
+            // Brass keeps its pinned green well; other families recess the
+            // well in their own panel colours.
+            colors: brassKit
+                ? const [Color(0xFF26402A), Color(0xFF0E1A10)]
+                : [brass.panelTop, brass.bg],
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontFamily: context.displayFont,
-                fontWeight: FontWeight.w800,
-                fontSize: 23,
-                height: 1,
-                color: const Color(0xFFF4EEDA), // dark textHeading, pinned
+            SizedBox(
+              width: 72,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Consumer(
+                  builder: (context, ref, _) => FlipReadout(
+                    text: value,
+                    fontSize: 19,
+                    epoch: ref.watch(sweepEpochProvider),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 3),
+            const SizedBox(height: 5),
             Text(
               label.toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 10,
                 letterSpacing: 10 * 0.18,
-                color: Color(0xFFA3B892),
+                color: brassKit ? const Color(0xFFA3B892) : brass.smallCaps,
               ),
             ),
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -470,10 +487,12 @@ class _NodeGrid extends StatelessWidget {
   }
 }
 
-/// A node instrument card: gilt top rule, health cabochon + Playfair name +
-/// refresh, CPU LOAD readout over a sparkline, and the recessed RAM bar.
-/// Design rule: sparkline, never a ring — a ring reads empty at 0–5% CPU.
-class _NodeCard extends StatelessWidget {
+/// A node instrument plate: screwed to the panel at its corners, a pilot
+/// lamp + engraved name + knurled refresh knob, the CPU LOAD flip counter
+/// over a trace window (phosphor scope in the dark, chart paper in the
+/// light), and RAM as a liquid thermometer. Design rule: a trace, never a
+/// ring — a ring reads empty at 0–5% CPU.
+class _NodeCard extends ConsumerWidget {
   const _NodeCard({
     required this.node,
     required this.cpuHistory,
@@ -488,8 +507,9 @@ class _NodeCard extends StatelessWidget {
       ((bytes ?? 0) / (1 << 30)).round().toString();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final brass = context.brass;
+    final epoch = ref.watch(sweepEpochProvider);
     final palette = _Palette.of(brass);
     final health = DashboardScreen.nodeHealth(node);
     final online = node.status == 'online';
@@ -505,7 +525,10 @@ class _NodeCard extends StatelessWidget {
         MaterialPageRoute<void>(builder: (_) => NodeDetailScreen(node: node)),
       ),
       padding: const EdgeInsets.fromLTRB(18, 17, 18, 16),
-      child: Column(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -521,16 +544,15 @@ class _NodeCard extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
                     color: palette.nodeName,
+                    shadows: engraved(brass),
                   ),
                 ),
               ),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: onRefresh,
-                  child: Icon(Ph.arrowsClockwise,
-                      size: 15, color: palette.refreshIcon),
-                ),
+              KnurledKnob(
+                icon: Ph.arrowsClockwise,
+                onPressed: onRefresh,
+                size: 22,
+                tooltip: 'Refresh',
               ),
             ],
           ),
@@ -549,27 +571,21 @@ class _NodeCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(
-                  '${(cpu * 100).round()}%',
-                  style: TextStyle(
-                    fontFamily: context.displayFont,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 22,
-                    height: 1,
-                    color: brass.textHeading,
-                  ),
+                FlipReadout(
+                  text: '${(cpu * 100).round()}%',
+                  fontSize: 15,
+                  epoch: epoch,
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 7),
             SizedBox(
-              height: 44,
-              child: cpuHistory.length < 2
-                  ? const SizedBox.expand()
-                  : CustomPaint(
-                      painter: MicroSpark(cpuHistory, brass.sparkGreen),
-                      child: const SizedBox.expand(),
-                    ),
+              height: 46,
+              child: TraceWindow(
+                data: cpuHistory,
+                color: brass.sparkGreen,
+                style: brass.isDark ? TraceStyle.scope : TraceStyle.paper,
+              ),
             ),
           ] else
             SizedBox(
@@ -599,34 +615,39 @@ class _NodeCard extends StatelessWidget {
                   ),
                 ),
               ),
+              FlipReadout(
+                text: '${_gb(node.mem)}/${_gb(node.maxmem)}',
+                fontSize: 14,
+                epoch: epoch,
+              ),
+              const SizedBox(width: 5),
               Text(
-                '${_gb(node.mem)} / ${_gb(node.maxmem)} GB',
-                overflow: TextOverflow.ellipsis,
+                'GB',
                 style: TextStyle(
-                  fontFamily: context.displayFont,
-                  fontSize: 14,
+                  fontSize: 11,
+                  letterSpacing: 11 * 0.12,
                   color: palette.ramReadout,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          RecessedBar(
+          const SizedBox(height: 7),
+          LiquidTube(
             fraction: online ? ramFrac.toDouble() : 0,
-            // Fixed healthy ramp; light flips it so the fill's leading edge
-            // keeps contrast on the pale track (mirrors Brass.loadGradient).
-            gradient: brass.isDark
-                ? [brass.sparkGreenDeep, brass.sparkGreen]
-                : [brass.sparkGreen, brass.sparkGreenDeep],
+            color: brass.sparkGreen,
+            epoch: epoch,
+            height: 16,
           ),
+        ],
+      ),
         ],
       ),
     );
   }
 }
 
-/// The Cluster Instruments panel: corner brackets, the italic "Cluster Load"
-/// plate, and the four brass gauges with fixed per-metric colours.
+/// The Cluster Instruments panel: the italic "Cluster Load" plate and the
+/// four brass gauges installed in a ledge, with fixed per-metric colours.
 class _InstrumentsPanel extends StatelessWidget {
   const _InstrumentsPanel({
     required this.nodes,
@@ -663,7 +684,6 @@ class _InstrumentsPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(22, 26, 22, 24),
       child: Stack(
         children: [
-          const CornerBrackets(inset: 0),
           Column(
             children: [
               Row(
@@ -687,7 +707,9 @@ class _InstrumentsPanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              Wrap(
+              BrassLedge(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+                child: Wrap(
                 alignment: WrapAlignment.spaceEvenly,
                 runSpacing: 16,
                 children: [
@@ -716,6 +738,7 @@ class _InstrumentsPanel extends StatelessWidget {
                     display: '$running/$total',
                   ),
                 ],
+              ),
               ),
             ],
           ),
@@ -746,10 +769,13 @@ class _Instrument extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          InstrumentGauge(
-            fraction: fraction,
-            color: color,
-            display: display,
+          RaisedDial(
+            diameter: 130,
+            child: InstrumentGauge(
+              fraction: fraction,
+              color: color,
+              display: display,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
@@ -766,14 +792,17 @@ class _Instrument extends StatelessWidget {
   }
 }
 
-class _ClusterTrendCard extends StatelessWidget {
+/// The cluster CPU trend as a strip-chart recorder: ruled paper behind
+/// glass, the ink trace, and the pen carriage writing the latest value.
+class _ClusterTrendCard extends ConsumerWidget {
   const _ClusterTrendCard({required this.history});
 
   final List<double> history;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final epoch = ref.watch(sweepEpochProvider);
     final brass = context.brass;
     return BrassPanel(
       topRule: true,
@@ -796,25 +825,21 @@ class _ClusterTrendCard extends StatelessWidget {
                 ),
               ),
               if (history.isNotEmpty)
-                Text(
-                  '${history.last.round()}%',
-                  style: TextStyle(
-                    fontFamily: context.displayFont,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 18,
-                    color: brass.giltBright,
-                  ),
+                FlipReadout(
+                  text: '${history.last.round()}%',
+                  fontSize: 15,
+                  epoch: epoch,
                 ),
             ],
           ),
           const SizedBox(height: 14),
-          SizedBox(height: 96, child: _spark(theme, _Palette.of(brass))),
+          SizedBox(height: 96, child: _spark(theme)),
         ],
       ),
     );
   }
 
-  Widget _spark(ThemeData theme, _Palette palette) {
+  Widget _spark(ThemeData theme) {
     if (history.length < 2) {
       return Center(
         child: Text(
@@ -825,41 +850,11 @@ class _ClusterTrendCard extends StatelessWidget {
         ),
       );
     }
-    final maxY = math.max(10.0, history.reduce(math.max) * 1.25);
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: (history.length - 1).toDouble(),
-        minY: 0,
-        maxY: maxY,
-        gridData: const FlGridData(show: false),
-        titlesData: const FlTitlesData(show: false),
-        borderData: FlBorderData(show: false),
-        lineTouchData: const LineTouchData(enabled: false),
-        lineBarsData: [
-          LineChartBarData(
-            spots: [
-              for (var i = 0; i < history.length; i++)
-                FlSpot(i.toDouble(), history[i]),
-            ],
-            isCurved: true,
-            preventCurveOverShooting: true,
-            color: palette.trendLine,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  palette.trendLine.withValues(alpha: 0.4),
-                  palette.trendLine.withValues(alpha: 0),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    return TraceWindow(
+      data: history,
+      color: const Color(0xFF283A6E),
+      style: TraceStyle.recorder,
+      maxValue: math.max(10.0, history.reduce(math.max) * 1.25),
     );
   }
 }
@@ -1060,8 +1055,8 @@ class _CountBadge extends StatelessWidget {
             // Tinted well in the dark; an 18% green wash on paper (mapping
             // dashboard.badgeOuter).
             brass.isDark
-                ? const Color(0xFF2E4A30).withValues(alpha: 0.5)
-                : const Color(0x2E38702E),
+                ? themeColor(const Color(0xFF2E4A30), context.brass).withValues(alpha: 0.5)
+                : themeColor(const Color(0x2E38702E), context.brass),
           ],
         ),
         border: Border.all(color: tint.withValues(alpha: 0.5)),
@@ -1335,12 +1330,9 @@ class _TaskRow extends StatelessWidget {
 class _Palette {
   const _Palette({
     required this.bannerTitleShadow,
-    required this.medallionShadow,
     required this.nodeName,
-    required this.refreshIcon,
     required this.ramReadout,
     required this.gaugeLabel,
-    required this.trendLine,
     required this.allClearEdge,
     required this.allClearBorder,
     required this.allClearIcon,
@@ -1353,12 +1345,9 @@ class _Palette {
 
   static const dark = _Palette(
     bannerTitleShadow: Color(0x80000000),
-    medallionShadow: Color(0x80000000),
     nodeName: Color(0xFFF2ECD6),
-    refreshIcon: Color(0xFF8BA079),
     ramReadout: Color(0xFFD9E0CC),
     gaugeLabel: Color(0xFFAEBD9C),
-    trendLine: Color(0xFF9FC873),
     allClearEdge: Color(0x991C3220),
     allClearBorder: Color(0x807BB26A),
     allClearIcon: Color(0xFFA9E099),
@@ -1374,12 +1363,9 @@ class _Palette {
   /// tinted paper washes.
   static const light = _Palette(
     bannerTitleShadow: Color(0x66FFFBEE),
-    medallionShadow: Color(0x33352511),
     nodeName: Color(0xFF2E3324),
-    refreshIcon: Color(0xFF5F6E50),
     ramReadout: Color(0xFF3E4A36),
     gaugeLabel: Color(0xFF4A5C3E),
-    trendLine: Color(0xFF4F8A45),
     allClearEdge: Color(0x3338702E),
     allClearBorder: Color(0x8C38702E),
     allClearIcon: Color(0xFF2C5222),
@@ -1390,15 +1376,12 @@ class _Palette {
     badgeNumAlert: Color(0xFF7A241A),
   );
 
-  static _Palette of(Brass brass) => brass.isDark ? dark : light;
+  static _Palette of(Brass brass) => forBrass(brass);
 
   final Color bannerTitleShadow;
-  final Color medallionShadow;
   final Color nodeName;
-  final Color refreshIcon;
   final Color ramReadout;
   final Color gaugeLabel;
-  final Color trendLine;
   final Color allClearEdge;
   final Color allClearBorder;
   final Color allClearIcon;
@@ -1407,4 +1390,29 @@ class _Palette {
   final Color dashedBorder;
   final Color badgeNumOk;
   final Color badgeNumAlert;
+
+  /// This palette for [b]'s family: Brass keeps the authored set; any other
+  /// family gets each colour carried onto its own tokens ([themeColor]).
+  static final _themed = <Brass, _Palette>{};
+  static _Palette forBrass(Brass b) {
+    final base = b.isDark ? dark : light;
+    if (InstrumentKit.of(b) == InstrumentKit.brass) return base;
+    return _themed.putIfAbsent(
+      b,
+      () => _Palette(
+        bannerTitleShadow: themeColor(base.bannerTitleShadow, b),
+        nodeName: themeColor(base.nodeName, b),
+        ramReadout: themeColor(base.ramReadout, b),
+        gaugeLabel: themeColor(base.gaugeLabel, b),
+        allClearEdge: themeColor(base.allClearEdge, b),
+        allClearBorder: themeColor(base.allClearBorder, b),
+        allClearIcon: themeColor(base.allClearIcon, b),
+        allClearText: themeColor(base.allClearText, b),
+        dashedWellFill: themeColor(base.dashedWellFill, b),
+        dashedBorder: themeColor(base.dashedBorder, b),
+        badgeNumOk: themeColor(base.badgeNumOk, b),
+        badgeNumAlert: themeColor(base.badgeNumAlert, b),
+      ),
+    );
+  }
 }
